@@ -1,0 +1,27 @@
+# Baseline FNO Model Configuration
+name: fno_baseline
+type: baseline
+
+# Model architecture
+n_modes: [12, 12]  # Number of Fourier modes in each dimension
+width: 32  # Hidden dimension width
+n_layers: 4  # Number of FNO layers
+
+# Input/Output
+in_channels: 1
+out_channels: 1
+lifting_channels: 32  # Channels after lifting
+projection_channels: 32  # Channels before projection
+
+# Activation
+activation: gelu  # gelu, relu, tanh, swish
+
+# Normalization
+use_layer_norm: false
+use_instance_norm: false
+
+# Dropout
+dropout: 0.0
+
+# Padding
+padding: 0  # Padding for circular boundary conditions

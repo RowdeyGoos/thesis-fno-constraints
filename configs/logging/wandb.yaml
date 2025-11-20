@@ -1,0 +1,29 @@
+# Weights & Biases Logging Configuration
+name: wandb
+
+# WandB settings
+project: thesis-fno-constraints
+entity: null  # Your wandb username or team name
+group: null  # Group related runs together
+job_type: train  # train, eval, sweep
+
+# Run settings
+notes: null  # Optional notes for this run
+tags: []  # List of tags, e.g., ["baseline", "divfree", "pdebench"]
+
+# Logging frequency
+log_interval: 10  # Log every N steps
+log_gradients: false
+log_parameters: true
+log_model_checkpoints: true
+
+# What to track
+watch_model: false  # Watch model gradients (can be slow)
+watch_freq: 100  # How often to log model weights/gradients
+
+# Resuming
+resume: auto  # auto, allow, never, must
+run_id: null  # Specific run ID to resume
+
+# Offline mode
+mode: online  # online, offline, disabled

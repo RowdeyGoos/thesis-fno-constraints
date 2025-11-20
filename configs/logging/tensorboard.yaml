@@ -1,0 +1,18 @@
+# TensorBoard Logging Configuration
+name: tensorboard
+
+# TensorBoard settings
+log_dir: ${log_dir}/tensorboard
+
+# Logging frequency
+log_interval: 10  # Log every N steps
+log_images: true
+log_images_interval: 100  # Log images every N steps
+
+# What to track
+log_gradients: false
+log_graph: false  # Log model computation graph
+log_hyperparameters: true
+
+# Flush settings
+flush_secs: 120  # How often to flush to disk
