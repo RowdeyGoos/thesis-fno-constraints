@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data (don't include in image)
+data/raw/
+data/processed/
+
+# Experiments (don't include in image)
+experiments/logs/
+experiments/runs/
+models/checkpoints/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Tests
+tests/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+*.tar
+*.sif
+
+# Misc
+*.log
+.env

@@ -1,0 +1,78 @@
+Bootstrap: docker
+From: pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+
+%labels
+    Author RowdeyGoos
+    Project thesis-fno-constraints
+    Version 1.0
+
+%help
+    This is a container for training Fourier Neural Operators (FNO) with physical constraints.
+    
+    Usage:
+        # Interactive shell
+        apptainer shell --nv thesis-fno.sif
+        
+        # Run training
+        apptainer exec --nv thesis-fno.sif python scripts/train.py --config configs/training/default.yaml
+        
+        # With data binding
+        apptainer exec --nv --bind /scratch/$USER/data:/workspace/data thesis-fno.sif python scripts/train.py
+
+%files
+    # Copy project files into the container
+    requirements.txt /workspace/
+    pyproject.toml /workspace/
+    README.md /workspace/
+    src/ /workspace/src/
+    configs/ /workspace/configs/
+    scripts/ /workspace/scripts/
+
+%post
+    # Set working directory
+    cd /workspace
+    
+    # Update system packages
+    apt-get update && apt-get install -y \
+        git \
+        vim \
+        wget \
+        build-essential \
+        && rm -rf /var/lib/apt/lists/*
+    
+    # Upgrade pip
+    pip install --upgrade pip
+    
+    # Install Python dependencies
+    pip install --no-cache-dir -r requirements.txt
+    
+    # Install the package
+    pip install -e .
+    
+    # Create necessary directories
+    mkdir -p /workspace/data/raw \
+             /workspace/data/processed \
+             /workspace/experiments/logs \
+             /workspace/experiments/runs \
+             /workspace/models/checkpoints
+    
+    # Clean up
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%environment
+    # Set environment variables
+    export PYTHONUNBUFFERED=1
+    export PATH=/workspace/scripts:$PATH
+    export PYTHONPATH=/workspace:$PYTHONPATH
+
+%runscript
+    # Default behavior when container is run
+    exec /bin/bash "$@"
+
+%test
+    # Test that key packages are installed
+    python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
+    python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+    python -c "import yaml; print('YAML imported successfully')"
+    python -c "import numpy; print('NumPy imported successfully')"

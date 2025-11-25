@@ -1,0 +1,33 @@
+# DAIC cluster configuration
+# Source this file in your ~/.bashrc or load manually: source .daicrc
+
+# Module loading aliases
+alias load-python='module load python/3.10'
+alias load-cuda='module load cuda/11.8 cudnn/8.6'
+alias load-all='module load python/3.10 cuda/11.8 cudnn/8.6'
+
+# Virtual environment activation
+alias activate-thesis='source ~/venv/thesis-fno/bin/activate'
+
+# Quick setup
+alias thesis-env='load-all && activate-thesis'
+
+# Job submission shortcuts
+alias submit-job='sbatch scripts/slurm/submit_job_container.sh'
+alias submit-job-venv='sbatch scripts/slurm/submit_job.sh'
+alias submit-array='sbatch scripts/slurm/submit_job_array_container.sh'
+alias submit-array-venv='sbatch scripts/slurm/submit_job_array.sh'
+alias gpu-session='bash scripts/utils/interactive_gpu.sh'
+
+# Monitoring shortcuts
+alias check-jobs='bash scripts/utils/check_job_status.sh'
+alias watch-jobs='watch -n 10 squeue -u $USER'
+alias check-gpu='nvidia-smi'
+
+# Navigation
+alias cd-thesis='cd ~/thesis-fno-constraints'
+
+echo "DAIC shortcuts loaded!"
+echo "Quick setup: thesis-env"
+echo "Submit job: submit-job"
+echo "Check status: check-jobs"
