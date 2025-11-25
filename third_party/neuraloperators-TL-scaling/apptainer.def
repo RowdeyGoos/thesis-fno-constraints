@@ -1,0 +1,60 @@
+Bootstrap: docker
+From: pytorch/pytorch:1.12.0-cuda11.3-cudnn8-runtime
+
+%files
+    requirements.txt /tmp/requirements.txt
+    train.py /workspace/train.py
+    eval.py /workspace/eval.py
+    generate_scales.py /workspace/generate_scales.py
+    models /workspace/models
+    utils /workspace/utils
+    config /workspace/config
+
+%post
+    # Update and install system dependencies
+    apt-get update
+    apt-get install -y git wget vim
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+    # Install Python dependencies
+    pip install --no-cache-dir -r /tmp/requirements.txt
+    rm /tmp/requirements.txt
+
+    # Create necessary directories
+    mkdir -p /workspace/data
+    mkdir -p /workspace/experiments
+
+%environment
+    export PYTHONPATH=/workspace:$PYTHONPATH
+    export PYTHONUNBUFFERED=1
+    export OMP_NUM_THREADS=1
+
+%runscript
+    exec /bin/bash "$@"
+
+%labels
+    Author TU Delft
+    Version 1.0
+    Description Neural Operators Transfer Learning Scaling Container
+
+%help
+    This container provides the environment for the neuraloperators-TL-scaling project.
+    
+    Usage:
+        # Interactive shell
+        apptainer shell --nv neuraloperators.sif
+        
+        # Run training
+        apptainer exec --nv neuraloperators.sif python train.py --config config/operators_poisson.yaml --run_num poisson-test
+        
+        # Run evaluation
+        apptainer exec --nv neuraloperators.sif python eval.py --config config/operators_poisson.yaml --run_num poisson-test --eval_ckpt best_ckpt.tar
+
+%test
+    # Test PyTorch installation
+    python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
+    python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+    
+    # Test required packages
+    python -c "import h5py, matplotlib, numpy, scipy, wandb; print('All required packages installed')"
