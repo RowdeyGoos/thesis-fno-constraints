@@ -1,74 +1,78 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-train
+#SBATCH --job-name=neuralop-poisson-ddp
 #SBATCH --output=experiments/%x-%j.out
 #SBATCH --error=experiments/%x-%j.err
 #SBATCH --time=24:00:00
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --gpus=1
-#SBATCH --mem=32G
-
-# SLURM job for neuraloperators-TL-scaling training using Apptainer container
-# Submit from project root: sbatch scripts/slurm/submit_job_container.sh
+#SBATCH --ntasks=4
+#SBATCH --cpus-per-task=10
+#SBATCH --gres=gpu:4
+#SBATCH --mem=64G
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling Training (Container)"
-echo "Job ID: $SLURM_JOB_ID"
-echo "Node: $SLURM_NODELIST"
+echo "Starting neuraloperators-TL-scaling DDP (Container)"
+echo "Job ID:      $SLURM_JOB_ID"
+echo "Node list:   $SLURM_NODELIST"
+echo "Submit dir:  $SLURM_SUBMIT_DIR"
 echo "=========================================="
 
-# Container location
-CONTAINER_PATH=~/neuraloperators.sif
+# -------- Path to container on DAIC --------
+CONTAINER_PATH=/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/containers/neuraloperators.sif
 
-# Check if container exists
 if [ ! -f "$CONTAINER_PATH" ]; then
     echo "Error: Container not found at $CONTAINER_PATH"
-    echo "Please build and transfer the container first:"
-    echo "  1. Locally: bash scripts/container/build_container.sh"
-    echo "  2. Transfer: bash scripts/container/transfer_container.sh <netid>"
     exit 1
 fi
 
-# Load Apptainer module
+# Load apptainer / singularity
 module load apptainer 2>/dev/null || module load singularity 2>/dev/null
 
-# Set environment variables
 export PYTHONUNBUFFERED=1
 
-# Change to project directory
-cd $SLURM_SUBMIT_DIR
+cd "$SLURM_SUBMIT_DIR"
 
-# Configuration file (modify as needed)
-CONFIG_FILE="config/operators_poisson.yaml"
-RUN_NAME="poisson-scale-k1_5"
+# -------- DDP + experiment config --------
+export MASTER_ADDR=$(hostname)   # single-node DDP is fine with this
+ngpu=4
 
-# Check if config exists
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "Error: Config file $CONFIG_FILE not found"
-    exit 1
-fi
+config_file=./config/operators_poisson.yaml
+config="poisson-scale-k1_5"
+run_num="test"
 
-echo "Configuration: $CONFIG_FILE"
-echo "Run name: $RUN_NAME"
+# Store results in experiments/ inside the repo
+scratch="$SLURM_SUBMIT_DIR/experiments"
+
+mkdir -p "$scratch"
+
+# Python command to run inside the container
+cmd="python /workspace/train.py \
+    --yaml_config=/workspace/config/operators_poisson.yaml \
+    --config=$config \
+    --run_num=$run_num \
+    --root_dir=$scratch"
+
+# Bind the whole repo into /workspace inside the container
+BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
+
+echo "Running DDP training with $ngpu GPUs..."
+echo "Command: $cmd"
 echo ""
 
-# Bind directories
-BIND_DIRS="--bind $PWD/data:/workspace/data"
-BIND_DIRS="$BIND_DIRS --bind $PWD/experiments:/workspace/experiments"
-BIND_DIRS="$BIND_DIRS --bind $PWD/config:/workspace/config"
+# Each Slurm task runs: source DDP vars, then run train.py inside the container
+srun -l -n $ngpu --cpus-per-task=$SLURM_CPUS_PER_TASK --gpus-per-node=$ngpu \
+    apptainer exec --nv $BIND "$CONTAINER_PATH" \
+        bash -c "cd /workspace && source export_DDP_vars.sh && $cmd"
 
-# Run training
-echo "Starting training..."
-apptainer exec --nv $BIND_DIRS $CONTAINER_PATH \
-    python /workspace/train.py \
-    --yaml_config "$CONFIG_FILE" \
-    --config "$RUN_NAME" \
-    --run_num "${RUN_NAME}-${SLURM_JOB_ID}"
+status=$?
 
 echo ""
 echo "=========================================="
-echo "Training completed"
-echo "Results saved to: experiments/${RUN_NAME}-${SLURM_JOB_ID}/"
+if [ $status -eq 0 ]; then
+    echo "DDP Training completed successfully."
+else
+    echo "DDP Training FAILED with exit code $status."
+fi
+echo "Logs in: experiments/${SLURM_JOB_NAME}-${SLURM_JOB_ID}.out / .err"
+echo "Results in: $scratch"
 echo "=========================================="
