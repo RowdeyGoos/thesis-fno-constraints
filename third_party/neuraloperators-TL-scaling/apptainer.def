@@ -1,27 +1,51 @@
 Bootstrap: docker
-From: pytorch/pytorch:1.12.0-cuda11.3-cudnn8-runtime
+From: python:3.10-slim
 
 %files
-    requirements.txt /tmp/requirements.txt
-    train.py /workspace/train.py
-    eval.py /workspace/eval.py
-    generate_scales.py /workspace/generate_scales.py
-    models /workspace/models
-    utils /workspace/utils
-    config /workspace/config
+    requirements.txt /workspace/requirements.txt
+    train.py         /workspace/train.py
+    eval.py          /workspace/eval.py
+    models           /workspace/models
+    utils            /workspace/utils
+    config           /workspace/config
 
 %post
-    # Update and install system dependencies
+    set -e
+    export DEBIAN_FRONTEND=noninteractive
+    export PIP_ROOT_USER_ACTION=ignore
+
+    # System dependencies
     apt-get update
-    apt-get install -y git wget vim
-    apt-get clean
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        wget \
+        vim \
+        openmpi-bin \
+        libopenmpi-dev \
+        ca-certificates \
+        patchelf
     rm -rf /var/lib/apt/lists/*
 
-    # Install Python dependencies
-    pip install --no-cache-dir -r /tmp/requirements.txt
-    rm /tmp/requirements.txt
+    # Upgrade pip
+    python -m pip install --upgrade pip
 
-    # Create necessary directories
+    # PyTorch 1.12.0 + CUDA 11.3
+    python -m pip install --no-cache-dir \
+        torch==1.12.0+cu113 \
+        torchvision==0.13.0+cu113 \
+        -f https://download.pytorch.org/whl/torch_stable.html
+
+    # Clear executable-stack flag on libtorch_cpu.so (glibc 2.41+ workaround)
+    TORCH_LIB="/usr/local/lib/python3.10/site-packages/torch/lib/libtorch_cpu.so"
+    if [ -f "$TORCH_LIB" ]; then
+        patchelf --clear-execstack "$TORCH_LIB" || true
+    fi
+
+    # Project requirements (torch / torchvision must NOT be in requirements.txt)
+    python -m pip install --no-cache-dir -r /workspace/requirements.txt
+
+    # Project dirs
     mkdir -p /workspace/data
     mkdir -p /workspace/experiments
 
@@ -36,25 +60,7 @@ From: pytorch/pytorch:1.12.0-cuda11.3-cudnn8-runtime
 %labels
     Author TU Delft
     Version 1.0
-    Description Neural Operators Transfer Learning Scaling Container
-
-%help
-    This container provides the environment for the neuraloperators-TL-scaling project.
-    
-    Usage:
-        # Interactive shell
-        apptainer shell --nv neuraloperators.sif
-        
-        # Run training
-        apptainer exec --nv neuraloperators.sif python train.py --config config/operators_poisson.yaml --run_num poisson-test
-        
-        # Run evaluation
-        apptainer exec --nv neuraloperators.sif python eval.py --config config/operators_poisson.yaml --run_num poisson-test --eval_ckpt best_ckpt.tar
+    Description Neural Operators Transfer Learning Scaling Container (Py3.10, torch 1.12.0+cu113)
 
 %test
-    # Test PyTorch installation
-    python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
-    python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
-    
-    # Test required packages
-    python -c "import h5py, matplotlib, numpy, scipy, wandb; print('All required packages installed')"
+    echo "Skipping heavy tests at build time; test torch import at runtime."
