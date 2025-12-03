@@ -2,8 +2,10 @@
 #SBATCH --job-name=neuralop-poisson-ddp
 #SBATCH --output=experiments/%x-%j.out
 #SBATCH --error=experiments/%x-%j.err
-#SBATCH --time=24:00:00
-#SBATCH --partition=gpu
+#SBATCH --mail-type=END     # Set mail type to 'END' to receive a mail when the job finishes. 
+#SBATCH --time=2:00:00
+#SBATCH --partition=insy,general
+#SBATCH --qos=short         # Request Quality of Service. Default is 'short' (maximum run time: 4 hours)
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
 #SBATCH --cpus-per-task=10
@@ -29,6 +31,9 @@ fi
 module load apptainer 2>/dev/null || module load singularity 2>/dev/null
 
 export PYTHONUNBUFFERED=1
+export WANDB_DIR=/workspace/wandb
+export WANDB_START_METHOD=thread
+export WANDB__SERVICE_WAIT=300
 
 cd "$SLURM_SUBMIT_DIR"
 
@@ -53,7 +58,8 @@ cmd="python /workspace/train.py \
     --root_dir=$scratch"
 
 # Bind the whole repo into /workspace inside the container
-BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
+BIND="--bind $SLURM_SUBMIT_DIR:/workspace \
+      --bind $SLURM_SUBMIT_DIR/wandb:/workspace/wandb"
 
 echo "Running DDP training with $ngpu GPUs..."
 echo "Command: $cmd"

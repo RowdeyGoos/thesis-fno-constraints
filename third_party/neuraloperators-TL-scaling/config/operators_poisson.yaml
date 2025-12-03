@@ -27,8 +27,8 @@ default: &DEFAULT
   plot_figs: !!bool False
   pack_data: !!bool False
   # Weights & Biases
-  entity: 'your_wandb_entity'
-  project: 'your_wandb_project'
+  entity: 'rowdey_goos-tu-delft'
+  project: 'neuraloperators'
   log_to_wandb: !!bool False
   distill: !!bool False
   subsample: 1
@@ -39,7 +39,7 @@ poisson: &poisson
   valid_batch_size: 512
   nx: 128
   ny: 128
-  log_to_wandb: !!bool False
+  log_to_wandb: !!bool True
   save_checkpoint: !!bool True
   max_epochs: 500
   scheduler: 'cosine'
@@ -66,13 +66,13 @@ poisson: &poisson
 
 poisson-scale-k1_5: &poisson_scale_k1_5
   <<: *poisson
-  train_path:    '/path/to/data/_train_k1_5_32k.h5'
-  val_path:      '/path/to/data/_val_k1_5_4k.h5'
-  test_path:     '/path/to/data/_test_k1_5_4k.h5'
-  scales_path:   '/path/to/data/_train_k1_5_scales.npy'
+  train_path:    'data/poisson/_train_k1_5_32k.h5'
+  val_path:      'data/poisson/_val_k1_5_4k.h5'
+  test_path:     'data/poisson/_test_k1_5_4k.h5'
+  scales_path:   'data/poisson/train_k1_5_scales.npy'
   batch_size: 128
   valid_batch_size: 128
-  log_to_wandb: !!bool False
+  log_to_wandb: !!bool True
   mode_cut: 32
   embed_cut: 64
   fc_cut: 2
