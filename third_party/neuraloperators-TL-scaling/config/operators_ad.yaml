@@ -27,9 +27,9 @@ default: &DEFAULT
   plot_figs: !!bool False
   pack_data: !!bool False
   # Weights & Biases
-  # Weights & Biases
-  entity: 'your_wandb_entity'
-  project: 'your_wandb_project'
+  entity: 'rowdey_goos-tu-delft'
+  project: 'neuraloperators'
+  log_to_wandb: !!bool False
   distill: !!bool False
   subsample: 1
 
@@ -41,7 +41,7 @@ advdiff: &advdiff
   ny: 128
   log_to_wandb: !!bool True
   save_checkpoint: !!bool True
-  max_epochs: 500
+  max_epochs: 50
   scheduler: 'cosine'
   plot_figs: !!bool True
   loss_style: 'sum'
@@ -65,13 +65,13 @@ advdiff: &advdiff
 
 ad-scale-adr0p2_1: &ad_scale_0p2_1
   <<: *advdiff
-  train_path:   '/path/to/data/train_adr0p2_1_32k.h5'
-  val_path:     '/path/to/data/val_adr0p2_1_4k.h5'
-  test_path:    '/path/to/data/test_adr0p2_1_4k.h5'
-  scales_path:  '/path/to/data/train_adr0p2_1_scales.npy'
+  train_path:    'data/advection-diffusion/_train_adr0.2_1_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr0.2_1_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr0.2_1_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr0.2_1_32k_scales.npy'
   batch_size: 128
   valid_batch_size: 128
-  log_to_wandb: !!bool False
+  log_to_wandb: !!bool True
   mode_cut: 32
   embed_cut: 64
   fc_cut: 2

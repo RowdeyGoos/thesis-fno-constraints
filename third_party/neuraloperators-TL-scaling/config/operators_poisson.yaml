@@ -41,7 +41,7 @@ poisson: &poisson
   ny: 128
   log_to_wandb: !!bool True
   save_checkpoint: !!bool True
-  max_epochs: 500
+  max_epochs: 50
   scheduler: 'cosine'
   plot_figs: !!bool True
   loss_style: 'sum'

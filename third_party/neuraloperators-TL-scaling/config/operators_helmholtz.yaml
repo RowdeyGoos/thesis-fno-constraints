@@ -27,7 +27,7 @@ default: &DEFAULT
   plot_figs: !!bool False
   pack_data: !!bool False
   # Weights & Biases
-  entity: 'pinns'
+  entity: 'rowdey_goos-tu-delft'
   project: 'neuraloperators'
   log_to_wandb: !!bool False
   distill: !!bool False
@@ -41,7 +41,7 @@ helmholtz: &helmholtz
   ny: 128
   log_to_wandb: !!bool True
   save_checkpoint: !!bool True
-  max_epochs: 500
+  max_epochs: 50
   scheduler: 'cosine'
   plot_figs: !!bool True
   loss_style: 'sum'
@@ -65,13 +65,13 @@ helmholtz: &helmholtz
 
 helm-scale-o1_10: &helm_o1_10
   <<: *helmholtz
-  train_path:   '/path/to/data/train_o1_10_32k.h5'
-  val_path:     '/path/to/data/val_o1_10_4k.h5'
-  test_path:    '/path/to/data/test_o1_10_4k.h5'
-  scales_path:  '/path/to/data/train_o1_10_scales.npy'
+  train_path:    'data/helmholtz/_train_o1_10_32k.h5'
+  val_path:      'data/helmholtz/_val_o1_10_4k.h5'
+  test_path:     'data/helmholtz/_test_o1_10_4k.h5'
+  scales_path:   'data/helmholtz/_train_o1_10_32k_scales.npy'
   batch_size: 128
   valid_batch_size: 128
-  log_to_wandb: !!bool False
+  log_to_wandb: !!bool True
   in_dim: 3
   out_dim: 1
   mode_cut: 32
