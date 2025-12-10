@@ -142,8 +142,8 @@ if __name__ == '__main__':
     parser.add_argument("--ng", default=144, type=int, help="number of gaussians in grid")
     parser.add_argument("--sparse", action='store_true', help="creates sparse gaussians")
     parser.add_argument("--datapath", default="./", type=str, help="path to root dir to store data")
-    parser.add_argument("--e1", default=1, type=int, help="sample diffusion eigenvalues starting from e1")
-    parser.add_argument("--e2", default=5, type=int, help="sample diffusion eigenvalues ending at e2")
+    parser.add_argument("--e1", default=1, type=float, help="sample diffusion eigenvalues starting from e1")
+    parser.add_argument("--e2", default=5, type=float, help="sample diffusion eigenvalues ending at e2")
 
     args = parser.parse_args()
     print(args)
