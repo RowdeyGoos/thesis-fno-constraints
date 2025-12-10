@@ -90,8 +90,8 @@ mixed-scale-all: &mixed_scale_all
 # ==============================================================================
 # These are base configs for downstream tasks (used for fine-tuning)
 
-# Poisson k∈[5,10] downstream base config
-poisson-k5_10-base: &poisson_k5_10_base
+# Poisson k∈[1,2.5] downstream base config (SYS-1 in paper)
+poisson-k1_2.5-base: &poisson_k1_2p5_base
   <<: *DEFAULT
   batch_size: 512
   valid_batch_size: 512
@@ -121,18 +121,18 @@ poisson-k5_10-base: &poisson_k5_10_base
   lr: 1E-3
   pack_data: !!bool False
   
-  train_path:    'data/poisson/_train_k5_10_32k.h5'
-  val_path:      'data/poisson/_val_k5_10_4k.h5'
-  test_path:     'data/poisson/_test_k5_10_4k.h5'
-  scales_path:   'data/poisson/train_k5_10_scales.npy'
+  train_path:    'data/poisson/_train_k1_2.5_32k.h5'
+  val_path:      'data/poisson/_val_k1_2.5_4k.h5'
+  test_path:     'data/poisson/_test_k1_2.5_4k.h5'
+  scales_path:   'data/poisson/train_k1_2.5_scales.npy'
 
 # ==============================================================================
 # TRANSFER LEARNING FROM MIXED PRETRAINING
 # ==============================================================================
-# Fine-tuning mixed-pretrained model on Poisson k∈[5,10] with varying data sizes
+# Fine-tuning mixed-pretrained model on Poisson k∈[1,2.5] (SYS-1) with varying data sizes
 
-poisson-k5_10-finetune-mixed-16:
-  <<: *poisson_k5_10_base
+poisson-k1_2.5-finetune-mixed-16:
+  <<: *poisson_k1_2p5_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
@@ -140,8 +140,8 @@ poisson-k5_10-finetune-mixed-16:
   max_epochs: 50
   in_dim: 6  # Must match mixed model (6 input channels)
 
-poisson-k5_10-finetune-mixed-64:
-  <<: *poisson_k5_10_base
+poisson-k1_2.5-finetune-mixed-64:
+  <<: *poisson_k1_2p5_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
@@ -149,8 +149,8 @@ poisson-k5_10-finetune-mixed-64:
   max_epochs: 50
   in_dim: 6  # Must match mixed model
 
-poisson-k5_10-finetune-mixed-256:
-  <<: *poisson_k5_10_base
+poisson-k1_2.5-finetune-mixed-256:
+  <<: *poisson_k1_2p5_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
@@ -158,8 +158,8 @@ poisson-k5_10-finetune-mixed-256:
   max_epochs: 50
   in_dim: 6  # Must match mixed model
 
-poisson-k5_10-finetune-mixed-1k:
-  <<: *poisson_k5_10_base
+poisson-k1_2.5-finetune-mixed-1k:
+  <<: *poisson_k1_2p5_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
@@ -167,8 +167,8 @@ poisson-k5_10-finetune-mixed-1k:
   max_epochs: 50
   in_dim: 6  # Must match mixed model
 
-poisson-k5_10-finetune-mixed-4k:
-  <<: *poisson_k5_10_base
+poisson-k1_2.5-finetune-mixed-4k:
+  <<: *poisson_k1_2p5_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
@@ -200,8 +200,8 @@ poisson-k5_10-finetune-mixed-4k:
 # 2. Pretrain on mixed dataset:
 #    sbatch scripts/slurm/submit_mixed_pretrain.sh
 # 3. Update checkpoint paths:
-#    bash scripts/utils/update_checkpoint_path.sh <job_id>
-# 4. Fine-tune on downstream tasks:
+#    bash scripts/utils/update_mixed_checkpoint_path.sh <job_id>
+# 4. Fine-tune on downstream tasks (Poisson k∈[1,2.5] SYS-1):
 #    sbatch scripts/slurm/submit_mixed_finetune_array.sh
 # 5. Evaluate and compare:
 #    python eval_transfer_learning.py --include_mixed

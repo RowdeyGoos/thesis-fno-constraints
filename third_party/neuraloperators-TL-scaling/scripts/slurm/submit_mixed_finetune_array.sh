@@ -61,11 +61,11 @@ CONFIG_FILE="config/operators_mixed.yaml"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(
-    "poisson-k5_10-finetune-mixed-16:finetune-mixed-16"
-    "poisson-k5_10-finetune-mixed-64:finetune-mixed-64"
-    "poisson-k5_10-finetune-mixed-256:finetune-mixed-256"
-    "poisson-k5_10-finetune-mixed-1k:finetune-mixed-1k"
-    "poisson-k5_10-finetune-mixed-4k:finetune-mixed-4k"
+    "poisson-k1_2.5-finetune-mixed-16:finetune-mixed-16"
+    "poisson-k1_2.5-finetune-mixed-64:finetune-mixed-64"
+    "poisson-k1_2.5-finetune-mixed-256:finetune-mixed-256"
+    "poisson-k1_2.5-finetune-mixed-1k:finetune-mixed-1k"
+    "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k"
 )
 
 # Get current task configuration
