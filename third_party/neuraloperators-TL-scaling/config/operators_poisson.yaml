@@ -76,3 +76,100 @@ poisson-scale-k1_5: &poisson_scale_k1_5
   mode_cut: 32
   embed_cut: 64
   fc_cut: 2
+  max_epochs: 50
+
+# ========================================
+# Transfer Learning: Poisson k∈[5,10]
+# ========================================
+
+# Base config for k5_10 domain
+poisson-k5_10-base: &poisson_k5_10_base
+  <<: *poisson
+  train_path:    'data/poisson/_train_k5_10_32k.h5'
+  val_path:      'data/poisson/_val_k5_10_4k.h5'
+  test_path:     'data/poisson/_test_k5_10_4k.h5'
+  scales_path:   'data/poisson/train_k5_10_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 50
+
+# Fine-tuning configs (with pre-trained weights from k1_5)
+poisson-k5_10-finetune-16: &poisson_k5_10_ft_16
+  <<: *poisson_k5_10_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-finetune-64: &poisson_k5_10_ft_64
+  <<: *poisson_k5_10_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-finetune-256: &poisson_k5_10_ft_256
+  <<: *poisson_k5_10_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-finetune-1k: &poisson_k5_10_ft_1k
+  <<: *poisson_k5_10_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-finetune-4k: &poisson_k5_10_ft_4k
+  <<: *poisson_k5_10_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+  max_epochs: 50
+
+# From-scratch training configs (no pre-trained weights)
+poisson-k5_10-scratch-16: &poisson_k5_10_scratch_16
+  <<: *poisson_k5_10_base
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-scratch-64: &poisson_k5_10_scratch_64
+  <<: *poisson_k5_10_base
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-scratch-256: &poisson_k5_10_scratch_256
+  <<: *poisson_k5_10_base
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-scratch-1k: &poisson_k5_10_scratch_1k
+  <<: *poisson_k5_10_base
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+  max_epochs: 50
+
+poisson-k5_10-scratch-4k: &poisson_k5_10_scratch_4k
+  <<: *poisson_k5_10_base
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+  max_epochs: 50
