@@ -35,7 +35,6 @@ import argparse
 import h5py
 import numpy as np
 import os
-from tqdm import tqdm
 
 
 def load_dataset_info(filepath):
@@ -120,7 +119,9 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
     
     # Process Poisson: tensor [k11, k12, k22] -> [k11, k12, k22, 0, 0]
     print("  Processing Poisson samples...")
-    for i in tqdm(range(n_samples_per_system), desc="Poisson"):
+    for i in range(n_samples_per_system):
+        if i % 1000 == 0:
+            print(f"    Progress: {i}/{n_samples_per_system}")
         idx = i
         # Copy fields (source and solution)
         mixed_fields[idx, 0] = poisson_fields[i, 0]  # source
@@ -130,10 +131,13 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         mixed_tensor[idx, 3:5] = 0  # no advection
         # Label
         mixed_labels[idx] = 0
+    print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
     
     # Process Advection-Diffusion: tensor [k11, k12, k22, vx, vy] -> [k11, k12, k22, vx, vy]
     print("  Processing Advection-Diffusion samples...")
-    for i in tqdm(range(n_samples_per_system), desc="AdvDiff"):
+    for i in range(n_samples_per_system):
+        if i % 1000 == 0:
+            print(f"    Progress: {i}/{n_samples_per_system}")
         idx = n_samples_per_system + i
         # Copy fields (source and solution)
         mixed_fields[idx, 0] = advdiff_fields[i, 0]  # source
@@ -142,10 +146,13 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         mixed_tensor[idx, :5] = advdiff_tensor[i, :5]  # k11, k12, k22, vx, vy
         # Label
         mixed_labels[idx] = 1
+    print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
     
     # Process Helmholtz: tensor [k_constant, omega] -> [k_constant, omega, 0, 0, 0]
     print("  Processing Helmholtz samples...")
-    for i in tqdm(range(n_samples_per_system), desc="Helmholtz"):
+    for i in range(n_samples_per_system):
+        if i % 1000 == 0:
+            print(f"    Progress: {i}/{n_samples_per_system}")
         idx = 2 * n_samples_per_system + i
         # Copy fields (source and solution)
         mixed_fields[idx, 0] = helmholtz_fields[i, 0]  # source
@@ -156,6 +163,7 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         mixed_tensor[idx, 2:5] = 0  # no other coefficients
         # Label
         mixed_labels[idx] = 2
+    print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
     
     # Shuffle the mixed dataset
     print("\nShuffling mixed dataset...")
