@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=eval-transfer-learning
-#SBATCH --output=experiments/logs/%x-%j.out
-#SBATCH --error=experiments/logs/%x-%j.err
+#SBATCH --output=experiments/%x-%j.out
+#SBATCH --error=experiments/%x-%j.err
 #SBATCH --mail-type=END
-#SBATCH --time=4:00:00
+#SBATCH --time=2:00:00
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -45,7 +45,7 @@ export PYTHONUNBUFFERED=1
 cd "$SLURM_SUBMIT_DIR"
 
 # Configuration
-EXPERIMENT_DIR="experiments/expts"
+EXPERIMENT_DIR="experiments"
 OUTPUT_DIR="results/transfer_learning_k1_2.5"
 
 # Create output directories
@@ -71,7 +71,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          poisson-k1_2.5-finetune-mixed-256 \
                          poisson-k1_2.5-finetune-mixed-1k \
                          poisson-k1_2.5-finetune-mixed-4k \
-                --experiment_dir experiments/expts \
+                --experiment_dir experiments \
                 --output_dir results/transfer_learning_k1_2.5/mixed \
                 --device cuda:0'
 
@@ -89,7 +89,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          poisson-k1_2.5-finetune-256 \
                          poisson-k1_2.5-finetune-1k \
                          poisson-k1_2.5-finetune-4k \
-                --experiment_dir experiments/expts \
+                --experiment_dir experiments \
                 --output_dir results/transfer_learning_k1_2.5/k1_5 \
                 --device cuda:0'
 
@@ -107,7 +107,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          poisson-k1_2.5-scratch-256 \
                          poisson-k1_2.5-scratch-1k \
                          poisson-k1_2.5-scratch-4k \
-                --experiment_dir experiments/expts \
+                --experiment_dir experiments \
                 --output_dir results/transfer_learning_k1_2.5/scratch \
                 --device cuda:0'
 
