@@ -65,7 +65,12 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_mixed.yaml \
-                --experiment_type mixed_k1_2.5 \
+                --experiment_type poisson \
+                --configs poisson-k1_2.5-finetune-mixed-16 \
+                         poisson-k1_2.5-finetune-mixed-64 \
+                         poisson-k1_2.5-finetune-mixed-256 \
+                         poisson-k1_2.5-finetune-mixed-1k \
+                         poisson-k1_2.5-finetune-mixed-4k \
                 --experiment_dir experiments/expts \
                 --output_dir results/transfer_learning_k1_2.5/mixed \
                 --device cuda:0'
@@ -78,7 +83,12 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_poisson.yaml \
-                --experiment_type k1_2.5_finetune \
+                --experiment_type poisson \
+                --configs poisson-k1_2.5-finetune-16 \
+                         poisson-k1_2.5-finetune-64 \
+                         poisson-k1_2.5-finetune-256 \
+                         poisson-k1_2.5-finetune-1k \
+                         poisson-k1_2.5-finetune-4k \
                 --experiment_dir experiments/expts \
                 --output_dir results/transfer_learning_k1_2.5/k1_5 \
                 --device cuda:0'
@@ -91,7 +101,12 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_poisson.yaml \
-                --experiment_type k1_2.5_scratch \
+                --experiment_type poisson \
+                --configs poisson-k1_2.5-scratch-16 \
+                         poisson-k1_2.5-scratch-64 \
+                         poisson-k1_2.5-scratch-256 \
+                         poisson-k1_2.5-scratch-1k \
+                         poisson-k1_2.5-scratch-4k \
                 --experiment_dir experiments/expts \
                 --output_dir results/transfer_learning_k1_2.5/scratch \
                 --device cuda:0'
