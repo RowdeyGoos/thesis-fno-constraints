@@ -208,14 +208,23 @@ def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str,
         # Create inferencer
         inferencer = Inferencer(params, args)
         
-        # Run evaluation
-        test_time, fields = inferencer.test()
+        # Launch inferencer (initializes model and runs test)
+        inferencer.launch()
         
-        # Extract metrics
+        # Extract metrics from logs
+        test_error = inferencer.logs['test_err']
+        test_loss = inferencer.logs['test_loss']
+        
+        # Handle tensor values
+        if torch.is_tensor(test_error):
+            test_error = test_error.item()
+        if torch.is_tensor(test_loss):
+            test_loss = test_loss.item()
+        
         metrics = {
-            'test_error': inferencer.logs['test_err'],
-            'test_loss': inferencer.logs['test_loss'],
-            'test_time': test_time,
+            'test_error': test_error,
+            'test_loss': test_loss,
+            'test_time': 0,  # Not returned by launch()
         }
         
         logging.info(f"Results: test_error={metrics['test_error']:.6f}, "
