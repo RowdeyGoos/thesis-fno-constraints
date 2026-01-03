@@ -9,6 +9,9 @@ torch==1.12.0
 torchvision==0.13.0
 wandb==0.15.3
 
+# === Visualization and Plotting ===
+seaborn==0.12.2
+
 # === Jupyter Notebook + Lab ===
 jupyter==1.0.0
 notebook==6.5.4
