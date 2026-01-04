@@ -6,10 +6,14 @@ This script takes the results from three separate evaluations (mixed, k1_5, scra
 and creates a single comparison plot.
 
 Usage:
+    # With default paths (poisson_results.json)
+    python utils/plot_transfer_learning_comparison.py
+    
+    # With custom paths
     python utils/plot_transfer_learning_comparison.py \
-        --mixed_results results/transfer_learning_k1_2.5/mixed/results.json \
-        --k1_5_results results/transfer_learning_k1_2.5/k1_5/results.json \
-        --scratch_results results/transfer_learning_k1_2.5/scratch/results.json \
+        --mixed_results results/transfer_learning_k1_2.5/mixed/poisson_results.json \
+        --k1_5_results results/transfer_learning_k1_2.5/k1_5/poisson_results.json \
+        --scratch_results results/transfer_learning_k1_2.5/scratch/poisson_results.json \
         --output_dir results/transfer_learning_k1_2.5
 """
 
@@ -180,13 +184,16 @@ def print_summary_table(mixed_errors, k1_5_errors, scratch_errors):
 def main():
     parser = argparse.ArgumentParser(description='Plot transfer learning comparison')
     
-    parser.add_argument('--mixed_results', type=str, required=True,
+    parser.add_argument('--mixed_results', type=str, 
+                       default='results/transfer_learning_k1_2.5/mixed/poisson_results.json',
                        help='Path to mixed-pretrained results JSON')
-    parser.add_argument('--k1_5_results', type=str, required=True,
+    parser.add_argument('--k1_5_results', type=str,
+                       default='results/transfer_learning_k1_2.5/k1_5/poisson_results.json',
                        help='Path to k1_5-pretrained results JSON')
-    parser.add_argument('--scratch_results', type=str, required=True,
+    parser.add_argument('--scratch_results', type=str,
+                       default='results/transfer_learning_k1_2.5/scratch/poisson_results.json',
                        help='Path to from-scratch results JSON')
-    parser.add_argument('--output_dir', type=str, default='results',
+    parser.add_argument('--output_dir', type=str, default='results/transfer_learning_k1_2.5',
                        help='Output directory for plot')
     parser.add_argument('--title', type=str, default='Transfer Learning Comparison',
                        help='Plot title')
