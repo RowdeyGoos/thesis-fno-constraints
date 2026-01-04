@@ -118,9 +118,9 @@ echo "----------------------------------------------"
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
              python utils/plot_transfer_learning_comparison.py \
-                --mixed_results results/transfer_learning_k1_2.5/mixed/results.json \
-                --k1_5_results results/transfer_learning_k1_2.5/k1_5/results.json \
-                --scratch_results results/transfer_learning_k1_2.5/scratch/results.json \
+                --mixed_results results/transfer_learning_k1_2.5/mixed/poisson_results.json \
+                --k1_5_results results/transfer_learning_k1_2.5/k1_5/poisson_results.json \
+                --scratch_results results/transfer_learning_k1_2.5/scratch/poisson_results.json \
                 --output_dir results/transfer_learning_k1_2.5 \
                 --title "Transfer Learning: Poisson k∈[1,2.5]"'
 
