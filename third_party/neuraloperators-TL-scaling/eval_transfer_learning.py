@@ -362,6 +362,135 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     plt.close()
 
 
+def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
+                               experiment_type: str,
+                               output_path: str,
+                               include_mixed: bool = False):
+    """
+    Create a 3-subplot figure comparing all three approaches side by side.
+    
+    Args:
+        results: Nested dict {model_type: {sample_size: metrics}}
+        experiment_type: Type of experiment for title
+        output_path: Path to save plot
+        include_mixed: Whether mixed results are included
+    """
+    # Determine how many subplots we need
+    model_types = []
+    if 'scratch' in results:
+        model_types.append('scratch')
+    if 'finetune' in results:
+        model_types.append('finetune')
+    if 'mixed' in results and include_mixed:
+        model_types.append('mixed')
+    
+    if not model_types:
+        logging.warning("No results to plot")
+        return
+    
+    n_plots = len(model_types)
+    fig, axes = plt.subplots(1, n_plots, figsize=(7*n_plots, 6))
+    
+    # Make axes iterable if only one subplot
+    if n_plots == 1:
+        axes = [axes]
+    
+    # Define colors and markers
+    colors = {
+        'scratch': '#87CEEB',  # Light blue
+        'finetune': '#4169E1',  # Royal blue
+        'mixed': '#FF6347',     # Tomato red
+    }
+    
+    titles = {
+        'scratch': 'Training from Scratch',
+        'finetune': 'TL from Pre-trained',
+        'mixed': 'TL from Mixed Pre-trained',
+    }
+    
+    # Set x-ticks
+    xticks = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+    xtick_labels = ['8', '16', '32', '64', '128', '256', '512', '1K', '2K', '4K', '8K', '16K', '32K']
+    
+    # Get data range
+    data_samples = []
+    for model_results in results.values():
+        data_samples.extend(model_results.keys())
+    
+    min_sample = min(data_samples) if data_samples else 16
+    max_sample = max(data_samples) if data_samples else 4096
+    
+    valid_ticks = [(t, label) for t, label in zip(xticks, xtick_labels) 
+                  if t >= min_sample/2 and t <= max_sample*2]
+    
+    if valid_ticks:
+        xticks_filtered, xtick_labels_filtered = zip(*valid_ticks)
+    else:
+        xticks_filtered, xtick_labels_filtered = xticks, xtick_labels
+    
+    # Plot each model type in its own subplot
+    for idx, model_type in enumerate(model_types):
+        ax = axes[idx]
+        
+        if model_type not in results:
+            continue
+        
+        sample_sizes = sorted(results[model_type].keys())
+        errors = [results[model_type][size]['test_error'] for size in sample_sizes]
+        
+        # Filter out NaN values
+        valid_points = [(s, e) for s, e in zip(sample_sizes, errors) if not np.isnan(e)]
+        if not valid_points:
+            continue
+        
+        sample_sizes_valid, errors_valid = zip(*valid_points)
+        
+        # Plot with appropriate style
+        facecolors = 'none' if model_type == 'scratch' else colors[model_type]
+        linestyle = '--' if model_type == 'scratch' else '-'
+        
+        ax.plot(sample_sizes_valid, errors_valid,
+                marker='o',
+                color=colors[model_type],
+                markerfacecolor=facecolors,
+                markeredgecolor=colors[model_type],
+                markeredgewidth=2,
+                markersize=10,
+                linestyle=linestyle,
+                linewidth=2.5)
+        
+        # Formatting
+        ax.set_xlabel('Number of downstream examples', fontsize=12, fontweight='bold')
+        if idx == 0:
+            ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=12, fontweight='bold')
+        ax.set_yscale('log')
+        ax.set_xscale('log', base=2)
+        ax.set_xticks(xticks_filtered)
+        ax.set_xticklabels(xtick_labels_filtered)
+        ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
+        ax.set_title(titles[model_type], fontsize=13, fontweight='bold', pad=10)
+    
+    # Add overall title
+    if experiment_type == 'poisson':
+        suptitle = 'Poisson\'s Equation Transfer Learning Comparison\n'
+        suptitle += 'Pretrain: SYS-1(1,5)    Downstream: SYS-1(5,10)'
+    elif experiment_type == 'advdiff':
+        suptitle = 'Advection-Diffusion Transfer Learning Comparison\n'
+        suptitle += 'Pretrain: SYS-2(0.2,1)    Downstream: SYS-2(...)'
+    elif experiment_type == 'helmholtz':
+        suptitle = 'Helmholtz Transfer Learning Comparison\n'
+        suptitle += 'Pretrain: SYS-3(1,10)    Downstream: SYS-3(...)'
+    else:
+        suptitle = f'{experiment_type.title()} Transfer Learning Comparison'
+    
+    fig.suptitle(suptitle, fontsize=15, fontweight='bold', y=0.98)
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    logging.info(f"Individual comparison plot saved to: {output_path}")
+    plt.close()
+
+
 def save_results_json(results: Dict, output_path: str):
     """Save results to JSON file."""
     # Convert numpy types to Python types for JSON serialization
@@ -563,7 +692,7 @@ def main():
     # Print results table
     print_results_table(results)
     
-    # Generate plot
+    # Generate combined plot (all approaches on one graph)
     plot_path = output_dir / f'{args.experiment_type}_transfer_learning.png'
     plot_transfer_learning_curve(
         results,
@@ -578,6 +707,24 @@ def main():
         results,
         args.experiment_type,
         str(plot_path_pdf),
+        args.include_mixed
+    )
+    
+    # Generate individual comparison plot (3 subplots side by side)
+    comparison_path = output_dir / f'{args.experiment_type}_individual_comparison.png'
+    plot_individual_comparison(
+        results,
+        args.experiment_type,
+        str(comparison_path),
+        args.include_mixed
+    )
+    
+    # Also save comparison as PDF
+    comparison_path_pdf = output_dir / f'{args.experiment_type}_individual_comparison.pdf'
+    plot_individual_comparison(
+        results,
+        args.experiment_type,
+        str(comparison_path_pdf),
         args.include_mixed
     )
     
