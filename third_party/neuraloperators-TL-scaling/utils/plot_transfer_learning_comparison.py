@@ -41,8 +41,12 @@ def extract_errors_by_size(results):
             if isinstance(size_dict, dict):
                 for size, metrics in size_dict.items():
                     size_int = int(size) if isinstance(size, str) else size
-                    if isinstance(metrics, dict) and 'test_err' in metrics:
-                        errors[size_int] = metrics['test_err']
+                    if isinstance(metrics, dict):
+                        # Look for test_error (new format) or test_err (old format)
+                        if 'test_error' in metrics:
+                            errors[size_int] = metrics['test_error']
+                        elif 'test_err' in metrics:
+                            errors[size_int] = metrics['test_err']
                     elif isinstance(metrics, (int, float)):
                         errors[size_int] = metrics
     
