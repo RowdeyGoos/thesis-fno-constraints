@@ -103,8 +103,9 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     ax.set_ylabel('Test Error (Relative L2)', fontsize=14, fontweight='bold')
     ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
     
-    # Log scale for x-axis
+    # Log scale for both axes (base-10 for y-axis for better differentiation)
     ax.set_xscale('log')
+    ax.set_yscale('log', base=10)
     ax.set_xticks(all_sizes)
     ax.set_xticklabels([str(n) for n in all_sizes])
     

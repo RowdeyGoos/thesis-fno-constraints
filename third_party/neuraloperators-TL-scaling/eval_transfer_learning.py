@@ -311,7 +311,7 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     # Formatting
     ax.set_xlabel('Number of downstream examples', fontsize=14, fontweight='bold')
     ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=14, fontweight='bold')
-    ax.set_yscale('log')
+    ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
     ax.set_xscale('log', base=2)
     
     # Set x-ticks to match paper
@@ -463,7 +463,7 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
         ax.set_xlabel('Number of downstream examples', fontsize=12, fontweight='bold')
         if idx == 0:
             ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=12, fontweight='bold')
-        ax.set_yscale('log')
+        ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
         ax.set_xscale('log', base=2)
         ax.set_xticks(xticks_filtered)
         ax.set_xticklabels(xtick_labels_filtered)
