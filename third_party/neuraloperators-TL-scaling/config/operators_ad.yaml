@@ -1,5 +1,5 @@
 default: &DEFAULT
-  num_data_workers: 1
+  num_data_workers: 8
   # model
   model: 'fno'
   depth: 5
@@ -75,3 +75,197 @@ ad-scale-adr0p2_1: &ad_scale_0p2_1
   mode_cut: 32
   embed_cut: 64
   fc_cut: 2
+  max_epochs: 500
+
+# ========================================
+# Transfer Learning: AdvDiff adr∈[0.2,0.4]
+# ========================================
+
+# Base config for adr0.2_0.4 domain (downstream task)
+ad-adr0p2_0p4-base: &ad_adr0p2_0p4_base
+  <<: *advdiff
+  train_path:    'data/advection-diffusion/_train_adr0.2_0.4_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr0.2_0.4_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr0.2_0.4_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr0.2_0.4_32k_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+  system: 'advection-diffusion'
+
+# Fine-tuning configs from AD pretraining (adr0.2_1)
+ad-adr0p2_0p4-finetune-16: &ad_adr0p2_0p4_ft_16
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-64: &ad_adr0p2_0p4_ft_64
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-256: &ad_adr0p2_0p4_ft_256
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-1k: &ad_adr0p2_0p4_ft_1k
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-4k: &ad_adr0p2_0p4_ft_4k
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-8k: &ad_adr0p2_0p4_ft_8k
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-16k: &ad_adr0p2_0p4_ft_16k
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-32k: &ad_adr0p2_0p4_ft_32k
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
+# Fine-tuning configs from Mixed pretraining
+ad-adr0p2_0p4-finetune-mixed-16:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+  in_dim: 6  # Must match mixed model (6 input channels)
+
+ad-adr0p2_0p4-finetune-mixed-64:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+  in_dim: 6  # Must match mixed model
+
+ad-adr0p2_0p4-finetune-mixed-256:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+  in_dim: 6  # Must match mixed model
+
+ad-adr0p2_0p4-finetune-mixed-1k:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+  in_dim: 6  # Must match mixed model
+
+ad-adr0p2_0p4-finetune-mixed-4k:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+  max_epochs: 50
+  in_dim: 6  # Must match mixed model
+
+ad-adr0p2_0p4-finetune-mixed-8k:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+  in_dim: 6  # Must match mixed model
+
+ad-adr0p2_0p4-finetune-mixed-16k:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+  max_epochs: 50
+  in_dim: 6  # Must match mixed model
+
+ad-adr0p2_0p4-finetune-mixed-32k:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+  in_dim: 6  # Must match mixed model
+
+# From-scratch training configs (no pre-trained weights)
+ad-adr0p2_0p4-scratch-16: &ad_adr0p2_0p4_scratch_16
+  <<: *ad_adr0p2_0p4_base
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-64: &ad_adr0p2_0p4_scratch_64
+  <<: *ad_adr0p2_0p4_base
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-256: &ad_adr0p2_0p4_scratch_256
+  <<: *ad_adr0p2_0p4_base
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-1k: &ad_adr0p2_0p4_scratch_1k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-4k: &ad_adr0p2_0p4_scratch_4k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-8k: &ad_adr0p2_0p4_scratch_8k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-16k: &ad_adr0p2_0p4_scratch_16k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-32k: &ad_adr0p2_0p4_scratch_32k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128

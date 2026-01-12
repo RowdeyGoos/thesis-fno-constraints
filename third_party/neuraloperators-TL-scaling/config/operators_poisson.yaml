@@ -1,5 +1,5 @@
 default: &DEFAULT
-  num_data_workers: 1
+  num_data_workers: 8
   # model
   model: 'fno'
   depth: 5
@@ -88,7 +88,7 @@ poisson-k5_10-base: &poisson_k5_10_base
   train_path:    'data/poisson/_train_k5_10_32k.h5'
   val_path:      'data/poisson/_val_k5_10_4k.h5'
   test_path:     'data/poisson/_test_k5_10_4k.h5'
-  scales_path:   'data/poisson/train_k5_10_scales.npy'
+  scales_path:   'data/poisson/_train_k5_10_scales.npy'
   batch_size: 128
   valid_batch_size: 128
   log_to_wandb: !!bool True
@@ -100,7 +100,7 @@ poisson-k5_10-base: &poisson_k5_10_base
 # Fine-tuning configs (with pre-trained weights from k1_5)
 poisson-k5_10-finetune-16: &poisson_k5_10_ft_16
   <<: *poisson_k5_10_base
-  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
@@ -108,7 +108,7 @@ poisson-k5_10-finetune-16: &poisson_k5_10_ft_16
 
 poisson-k5_10-finetune-64: &poisson_k5_10_ft_64
   <<: *poisson_k5_10_base
-  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
@@ -116,7 +116,7 @@ poisson-k5_10-finetune-64: &poisson_k5_10_ft_64
 
 poisson-k5_10-finetune-256: &poisson_k5_10_ft_256
   <<: *poisson_k5_10_base
-  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
@@ -124,7 +124,7 @@ poisson-k5_10-finetune-256: &poisson_k5_10_ft_256
 
 poisson-k5_10-finetune-1k: &poisson_k5_10_ft_1k
   <<: *poisson_k5_10_base
-  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
@@ -132,7 +132,7 @@ poisson-k5_10-finetune-1k: &poisson_k5_10_ft_1k
 
 poisson-k5_10-finetune-4k: &poisson_k5_10_ft_4k
   <<: *poisson_k5_10_base
-  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
@@ -173,3 +173,132 @@ poisson-k5_10-scratch-4k: &poisson_k5_10_scratch_4k
   batch_size: 128
   valid_batch_size: 128
   max_epochs: 50
+
+# ========================================
+# Transfer Learning: Poisson k∈[1,2.5]
+# ========================================
+
+# Base config for k1_2.5 domain (SYS-1 downstream task)
+poisson-k1_2.5-base: &poisson_k1_2p5_base
+  <<: *poisson
+  train_path:    'data/poisson/_train_k1.0_2.5_32k.h5'
+  val_path:      'data/poisson/_val_k1.0_2.5_4k.h5'
+  test_path:     'data/poisson/_test_k1.0_2.5_4k.h5'
+  scales_path:   'data/poisson/_train_k1.0_2.5_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+  plot_figs: !!bool True
+
+# Fine-tuning configs (with pre-trained weights from k1_5)
+poisson-k1_2.5-finetune-16: &poisson_k1_2p5_ft_16
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+
+poisson-k1_2.5-finetune-64: &poisson_k1_2p5_ft_64
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+poisson-k1_2.5-finetune-256: &poisson_k1_2p5_ft_256
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+poisson-k1_2.5-finetune-1k: &poisson_k1_2p5_ft_1k
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k1_2.5-finetune-4k: &poisson_k1_2p5_ft_4k
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+
+poisson-k1_2.5-finetune-8k: &poisson_k1_2p5_ft_8k
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k1_2.5-finetune-16k: &poisson_k1_2p5_ft_16k
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k1_2.5-finetune-32k: &poisson_k1_2p5_ft_32k
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
+# From-scratch training configs (no pre-trained weights)
+poisson-k1_2.5-scratch-16: &poisson_k1_2p5_scratch_16
+  <<: *poisson_k1_2p5_base
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+poisson-k1_2.5-scratch-64: &poisson_k1_2p5_scratch_64
+  <<: *poisson_k1_2p5_base
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+poisson-k1_2.5-scratch-256: &poisson_k1_2p5_scratch_256
+  <<: *poisson_k1_2p5_base
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+poisson-k1_2.5-scratch-1k: &poisson_k1_2p5_scratch_1k
+  <<: *poisson_k1_2p5_base
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k1_2.5-scratch-4k: &poisson_k1_2p5_scratch_4k
+  <<: *poisson_k1_2p5_base
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k1_2.5-scratch-8k: &poisson_k1_2p5_scratch_8k
+  <<: *poisson_k1_2p5_base
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k1_2.5-scratch-16k: &poisson_k1_2p5_scratch_16k
+  <<: *poisson_k1_2p5_base
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k1_2.5-scratch-32k: &poisson_k1_2p5_scratch_32k
+  <<: *poisson_k1_2p5_base
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
