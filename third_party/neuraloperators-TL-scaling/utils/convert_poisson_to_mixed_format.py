@@ -80,8 +80,10 @@ def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
     # Write output file
     print(f"\nWriting output file: {final_output_path}")
     with h5py.File(final_output_path, 'w') as f:
-        f.create_dataset('fields', data=fields, compression='gzip')
-        f.create_dataset('tensor', data=tensor_5, compression='gzip')
+        # NO compression - must match the format of mixed dataset for fast loading
+        # Compression causes severe slowdown with multiple data workers on NFS
+        f.create_dataset('fields', data=fields, dtype=np.float32)
+        f.create_dataset('tensor', data=tensor_5, dtype=np.float32)
     
     print(f"\n✓ Conversion complete!")
     print(f"  Input:  {input_path}")
