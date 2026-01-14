@@ -107,6 +107,11 @@ def get_experiment_groups(experiment_type: str, include_mixed: bool = False) -> 
                 'scratch': 'poisson-k5_10-scratch-4k',
                 'mixed': 'poisson-k5_10-finetune-mixed-4k'
             },
+            8192: {
+                'finetune': 'poisson-k5_10-finetune-8k',
+                'scratch': 'poisson-k5_10-scratch-8k',
+                'mixed': 'poisson-k5_10-finetune-mixed-8k'
+            },
         }
     elif experiment_type == 'advdiff':
         # Add advdiff configs here when ready

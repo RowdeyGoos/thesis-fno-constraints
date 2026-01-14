@@ -71,6 +71,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          poisson-k1_2.5-finetune-mixed-256 \
                          poisson-k1_2.5-finetune-mixed-1k \
                          poisson-k1_2.5-finetune-mixed-4k \
+                         poisson-k1_2.5-finetune-mixed-8k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_k1_2.5/mixed \
                 --device cuda:0'
@@ -89,6 +90,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          poisson-k1_2.5-finetune-256 \
                          poisson-k1_2.5-finetune-1k \
                          poisson-k1_2.5-finetune-4k \
+                         poisson-k1_2.5-finetune-8k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_k1_2.5/k1_5 \
                 --device cuda:0'
@@ -107,6 +109,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          poisson-k1_2.5-scratch-256 \
                          poisson-k1_2.5-scratch-1k \
                          poisson-k1_2.5-scratch-4k \
+                         poisson-k1_2.5-scratch-8k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_k1_2.5/scratch \
                 --device cuda:0'
