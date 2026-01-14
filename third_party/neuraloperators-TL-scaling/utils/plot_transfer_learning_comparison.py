@@ -78,9 +78,11 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     # Plot each line
     markers = {'mixed': 'o', 'k1_5': 's', 'scratch': '^'}
     colors = {'mixed': '#2ecc71', 'k1_5': '#3498db', 'scratch': '#e74c3c'}
+    # Keep legend labels experiment-agnostic; the meaning of the middle curve
+    # depends on what results you feed in (Poisson-pretrained, AdvDiff-pretrained, etc.).
     labels = {
         'mixed': 'Fine-tuned (Mixed-Domain Pretraining)',
-        'k1_5': 'Fine-tuned (Poisson k∈[1,5] Pretraining)',
+        'k1_5': 'Fine-tuned (Single-Domain Pretraining)',
         'scratch': 'Trained from Scratch'
     }
     
