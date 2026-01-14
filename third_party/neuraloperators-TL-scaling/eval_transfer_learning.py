@@ -28,7 +28,6 @@ Usage:
 """
 
 import os
-import sys
 import argparse
 import logging
 import json
@@ -37,14 +36,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import torch
-import torch.distributed as dist
 from collections import defaultdict
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 
 from utils import logging_utils
-logging_utils.config_logger()
 from utils.YParams import YParams
 from utils.inferencer import Inferencer
+
+
+logging_utils.config_logger()
 
 
 # Plot styling
@@ -114,8 +114,51 @@ def get_experiment_groups(experiment_type: str, include_mixed: bool = False) -> 
             },
         }
     elif experiment_type == 'advdiff':
-        # Add advdiff configs here when ready
-        base_configs = {}
+        # Advection-Diffusion transfer learning experiments (see config/operators_ad.yaml)
+        # Downstream: adr∈[0.2,0.4]
+        # Pretrain:   adr∈[0.2,1]
+        base_configs = {
+            16: {
+                'finetune': 'ad-adr0p2_0p4-finetune-16',
+                'scratch': 'ad-adr0p2_0p4-scratch-16',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-16',
+            },
+            64: {
+                'finetune': 'ad-adr0p2_0p4-finetune-64',
+                'scratch': 'ad-adr0p2_0p4-scratch-64',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-64',
+            },
+            256: {
+                'finetune': 'ad-adr0p2_0p4-finetune-256',
+                'scratch': 'ad-adr0p2_0p4-scratch-256',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-256',
+            },
+            1024: {
+                'finetune': 'ad-adr0p2_0p4-finetune-1k',
+                'scratch': 'ad-adr0p2_0p4-scratch-1k',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-1k',
+            },
+            4096: {
+                'finetune': 'ad-adr0p2_0p4-finetune-4k',
+                'scratch': 'ad-adr0p2_0p4-scratch-4k',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-4k',
+            },
+            8192: {
+                'finetune': 'ad-adr0p2_0p4-finetune-8k',
+                'scratch': 'ad-adr0p2_0p4-scratch-8k',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-8k',
+            },
+            16384: {
+                'finetune': 'ad-adr0p2_0p4-finetune-16k',
+                'scratch': 'ad-adr0p2_0p4-scratch-16k',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-16k',
+            },
+            32768: {
+                'finetune': 'ad-adr0p2_0p4-finetune-32k',
+                'scratch': 'ad-adr0p2_0p4-scratch-32k',
+                'mixed': 'ad-adr0p2_0p4-finetune-mixed-32k',
+            },
+        }
     elif experiment_type == 'helmholtz':
         # Add helmholtz configs here when ready
         base_configs = {}
@@ -332,7 +375,7 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         min_sample = min(data_samples)
         max_sample = max(data_samples)
         
-        valid_ticks = [(t, l) for t, l in zip(xticks, xtick_labels) 
+        valid_ticks = [(t, label) for t, label in zip(xticks, xtick_labels)
                       if t >= min_sample/2 and t <= max_sample*2]
         
         if valid_ticks:
