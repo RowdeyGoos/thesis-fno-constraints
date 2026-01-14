@@ -23,8 +23,6 @@
 # Usage:
 #   sbatch scripts/slurm/submit_eval_transfer_learning_ad.sh
 
-set -euo pipefail
-
 echo "=========================================="
 echo "Transfer Learning Batch Evaluation (AdvDiff)"
 echo "Job ID: $SLURM_JOB_ID"
@@ -46,7 +44,8 @@ export PYTHONUNBUFFERED=1
 
 cd "$SLURM_SUBMIT_DIR"
 
-# Output directory
+# Configuration
+EXPERIMENT_DIR="experiments"
 OUTPUT_DIR="results/transfer_learning_advdiff_adr0.2_0.4"
 
 # Create output directories
