@@ -20,15 +20,20 @@ Usage:
 
 The mixed dataset maintains standard HDF5 format:
 - fields: (n, 2, nx, ny) - source and solution
-- tensor: (n, 5) - unified coefficient vector with zero-padding
+- tensor: (n, 6) - unified coefficient vector with zero-padding
   
-Tensor layout: [coef0, coef1, coef2, coef3, coef4]
-- Poisson:    [k11, k12, k22,  0,  0]      # diffusion only
-- AdvDiff:    [k11, k12, k22, vx, vy]      # diffusion + advection
-- Helmholtz:  [k,  omega,  0,  0,  0]      # constant diffusion + wavenumber
+Tensor layout: [k11, k12, k22, vx, vy, omega]
+- Poisson:    [k11, k12, k22,  0,  0,     0]  # diffusion only
+- AdvDiff:    [k11, k12, k22, vx, vy,     0]  # diffusion + advection
+- Helmholtz:  [k,   0,   k,   0,  0, omega]  # identity diffusion + wavenumber
+
+This ensures consistent semantics across PDEs with NO channel overlap:
+- Channels [0,1,2]: Always diffusion tensor (k11, k12, k22)
+- Channels [3,4]: Always advection velocities (vx, vy)
+- Channel 5: Always wavenumber (omega)
 
 When loaded by PDESolns, each tensor component is expanded to a spatial channel,
-resulting in: 1 (source) + 5 (tensor) = 6 input channels for the model.
+resulting in: 1 (source) + 6 (tensor) = 7 input channels for the model.
 """
 
 import argparse
@@ -99,25 +104,25 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
     print(f"  Samples per system: {n_samples_per_system}")
     print(f"  Total samples: {total_samples}")
     print(f"  Spatial resolution: {nx} x {ny}")
-    print(f"  Common input channels: 6 (max across all systems)")
+    print(f"  Input channels: 7 (1 source + 6 tensor components)")
     
     # Create output directory if needed
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     # Initialize mixed dataset arrays in standard format
     # fields: (n_samples, 2, nx, ny) - source and solution only (standard format)
-    # tensor: (n_samples, 5) - unified coefficient vector with zero-padding
-    #   Layout: [k11_or_k, k12_or_omega, k22, vx, vy]
-    #   Poisson:    [k11, k12, k22,  0,  0]  # diffusion only
-    #   AdvDiff:    [k11, k12, k22, vx, vy]  # diffusion + advection
-    #   Helmholtz:  [k,   omega, 0,  0,  0]  # constant diffusion + wavenumber
+    # tensor: (n_samples, 6) - unified coefficient vector with zero-padding
+    #   Layout: [k11, k12, k22, vx, vy, omega]
+    #   Poisson:    [k11, k12, k22,  0,  0,     0]  # diffusion only
+    #   AdvDiff:    [k11, k12, k22, vx, vy,     0]  # diffusion + advection
+    #   Helmholtz:  [k,   0,   k,   0,  0, omega]  # identity diffusion + wavenumber
     mixed_fields = np.zeros((total_samples, 2, nx, ny), dtype=np.float32)
-    mixed_tensor = np.zeros((total_samples, 5), dtype=np.float32)
+    mixed_tensor = np.zeros((total_samples, 6), dtype=np.float32)
     mixed_labels = np.zeros(total_samples, dtype=np.int32)  # 0=Poisson, 1=AdvDiff, 2=Helmholtz
     
     print("\nProcessing datasets...")
     
-    # Process Poisson: tensor [k11, k12, k22] -> [k11, k12, k22, 0, 0]
+    # Process Poisson: tensor [k11, k12, k22] -> [k11, k12, k22, 0, 0, 0]
     print("  Processing Poisson samples...")
     for i in range(n_samples_per_system):
         if i % 1000 == 0:
@@ -126,14 +131,14 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         # Copy fields (source and solution)
         mixed_fields[idx, 0] = poisson_fields[i, 0]  # source
         mixed_fields[idx, 1] = poisson_fields[i, 1]  # solution
-        # Tensor: diffusion coefficients, zero-pad for advection
+        # Tensor: diffusion coefficients, zero-pad for advection and wavenumber
         mixed_tensor[idx, :3] = poisson_tensor[i, :3]  # k11, k12, k22
-        mixed_tensor[idx, 3:5] = 0  # no advection
+        mixed_tensor[idx, 3:6] = 0  # no advection, no wavenumber
         # Label
         mixed_labels[idx] = 0
     print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
     
-    # Process Advection-Diffusion: tensor [k11, k12, k22, vx, vy] -> [k11, k12, k22, vx, vy]
+    # Process Advection-Diffusion: tensor [k11, k12, k22, vx, vy] -> [k11, k12, k22, vx, vy, 0]
     print("  Processing Advection-Diffusion samples...")
     for i in range(n_samples_per_system):
         if i % 1000 == 0:
@@ -142,13 +147,16 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         # Copy fields (source and solution)
         mixed_fields[idx, 0] = advdiff_fields[i, 0]  # source
         mixed_fields[idx, 1] = advdiff_fields[i, 1]  # solution
-        # Tensor: diffusion coefficients + advection velocities (already 5 components)
+        # Tensor: diffusion coefficients + advection velocities, zero-pad wavenumber
         mixed_tensor[idx, :5] = advdiff_tensor[i, :5]  # k11, k12, k22, vx, vy
+        mixed_tensor[idx, 5] = 0  # no wavenumber
         # Label
         mixed_labels[idx] = 1
     print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
     
-    # Process Helmholtz: tensor [k_constant, omega] -> [k_constant, omega, 0, 0, 0]
+    # Process Helmholtz: tensor [k_constant, omega] -> [k, 0, k, 0, 0, omega]
+    # Identity diffusion tensor: k11=k, k12=0, k22=k (consistent with Poisson/AdvDiff diffusion channels)
+    # Wavenumber in dedicated channel 5, no advection in channels 3-4
     print("  Processing Helmholtz samples...")
     for i in range(n_samples_per_system):
         if i % 1000 == 0:
@@ -157,10 +165,13 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         # Copy fields (source and solution)
         mixed_fields[idx, 0] = helmholtz_fields[i, 0]  # source
         mixed_fields[idx, 1] = helmholtz_fields[i, 1]  # solution
-        # Tensor: constant diffusion + wavenumber, zero-pad rest
-        mixed_tensor[idx, 0] = helmholtz_tensor[i, 0]  # k_constant
-        mixed_tensor[idx, 1] = helmholtz_tensor[i, 1]  # omega
-        mixed_tensor[idx, 2:5] = 0  # no other coefficients
+        # Tensor: identity diffusion tensor + wavenumber in dedicated channel
+        mixed_tensor[idx, 0] = helmholtz_tensor[i, 0]  # k11 = k_constant
+        mixed_tensor[idx, 1] = 0                        # k12 = 0 (identity tensor)
+        mixed_tensor[idx, 2] = helmholtz_tensor[i, 0]  # k22 = k_constant (identity tensor)
+        mixed_tensor[idx, 3] = 0                        # vx = 0 (no advection)
+        mixed_tensor[idx, 4] = 0                        # vy = 0 (no advection)
+        mixed_tensor[idx, 5] = helmholtz_tensor[i, 1]  # omega (wavenumber in dedicated channel)
         # Label
         mixed_labels[idx] = 2
     print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
@@ -219,19 +230,19 @@ def compute_mixed_scales(data_path, output_path):
         source_norm.append(sn)
         
         # Solution max
-        sol_max.append(np.max(np.abs(fields[i, 1])))  # Fixed: index 1, not 6
+        sol_max.append(np.max(np.abs(fields[i, 1])))
         
-        # Tensor components (5 total)
-        tensor_max.append([np.abs(tensor[i, j]) for j in range(5)])
+        # Tensor components (6 total)
+        tensor_max.append([np.abs(tensor[i, j]) for j in range(6)])
     
     tensor_max = np.array(tensor_max)
     
     # Compute medians
     source_scale = np.median(source_norm)
     sol_scale = np.median(sol_max)
-    tensor_scale = [np.median(tensor_max[:, j]) for j in range(5)]  # Fixed: 5 components
+    tensor_scale = [np.median(tensor_max[:, j]) for j in range(6)]  # 6 components
     
-    # Build scale array: [source, t0, t1, t2, t3, t4, solution, lx, ly]
+    # Build scale array: [source, t0, t1, t2, t3, t4, t5, solution, lx, ly]
     scale = [source_scale] + tensor_scale + [sol_scale] + [lx, ly]
     
     # Save scales
