@@ -13,9 +13,9 @@ echo ""
 
 # Dataset base names
 DATASETS=(
-    "data/advdiff/_train_adr0.2_0.4_32k.h5"
-    "data/advdiff/_val_adr0.2_0.4_4k.h5"
-    "data/advdiff/_test_adr0.2_0.4_4k.h5"
+    "data/advection-diffusion/_train_adr0.2_0.4_32k.h5"
+    "data/advection-diffusion/_val_adr0.2_0.4_4k.h5"
+    "data/advection-diffusion/_test_adr0.2_0.4_4k.h5"
 )
 
 # Check if datasets exist
