@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Convert Poisson dataset to mixed-compatible format with 5-component tensors.
+Convert Poisson dataset to mixed-compatible format with 6-component tensors.
 
 This script modifies Poisson datasets (which have 3-component tensors: [k11, k12, k22])
-to have 5-component tensors with zero-padding: [k11, k12, k22, 0, 0].
+to have 6-component tensors with zero-padding: [k11, k12, k22, 0, 0, 0].
 
-This is necessary when fine-tuning a mixed-pretrained model (which expects 5 tensor
+This is necessary when fine-tuning a mixed-pretrained model (which expects 6 tensor
 components) on a single-domain Poisson task.
 
 Usage:
@@ -28,11 +28,11 @@ from pathlib import Path
 
 def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
     """
-    Convert Poisson dataset from 3-component to 5-component tensor format.
+    Convert Poisson dataset from 3-component to 6-component tensor format.
     
     Args:
         input_path: Path to input HDF5 file with 3-component tensors
-        output_path: Path to output HDF5 file with 5-component tensors
+        output_path: Path to output HDF5 file with 6-component tensors
         in_place: If True, overwrites the input file directly
     """
     input_path = Path(input_path)
@@ -56,15 +56,15 @@ def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
                 f"This dataset may already be in mixed format or is not a Poisson dataset."
             )
     
-    # Create 5-component tensor with zero-padding
+    # Create 6-component tensor with zero-padding
     n_samples = tensor.shape[0]
-    tensor_5 = np.zeros((n_samples, 5), dtype=tensor.dtype)
-    tensor_5[:, :3] = tensor  # Copy [k11, k12, k22] to first 3 components
-    # Components 3 and 4 remain zero
+    tensor_6 = np.zeros((n_samples, 6), dtype=tensor.dtype)
+    tensor_6[:, :3] = tensor  # Copy [k11, k12, k22] to first 3 components
+    # Components 3, 4, and 5 remain zero (vx, vy, omega)
     
-    print(f"\nConverted tensor shape: {tensor_5.shape}")
+    print(f"\nConverted tensor shape: {tensor_6.shape}")
     print(f"  Original: [k11, k12, k22]")
-    print(f"  New:      [k11, k12, k22, 0, 0]")
+    print(f"  New:      [k11, k12, k22, 0, 0, 0]")
     
     # Determine output path
     if in_place:
@@ -83,7 +83,7 @@ def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
         # NO compression - must match the format of mixed dataset for fast loading
         # Compression causes severe slowdown with multiple data workers on NFS
         f.create_dataset('fields', data=fields, dtype=np.float32)
-        f.create_dataset('tensor', data=tensor_5, dtype=np.float32)
+        f.create_dataset('tensor', data=tensor_6, dtype=np.float32)
     
     print(f"\n✓ Conversion complete!")
     print(f"  Input:  {input_path}")
@@ -98,12 +98,12 @@ def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
         print(f"  Output tensor shape: {verify_tensor.shape}")
         print(f"  First sample (original): [{tensor[0, 0]:.4f}, {tensor[0, 1]:.4f}, {tensor[0, 2]:.4f}]")
         print(f"  First sample (new):      [{verify_tensor[0, 0]:.4f}, {verify_tensor[0, 1]:.4f}, "
-              f"{verify_tensor[0, 2]:.4f}, {verify_tensor[0, 3]:.4f}, {verify_tensor[0, 4]:.4f}]")
+              f"{verify_tensor[0, 2]:.4f}, {verify_tensor[0, 3]:.4f}, {verify_tensor[0, 4]:.4f}, {verify_tensor[0, 5]:.4f}]")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Convert Poisson dataset to mixed-compatible format with 5-component tensors.',
+        description='Convert Poisson dataset to mixed-compatible format with 6-component tensors.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -135,7 +135,7 @@ Examples:
     parser.add_argument(
         '--output_path',
         type=str,
-        help='Path to output HDF5 file with 5-component tensors (required unless --in_place)'
+        help='Path to output HDF5 file with 6-component tensors (required unless --in_place)'
     )
     parser.add_argument(
         '--in_place',
