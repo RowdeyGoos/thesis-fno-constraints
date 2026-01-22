@@ -212,46 +212,95 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
     return output_path
 
 
-def compute_mixed_scales(data_path, output_path):
-    """Compute normalization scales for mixed dataset."""
-    with h5py.File(data_path, 'r') as f:
-        fields = f['fields'][:]
-        tensor = f['tensor'][:]
-        nx, ny = fields.shape[2], fields.shape[3]
-        lx, ly = 1.0, 1.0  # Domain size
-    
-    source_norm = []
-    sol_max = []
-    tensor_max = []
-    
-    for i in range(fields.shape[0]):
-        # Source norm
-        sn = np.linalg.norm(fields[i, 0]) * lx / nx * ly / ny
-        source_norm.append(sn)
-        
-        # Solution max
-        sol_max.append(np.max(np.abs(fields[i, 1])))
-        
-        # Tensor components (6 total)
-        tensor_max.append([np.abs(tensor[i, j]) for j in range(6)])
-    
-    tensor_max = np.array(tensor_max)
-    
-    # Compute medians
-    source_scale = np.median(source_norm)
-    sol_scale = np.median(sol_max)
-    tensor_scale = [np.median(tensor_max[:, j]) for j in range(6)]  # 6 components
-    
-    # Build scale array: [source, t0, t1, t2, t3, t4, t5, solution, lx, ly]
-    scale = [source_scale] + tensor_scale + [sol_scale] + [lx, ly]
-    
-    # Save scales
-    np.save(output_path, scale)
-    
+def compute_mixed_scales(data_path, output_path, eps=1e-12, lx=1.0, ly=1.0):
+    """
+    Compute scales.npy in the exact format expected by the provided PDESolns loader.
+
+    Output layout (1D array):
+      [source_ref, t0, t1, t2, t3, t4, t5, sol_ref, lx, ly]
+
+    Where tensor layout is assumed:
+      [k11, k12, k22, vx, vy, omega]
+
+    Fixes:
+    - Avoids structural zeros in mixed dataset forcing median(t3/t4/t5)=0.
+    - Uses labels to compute medians only where coefficient "exists":
+        label 0: Poisson
+        label 1: AdvDiff
+        label 2: Helmholtz
+    - Matches loader's definition of f_norm = ||f|| * measure, where measure=(lx/nx)*(ly/ny).
+    """
+    with h5py.File(data_path, "r") as f:
+        fields = f["fields"][:]   # (N, 2, nx, ny)
+        tensor = f["tensor"][:]   # (N, 6)
+        if "labels" not in f:
+            raise ValueError("Mixed dataset must include 'labels' (0=Poisson, 1=AdvDiff, 2=Helmholtz).")
+        labels = f["labels"][:]
+
+    N, _, nx, ny = fields.shape
+    measure = (lx / nx) * (ly / ny)
+
+    # Source reference: median of ||f|| * measure (to match loader exactly)
+    f = fields[:, 0]  # (N, nx, ny)
+    f_norm = np.linalg.norm(f.reshape(N, -1), axis=1) * measure
+    source_ref = float(np.median(f_norm))
+    source_ref = max(source_ref, eps)
+
+    # Solution reference (not used by loader in __getitem__, but included for consistency)
+    u = fields[:, 1]
+    sol_max = np.max(np.abs(u.reshape(N, -1)), axis=1)
+    sol_ref = float(np.median(sol_max))
+    sol_ref = max(sol_ref, eps)
+
+    # Coefficient refs (medians of absolute values, masked to avoid structural zeros)
+    # Layout: [k11, k12, k22, vx, vy, omega]
+    coeff_ref = np.zeros(6, dtype=np.float64)
+
+    # diffusion exists for all in your unified representation
+    diff_mask = np.ones(N, dtype=bool)
+    # advection exists only for AdvDiff
+    adv_mask = (labels == 1)
+    # omega exists only for Helmholtz
+    omg_mask = (labels == 2)
+
+    masks = {
+        0: diff_mask,  # k11
+        1: diff_mask,  # k12
+        2: diff_mask,  # k22
+        3: adv_mask,   # vx
+        4: adv_mask,   # vy
+        5: omg_mask,   # omega
+    }
+
+    for j in range(6):
+        m = masks[j]
+        vals = np.abs(tensor[m, j])
+
+        # If mask is empty (shouldn't happen), fallback to non-zero values
+        if vals.size == 0:
+            vals = np.abs(tensor[:, j])
+            vals = vals[vals > eps]
+
+        # If still empty (all zeros), set to 1 to avoid divide-by-zero
+        if vals.size == 0:
+            coeff_ref[j] = 1.0
+        else:
+            coeff_ref[j] = float(max(np.median(vals), eps))
+
+    # Assemble array in the format the loader expects:
+    # [source, t0..t5, sol, lx, ly]
+    scales = np.array(
+        [source_ref, *coeff_ref.tolist(), sol_ref, float(lx), float(ly)],
+        dtype=np.float32
+    )
+
+    np.save(output_path, scales)
+
     print(f"✓ Scales saved to {output_path}")
-    print(f"  Source scale: {source_scale:.6f}")
-    print(f"  Tensor scales: {[f'{s:.6f}' for s in tensor_scale]}")
-    print(f"  Solution scale: {sol_scale:.6f}")
+    print(f"  source_ref (median ||f||*measure): {scales[0]:.6g}")
+    print(f"  coeff_ref: {[f'{v:.6g}' for v in scales[1:7]]}  (k11,k12,k22,vx,vy,omega)")
+    print(f"  sol_ref: {scales[7]:.6g}")
+    print(f"  domain: lx={scales[8]:.6g}, ly={scales[9]:.6g}")
 
 
 def main():
