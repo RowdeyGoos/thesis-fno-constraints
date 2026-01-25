@@ -112,6 +112,16 @@ def get_experiment_groups(experiment_type: str, include_mixed: bool = False) -> 
                 'scratch': 'poisson-k5_10-scratch-8k',
                 'mixed': 'poisson-k5_10-finetune-mixed-8k'
             },
+            16384: {
+                'finetune': 'poisson-k5_10-finetune-16k',
+                'scratch': 'poisson-k5_10-scratch-16k',
+                'mixed': 'poisson-k5_10-finetune-mixed-16k'
+            },
+            32768: {
+                'finetune': 'poisson-k5_10-finetune-32k',
+                'scratch': 'poisson-k5_10-scratch-32k',
+                'mixed': 'poisson-k5_10-finetune-mixed-32k'
+            },
         }
     elif experiment_type == 'advdiff':
         # Advection-Diffusion transfer learning experiments (see config/operators_ad.yaml)
