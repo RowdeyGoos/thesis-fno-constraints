@@ -137,8 +137,8 @@ if __name__ == '__main__':
     parser.add_argument("--ng", default=144, type=int, help="number of gaussians in grid")
     parser.add_argument("--sparse", action='store_true', help="creates sparse gaussians")
     parser.add_argument("--datapath", default="./", type=str, help="path to root dir to store data")
-    parser.add_argument("--o1", default=1, type=int, help="sample wavenumbers starting from o1")
-    parser.add_argument("--o2", default=10, type=int, help="sample wavenumbers  ending at o2")
+    parser.add_argument("--o1", default=1, type=float, help="sample wavenumbers starting from o1")
+    parser.add_argument("--o2", default=10, type=float, help="sample wavenumbers  ending at o2")
 
     args = parser.parse_args()
     print(args)
