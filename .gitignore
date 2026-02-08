@@ -42,6 +42,9 @@ experiments/logs/
 experiments/runs/
 experiments/
 evaluation_tmp/
+tmp/
+containers/
+results/
 
 # Data
 data/raw/
