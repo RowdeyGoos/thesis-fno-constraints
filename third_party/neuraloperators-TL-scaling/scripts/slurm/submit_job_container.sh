@@ -2,24 +2,24 @@
 #SBATCH --job-name=neuralop-poisson-ddp
 #SBATCH --output=experiments/%x-%j.out
 #SBATCH --error=experiments/%x-%j.err
-#SBATCH --mail-type=END     # Set mail type to 'END' to receive a mail when the job finishes. 
+#SBATCH --mail-type=END
 #SBATCH --time=2:00:00
 #SBATCH --partition=insy,general
-#SBATCH --qos=short         # Request Quality of Service. Default is 'short' (maximum run time: 4 hours)
+#SBATCH --qos=short
 #SBATCH --nodes=1
-#SBATCH --ntasks=4
+#SBATCH --ntasks-per-node=2          # 🔴 One task per GPU
 #SBATCH --cpus-per-task=10
-#SBATCH --gres=gpu:4
-#SBATCH --mem=64G
+#SBATCH --gres=gpu:a40:2             # 🔴 2 GPUs on the node
+#SBATCH --mem=32G
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling DDP (Container)"
+echo "Starting neuraloperators-TL-scaling DDP (Container, Slurm-managed)"
 echo "Job ID:      $SLURM_JOB_ID"
 echo "Node list:   $SLURM_NODELIST"
 echo "Submit dir:  $SLURM_SUBMIT_DIR"
 echo "=========================================="
 
-# -------- Path to container on DAIC --------
+# -------- Path to container --------
 CONTAINER_PATH=/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/containers/neuraloperators.sif
 
 if [ ! -f "$CONTAINER_PATH" ]; then
@@ -31,44 +31,64 @@ fi
 module load apptainer 2>/dev/null || module load singularity 2>/dev/null
 
 export PYTHONUNBUFFERED=1
-export WANDB_DIR=/workspace/wandb
+
+# -------- W&B config (same idea as single-GPU) --------
 export WANDB_START_METHOD=thread
 export WANDB__SERVICE_WAIT=300
+
+# These paths are *inside* the container
+export WANDB_DIR=/workspace/wandb
+export WANDB_DATA_DIR=/workspace/wandb
+export WANDB_CACHE_DIR=/workspace/wandb/cache
+export WANDB_TEMP_DIR=/workspace/wandb/tmp
+
+# -------- NCCL debug / DAIC recommendation --------
+# DAIC suggests this if multi-GPU hangs
+export NCCL_P2P_DISABLE=1        # avoid direct GPU-GPU P2P if problematic
+export NCCL_ASYNC_ERROR_HANDLING=1
+# Optional extra debug if things still hang:
+# export NCCL_DEBUG=INFO
 
 cd "$SLURM_SUBMIT_DIR"
 
 # -------- DDP + experiment config --------
-export MASTER_ADDR=$(hostname)   # single-node DDP is fine with this
-ngpu=4
+export MASTER_ADDR=$(hostname)   # same as original repo script
+export MASTER_PORT=29500         # matches export_DDP_vars.sh
 
-config_file=./config/operators_poisson.yaml
-config="poisson-scale-k1_5"
-run_num="test"
+ngpu=$SLURM_NTASKS               # == 2
 
-# Store results in experiments/ inside the repo
-scratch="$SLURM_SUBMIT_DIR/experiments"
+CONFIG_FILE="./config/operators_poisson.yaml"
+CONFIG_NAME="poisson-scale-k1_5"
+RUN_BASE="ddp-poisson"
 
-mkdir -p "$scratch"
+# host results dir; inside container it's /workspace/experiments
+SCRATCH="$SLURM_SUBMIT_DIR/experiments"
+mkdir -p "$SCRATCH"
 
-# Python command to run inside the container
-cmd="python /workspace/train.py \
+# Python command (inside container, paths under /workspace)
+CMD="python /workspace/train.py \
     --yaml_config=/workspace/config/operators_poisson.yaml \
-    --config=$config \
-    --run_num=$run_num \
-    --root_dir=$scratch"
+    --config=$CONFIG_NAME \
+    --run_num=${RUN_BASE}-${SLURM_JOB_ID} \
+    --root_dir=/workspace/experiments"
 
-# Bind the whole repo into /workspace inside the container
-BIND="--bind $SLURM_SUBMIT_DIR:/workspace \
-      --bind $SLURM_SUBMIT_DIR/wandb:/workspace/wandb"
+# Bind whole repo into /workspace
+BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 echo "Running DDP training with $ngpu GPUs..."
-echo "Command: $cmd"
+echo "Command: $CMD"
 echo ""
 
-# Each Slurm task runs: source DDP vars, then run train.py inside the container
+# This line is the key: same pattern as paper repo,
+# just with apptainer exec injected.
 srun -l -n $ngpu --cpus-per-task=$SLURM_CPUS_PER_TASK --gpus-per-node=$ngpu \
     apptainer exec --nv $BIND "$CONTAINER_PATH" \
-        bash -c "cd /workspace && source export_DDP_vars.sh && $cmd"
+        bash -c 'cd /workspace && \
+                 mkdir -p wandb wandb/cache wandb/tmp tmp experiments && \
+                 export TMPDIR=/workspace/tmp && \
+                 echo "Rank: $SLURM_PROCID, Local rank: $SLURM_LOCALID, World size: $SLURM_NTASKS" && \
+                 source export_DDP_vars.sh && \
+                 '"$CMD"
 
 status=$?
 
@@ -80,5 +100,6 @@ else
     echo "DDP Training FAILED with exit code $status."
 fi
 echo "Logs in: experiments/${SLURM_JOB_NAME}-${SLURM_JOB_ID}.out / .err"
-echo "Results in: $scratch"
+echo "Results in: $SCRATCH"
 echo "=========================================="
+

@@ -3,13 +3,14 @@
 #SBATCH --output=experiments/%x-%j.out
 #SBATCH --error=experiments/%x-%j.err
 #SBATCH --mail-type=END
-#SBATCH --time=2:00:00
+#SBATCH --time=21:00:00
+#SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
+#SBATCH --mem=16G
 
 # Mixed Dataset Pretraining Job
 # This script trains on a mixed dataset combining Poisson, Advection-Diffusion, and Helmholtz

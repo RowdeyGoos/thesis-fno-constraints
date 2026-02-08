@@ -3,14 +3,15 @@
 #SBATCH --output=experiments/%x-%A_%a.out
 #SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=1:00:00
+#SBATCH --time=6:00:00
+#SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
-#SBATCH --array=0-1
+#SBATCH --mem=16G
+#SBATCH --array=0
 
 # Mixed Dataset Fine-Tuning: Medium Sample Sizes (4k, 8k samples)
 # This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
@@ -59,7 +60,7 @@ CONFIG_FILE="config/operators_mixed.yaml"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(
-    "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k"
+    # "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k"
     "poisson-k1_2.5-finetune-mixed-8k:finetune-mixed-8k"
 )
 

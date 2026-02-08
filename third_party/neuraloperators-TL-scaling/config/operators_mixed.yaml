@@ -1,5 +1,5 @@
 default: &DEFAULT
-  num_data_workers: 8
+  num_data_workers: 6
   # model
   model: 'fno'
   depth: 5
@@ -60,7 +60,7 @@ mixed-pretrain-base: &mixed_pretrain_base
   modes2: [65, 65, 65, 65]
   fc_dim: 128
   
-  in_dim: 6  # 1 (source) + 5 (tensor expanded) = 6 input channels
+  in_dim: 7  # 1 (source) + 6 (tensor expanded) = 7 input channels
   out_dim: 1
   mode_cut: 32
   embed_cut: 64
@@ -111,7 +111,7 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
   modes2: [65, 65, 65, 65]
   fc_dim: 128
   
-  in_dim: 4  # Poisson: 1 (source) + 3 (tensor) = 4 input channels
+  in_dim: 7
   out_dim: 1
   mode_cut: 32
   embed_cut: 64
@@ -133,67 +133,59 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
 
 poisson-k1_2.5-finetune-mixed-16:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model (6 input channels)
 
 poisson-k1_2.5-finetune-mixed-64:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model
 
 poisson-k1_2.5-finetune-mixed-256:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model
 
 poisson-k1_2.5-finetune-mixed-1k:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model
 
 poisson-k1_2.5-finetune-mixed-4k:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model
 
 poisson-k1_2.5-finetune-mixed-8k:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model
 
 poisson-k1_2.5-finetune-mixed-16k:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model
 
 poisson-k1_2.5-finetune-mixed-32k:
   <<: *poisson_k1_2p5_base
-  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12136780-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
   batch_size: 128
   valid_batch_size: 128
-  in_dim: 6  # Must match mixed model
 
 # ==============================================================================
 # NOTES

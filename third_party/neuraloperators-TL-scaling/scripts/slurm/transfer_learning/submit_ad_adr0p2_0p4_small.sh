@@ -3,14 +3,15 @@
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=0:30:00
+#SBATCH --time=1:00:00
+#SBATCH --qos=short
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
-#SBATCH --array=0-7
+#SBATCH --mem=16G
+#SBATCH --array=0
 
 # Transfer Learning: AdvDiff adr∈[0.2,0.4] - Small Sample Sizes (16, 64, 256, 1k samples)
 # This script runs 8 experiments:
@@ -77,15 +78,15 @@ fi
 # Format: "config_name:experiment_description"
 experiments=(
     # Fine-tuning experiments from adr0.2_1 pretrained (tasks 0-3)
-    "ad-adr0p2_0p4-finetune-16:finetune-adr0p2_1-16-samples"
-    "ad-adr0p2_0p4-finetune-64:finetune-adr0p2_1-64-samples"
-    "ad-adr0p2_0p4-finetune-256:finetune-adr0p2_1-256-samples"
-    "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples"
+    # "ad-adr0p2_0p4-finetune-16:finetune-adr0p2_1-16-samples"
+    # "ad-adr0p2_0p4-finetune-64:finetune-adr0p2_1-64-samples"
+    # "ad-adr0p2_0p4-finetune-256:finetune-adr0p2_1-256-samples"
+    # "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples"
     # From-scratch experiments (tasks 4-7)
     "ad-adr0p2_0p4-scratch-16:scratch-16-samples"
-    "ad-adr0p2_0p4-scratch-64:scratch-64-samples"
-    "ad-adr0p2_0p4-scratch-256:scratch-256-samples"
-    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples"
+    # "ad-adr0p2_0p4-scratch-64:scratch-64-samples"
+    # "ad-adr0p2_0p4-scratch-256:scratch-256-samples"
+    # "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples"
 )
 
 # Get experiment for this task

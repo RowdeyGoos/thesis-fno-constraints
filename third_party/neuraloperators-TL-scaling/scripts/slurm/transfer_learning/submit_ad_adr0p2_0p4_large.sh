@@ -4,12 +4,13 @@
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
 #SBATCH --time=25:00:00
+#SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
+#SBATCH --mem=16G
 #SBATCH --array=0-3
 
 # Transfer Learning: AdvDiff adr∈[0.2,0.4] - Large Sample Sizes (16k, 32k samples)

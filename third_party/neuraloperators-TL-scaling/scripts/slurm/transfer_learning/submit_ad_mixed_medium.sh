@@ -3,13 +3,14 @@
 #SBATCH --output=experiments/%x-%A_%a.out
 #SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=1:00:00
+#SBATCH --time=7:00:00
+#SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
+#SBATCH --mem=16G
 #SBATCH --array=0-1
 
 # Mixed Dataset Fine-Tuning (AdvDiff): Medium Sample Sizes (4k, 8k samples)

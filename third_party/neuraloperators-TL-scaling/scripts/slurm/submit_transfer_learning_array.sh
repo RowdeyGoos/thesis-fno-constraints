@@ -58,7 +58,7 @@ cd "$SLURM_SUBMIT_DIR"
 
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
 # Replace JOBID with your actual pretraining job ID
-PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar"
+PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar"
 
 # Verify checkpoint exists for fine-tuning tasks
 if [ $SLURM_ARRAY_TASK_ID -lt 5 ]; then

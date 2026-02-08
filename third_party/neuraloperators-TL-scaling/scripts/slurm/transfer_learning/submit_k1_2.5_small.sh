@@ -3,14 +3,8 @@
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=0:30:00
-#SBATCH --partition=insy,general
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
-#SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
-#SBATCH --array=0-7
+#SBATCH --time=4:00:00
+#SBATCH --qos=short
 
 # Transfer Learning: Poisson k∈[1,2.5] - Small Sample Sizes (16, 64, 256, 1k samples)
 # This script runs 8 experiments:

@@ -3,13 +3,14 @@
 #SBATCH --output=experiments/%x-%A_%a.out
 #SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=0:30:00
+#SBATCH --time=4:00:00
+#SBATCH --qos=short
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
+#SBATCH --mem=16G
 #SBATCH --array=0-3
 
 # Mixed Dataset Fine-Tuning: Small Sample Sizes (16, 64, 256, 1k samples)

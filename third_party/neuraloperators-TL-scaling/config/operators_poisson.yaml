@@ -1,5 +1,5 @@
 default: &DEFAULT
-  num_data_workers: 8
+  num_data_workers: 4
   # model
   model: 'fno'
   depth: 5
@@ -184,7 +184,7 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
   train_path:    'data/poisson/_train_k1.0_2.5_32k.h5'
   val_path:      'data/poisson/_val_k1.0_2.5_4k.h5'
   test_path:     'data/poisson/_test_k1.0_2.5_4k.h5'
-  scales_path:   'data/poisson/_train_k1.0_2.5_scales.npy'
+  scales_path:   'data/poisson/_train_k1.0_2.5_32k_scales.npy'
   batch_size: 128
   valid_batch_size: 128
   log_to_wandb: !!bool True

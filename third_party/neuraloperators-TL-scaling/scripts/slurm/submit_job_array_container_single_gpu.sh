@@ -3,7 +3,8 @@
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=4:00:00
+#SBATCH --time=20:00:00
+#SBATCH --qos=long
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1                   # Single task (no DDP)
