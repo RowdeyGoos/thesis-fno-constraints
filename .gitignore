@@ -40,10 +40,13 @@ ENV/
 # Experiments
 experiments/logs/
 experiments/runs/
+experiments/
+evaluation_tmp/
 
 # Data
 data/raw/
 data/processed/
+third_party/neuraloperators-TL-scaling/data/
 
 # Models
 models/checkpoints/
@@ -63,3 +66,6 @@ htmlcov/
 # Hydra
 outputs/
 multirun/
+
+# Generated documentation
+docs/generated/
