@@ -59,6 +59,16 @@ export WANDB_TEMP_DIR=/workspace/wandb/tmp
 
 cd "$SLURM_SUBMIT_DIR"
 
+JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+JOB_TMP_DIR="$SLURM_SUBMIT_DIR/$JOB_TMP_REL"
+
+cleanup_tmp_dir() {
+    rm -rf "$JOB_TMP_DIR"
+    rmdir "$SLURM_SUBMIT_DIR/tmp" 2>/dev/null || true
+}
+trap cleanup_tmp_dir EXIT
+
+
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
 # Replace JOBID with your actual poisson-scale-k1_5 pretraining job ID
 PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar"
@@ -121,8 +131,9 @@ echo ""
 # Run training
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             mkdir -p wandb wandb/cache wandb/tmp tmp experiments && \
-             export TMPDIR=/workspace/tmp && \
+             job_tmp="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}" && \
+             export TMPDIR="/workspace/${job_tmp}" && \
+             mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
              '"$CMD"
 
 status=$?

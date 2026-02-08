@@ -59,6 +59,16 @@ export WANDB_TEMP_DIR=/workspace/wandb/tmp
 
 cd "$SLURM_SUBMIT_DIR"
 
+JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+JOB_TMP_DIR="$SLURM_SUBMIT_DIR/$JOB_TMP_REL"
+
+cleanup_tmp_dir() {
+    rm -rf "$JOB_TMP_DIR"
+    rmdir "$SLURM_SUBMIT_DIR/tmp" 2>/dev/null || true
+}
+trap cleanup_tmp_dir EXIT
+
+
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
 # Replace JOBID with your actual ad-scale-adr0p2_1 pretraining job ID
 PRETRAIN_CHECKPOINT="experiments/expts/ad-scale-adr0p2_1/pretrain-ad-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar"
@@ -121,8 +131,9 @@ echo ""
 # Run training
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             mkdir -p wandb wandb/cache wandb/tmp tmp experiments && \
-             export TMPDIR=/workspace/tmp && \
+             job_tmp="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}" && \
+             export TMPDIR="/workspace/${job_tmp}" && \
+             mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
              '"$CMD"
 
 status=$?

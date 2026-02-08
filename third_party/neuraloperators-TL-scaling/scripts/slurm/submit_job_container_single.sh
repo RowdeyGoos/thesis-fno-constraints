@@ -41,9 +41,19 @@ export WANDB_DIR=/workspace/wandb
 export WANDB_DATA_DIR=/workspace/wandb
 export WANDB_CACHE_DIR=/workspace/wandb/cache
 export WANDB_TEMP_DIR=/workspace/wandb/tmp
-export TMPDIR=/workspace/tmp
+JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+export TMPDIR="/workspace/$JOB_TMP_REL"
 
 cd "$SLURM_SUBMIT_DIR"
+
+JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+JOB_TMP_DIR="$SLURM_SUBMIT_DIR/$JOB_TMP_REL"
+
+cleanup_tmp_dir() {
+    rm -rf "$JOB_TMP_DIR"
+    rmdir "$SLURM_SUBMIT_DIR/tmp" 2>/dev/null || true
+}
+trap cleanup_tmp_dir EXIT
 
 # -------- Experiment config --------
 CONFIG_FILE="config/operators_poisson.yaml"
@@ -73,7 +83,7 @@ echo ""
 # - create wandb + tmp dirs on the same FS as experiments
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             mkdir -p wandb wandb/cache wandb/tmp tmp experiments && \
+             mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
              '"$CMD"
 
 STATUS=$?

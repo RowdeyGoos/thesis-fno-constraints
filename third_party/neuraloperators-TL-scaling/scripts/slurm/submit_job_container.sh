@@ -51,6 +51,15 @@ export NCCL_ASYNC_ERROR_HANDLING=1
 
 cd "$SLURM_SUBMIT_DIR"
 
+JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+JOB_TMP_DIR="$SLURM_SUBMIT_DIR/$JOB_TMP_REL"
+
+cleanup_tmp_dir() {
+    rm -rf "$JOB_TMP_DIR"
+    rmdir "$SLURM_SUBMIT_DIR/tmp" 2>/dev/null || true
+}
+trap cleanup_tmp_dir EXIT
+
 # -------- DDP + experiment config --------
 export MASTER_ADDR=$(hostname)   # same as original repo script
 export MASTER_PORT=29500         # matches export_DDP_vars.sh
@@ -84,8 +93,9 @@ echo ""
 srun -l -n $ngpu --cpus-per-task=$SLURM_CPUS_PER_TASK --gpus-per-node=$ngpu \
     apptainer exec --nv $BIND "$CONTAINER_PATH" \
         bash -c 'cd /workspace && \
-                 mkdir -p wandb wandb/cache wandb/tmp tmp experiments && \
-                 export TMPDIR=/workspace/tmp && \
+                 job_tmp="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}" && \
+                 export TMPDIR="/workspace/${job_tmp}" && \
+                 mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
                  echo "Rank: $SLURM_PROCID, Local rank: $SLURM_LOCALID, World size: $SLURM_NTASKS" && \
                  source export_DDP_vars.sh && \
                  '"$CMD"
@@ -102,4 +112,3 @@ fi
 echo "Logs in: experiments/${SLURM_JOB_NAME}-${SLURM_JOB_ID}.out / .err"
 echo "Results in: $SCRATCH"
 echo "=========================================="
-
