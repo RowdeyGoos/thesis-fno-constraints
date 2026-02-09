@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-mixed-pretrain
-#SBATCH --output=experiments/%x-%j.out
-#SBATCH --error=experiments/%x-%j.err
+#SBATCH --job-name=neuralop-mixed-large
+#SBATCH --output=experiments/%x-%A_%a.out
+#SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=21:00:00
+#SBATCH --time=25:00:00
 #SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
@@ -11,22 +11,24 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=16G
+#SBATCH --array=0-1
 
-# Mixed Dataset Pretraining Job
-# This script trains on a mixed dataset combining Poisson, Advection-Diffusion, and Helmholtz
-# The model learns from all three PDE systems simultaneously (multi-task learning)
+# Mixed Dataset Fine-Tuning: Large Sample Sizes (16k, 32k samples)
+# This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
+# with large numbers of downstream examples: 16k, 32k
+#
+# Time allocation: 2 hours (sufficient for large sample training)
 #
 # Prerequisites:
-#   1. Generated data for all three PDE systems
-#   2. Created mixed dataset using create_mixed_dataset.py
-#   3. Computed scales for mixed dataset
+#   1. Completed mixed dataset pretraining (submit_mixed_pretrain.sh)
+#   2. Updated checkpoint paths in config/operators_mixed.yaml
 #
 # Usage:
-#   sbatch scripts/slurm/submit_mixed_pretrain.sh
+#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_large.sh
 
 echo "=========================================="
-echo "Mixed Dataset Pretraining (Multi-Task Learning)"
-echo "Job ID: $SLURM_JOB_ID"
+echo "Mixed Dataset Fine-Tuning - Large Samples (Task $SLURM_ARRAY_TASK_ID)"
+echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: $SLURM_NODELIST"
 echo "=========================================="
 
@@ -62,27 +64,34 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-# Configuration
-CONFIG_FILE="config/operators_mixed.yaml"
-CONFIG_NAME="mixed-scale-all"
-RUN_NAME="pretrain-mixed"
 
-# Verify mixed dataset exists
-MIXED_TRAIN="data/mixed/_train_mixed_32k.h5"
-if [ ! -f "$MIXED_TRAIN" ]; then
-    echo "Error: Mixed training dataset not found at: $MIXED_TRAIN"
-    echo "Please create mixed dataset first using:"
-    echo "  python utils/create_mixed_dataset.py \\"
-    echo "    --poisson_path data/poisson/_train_k1_5_32k.h5 \\"
-    echo "    --advdiff_path data/advdiff/_train_adr0.2_1_32k.h5 \\"
-    echo "    --helmholtz_path data/helmholtz/_train_o1_10_32k.h5 \\"
-    echo "    --output_path $MIXED_TRAIN"
-    exit 1
-fi
+# Configuration file
+CONFIG_FILE="config/operators_mixed.yaml"
+
+# Array of configurations for mixed fine-tuning
+declare -a configs=(
+    "poisson-k1_2.5-finetune-mixed-16k:finetune-mixed-16k"
+    "poisson-k1_2.5-finetune-mixed-32k:finetune-mixed-32k"
+)
+
+# Get current task configuration
+IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SLURM_ARRAY_TASK_ID]}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"
 echo "Run name: $RUN_NAME"
+echo ""
+
+# Verify checkpoint path is set
+CHECKPOINT_LINE=$(grep -A 20 "^$CONFIG_NAME:" "$CONFIG_FILE" | grep "weights:" | head -n 1)
+if [[ "$CHECKPOINT_LINE" == *"JOBID"* ]]; then
+    echo "ERROR: Checkpoint path contains placeholder 'JOBID'!"
+    echo "Please update the checkpoint path in $CONFIG_FILE"
+    echo "Found line: $CHECKPOINT_LINE"
+    exit 1
+fi
+
+echo "Checkpoint line: $CHECKPOINT_LINE"
 echo ""
 
 # Create directories
@@ -95,10 +104,10 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
-    --run_num=${RUN_NAME}-${SLURM_JOB_ID}-0 \
+    --run_num=${RUN_NAME}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments"
 
-echo "Running mixed dataset pretraining..."
+echo "Running mixed fine-tuning (Task $SLURM_ARRAY_TASK_ID)..."
 echo "Command: $CMD"
 echo ""
 
@@ -115,15 +124,10 @@ status=$?
 echo ""
 echo "=========================================="
 if [ $status -eq 0 ]; then
-    echo "Mixed dataset pretraining completed successfully."
-    echo ""
-    echo "Next steps:"
-    echo "  1. Note the checkpoint path for transfer learning"
-    echo "  2. Use the checkpoint for fine-tuning on downstream tasks"
-    echo "  3. Compare with single-domain pretraining results"
+    echo "Task $SLURM_ARRAY_TASK_ID ($CONFIG_NAME) completed successfully."
 else
-    echo "Mixed dataset pretraining FAILED with exit code $status."
+    echo "Task $SLURM_ARRAY_TASK_ID ($CONFIG_NAME) FAILED with exit code $status."
 fi
-echo "Logs: experiments/${SLURM_JOB_NAME}-${SLURM_JOB_ID}.out / .err"
+echo "Logs: experiments/${SLURM_JOB_NAME}-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out / .err"
 echo "Results: experiments/expts/$CONFIG_NAME/"
 echo "=========================================="

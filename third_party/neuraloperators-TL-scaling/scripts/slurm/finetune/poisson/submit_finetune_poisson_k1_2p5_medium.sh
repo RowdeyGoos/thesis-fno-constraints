@@ -27,7 +27,7 @@
 #
 # Usage:
 #   Before submitting, update PRETRAIN_CHECKPOINT with your actual pretrain job ID
-#   sbatch scripts/slurm/transfer_learning/submit_k1_2.5_medium.sh
+#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_medium.sh
 
 echo "=========================================="
 echo "Transfer Learning Experiment (Poisson k∈[1,2.5] - Medium Samples)"

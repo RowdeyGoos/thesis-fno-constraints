@@ -22,7 +22,7 @@
 # It then generates a combined comparison plot.
 #
 # Usage:
-#   sbatch scripts/slurm/submit_eval_transfer_learning_ad.sh
+#   sbatch scripts/slurm/eval/submit_eval_advdiff_transfer.sh
 
 echo "=========================================="
 echo "Transfer Learning Batch Evaluation (AdvDiff)"

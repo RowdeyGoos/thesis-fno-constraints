@@ -1,25 +1,24 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-pretrain-array-1gpu
+#SBATCH --job-name=neuralop-pretrain-array
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=20:00:00
-#SBATCH --qos=long
+#SBATCH --time=4:00:00
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
-#SBATCH --ntasks=1                   # Single task (no DDP)
+#SBATCH --ntasks-per-node=2          # One task per GPU for DDP
 #SBATCH --cpus-per-task=10
-#SBATCH --gres=gpu:a40:1             # 1 A40 GPU per array task
+#SBATCH --gres=gpu:a40:2             # 2 A40 GPUs per array task
 #SBATCH --mem=32G
 #SBATCH --array=0-2
 
-# Array job for pretraining all three PDE systems using Apptainer container (Single GPU)
+# Array job for pretraining all three PDE systems using Apptainer container with DDP
 # This runs 3 separate pretraining jobs (one per PDE system) in parallel using job arrays
-# Each job uses 1 GPU (no Distributed Data Parallel)
-# Submit from project root: sbatch scripts/slurm/submit_job_array_container_single_gpu.sh
+# Each job uses 2 GPUs with Distributed Data Parallel (DDP) training
+# Submit from project root: sbatch scripts/slurm/pretrain/submit_pretrain_array_ddp.sh
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling Pretraining Array Job (Container, Single GPU)"
+echo "Starting neuraloperators-TL-scaling Pretraining Array Job (Container, DDP)"
 echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node list: $SLURM_NODELIST"
@@ -48,6 +47,12 @@ export WANDB_DIR=/workspace/wandb
 export WANDB_DATA_DIR=/workspace/wandb
 export WANDB_CACHE_DIR=/workspace/wandb/cache
 export WANDB_TEMP_DIR=/workspace/wandb/tmp
+
+# -------- NCCL config for DDP --------
+export NCCL_P2P_DISABLE=1
+export NCCL_ASYNC_ERROR_HANDLING=1
+# Uncomment for debugging:
+# export NCCL_DEBUG=INFO
 
 cd "$SLURM_SUBMIT_DIR"
 
@@ -82,6 +87,12 @@ if [ ! -f "$config_file" ]; then
     exit 1
 fi
 
+# -------- DDP setup --------
+export MASTER_ADDR=$(hostname)
+export MASTER_PORT=29500
+
+ngpu=$SLURM_NTASKS  # 2 GPUs
+
 # Create scratch directories
 SCRATCH="$SLURM_SUBMIT_DIR/experiments"
 mkdir -p "$SCRATCH"
@@ -96,17 +107,20 @@ CMD="python /workspace/train.py \
     --run_num=${run_base}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments"
 
-echo "Running single GPU training..."
+echo "Running DDP pretraining with $ngpu GPUs..."
 echo "Command: $CMD"
 echo ""
 
-# Run with single GPU (no srun, direct apptainer exec)
-apptainer exec --nv $BIND "$CONTAINER_PATH" \
-    bash -c 'cd /workspace && \
-             job_tmp="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}" && \
-             export TMPDIR="/workspace/${job_tmp}" && \
-             mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
-             '"$CMD"
+# Run with DDP using srun (similar to submit_job_container.sh)
+srun -l -n $ngpu --cpus-per-task=$SLURM_CPUS_PER_TASK --gpus-per-node=$ngpu \
+    apptainer exec --nv $BIND "$CONTAINER_PATH" \
+        bash -c 'cd /workspace && \
+                 job_tmp="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}" && \
+                 export TMPDIR="/workspace/${job_tmp}" && \
+                 mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
+                 echo "Rank: $SLURM_PROCID, Local rank: $SLURM_LOCALID, World size: $SLURM_NTASKS" && \
+                 source export_DDP_vars.sh && \
+                 '"$CMD"
 
 status=$?
 

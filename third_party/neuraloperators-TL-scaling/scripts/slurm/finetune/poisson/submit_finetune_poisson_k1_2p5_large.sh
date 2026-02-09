@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-ad-0p2_0p4-medium
+#SBATCH --job-name=neuralop-k1_2.5-large
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=7:00:00
+#SBATCH --time=25:00:00
 #SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
@@ -13,24 +13,24 @@
 #SBATCH --mem=16G
 #SBATCH --array=0-3
 
-# Transfer Learning: AdvDiff adr∈[0.2,0.4] - Medium Sample Sizes (4k, 8k samples)
+# Transfer Learning: Poisson k∈[1,2.5] - Large Sample Sizes (16k, 32k samples)
 # This script runs 4 experiments:
-#   - 2 fine-tuning experiments (4k, 8k samples) with pre-trained weights from adr0.2_1
-#   - 2 from-scratch experiments (4k, 8k samples) without pre-training
+#   - 2 fine-tuning experiments (16k, 32k samples) with pre-trained weights from k1_5
+#   - 2 from-scratch experiments (16k, 32k samples) without pre-training
 # 
-# Time allocation: 1 hour (sufficient for medium sample training)
+# Time allocation: 2 hours (sufficient for large sample training)
 #
 # Prerequisites:
-#   1. Pre-trained model checkpoint from ad-scale-adr0p2_1 pretraining
-#   2. Generated data for AdvDiff adr∈[0.2,0.4] domain
-#   3. Computed scales for adr∈[0.2,0.4] data
+#   1. Pre-trained model checkpoint from poisson-scale-k1_5 pretraining
+#   2. Generated data for poisson k1_2.5 domain (3-component tensor format)
+#   3. Computed scales for k1_2.5 data
 #
 # Usage:
 #   Before submitting, update PRETRAIN_CHECKPOINT with your actual pretrain job ID
-#   sbatch scripts/slurm/transfer_learning/submit_ad_adr0p2_0p4_medium.sh
+#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_large.sh
 
 echo "=========================================="
-echo "Transfer Learning Experiment (AdvDiff adr∈[0.2,0.4] - Medium Samples)"
+echo "Transfer Learning Experiment (Poisson k∈[1,2.5] - Large Samples)"
 echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node: $SLURM_NODELIST"
@@ -70,8 +70,8 @@ trap cleanup_tmp_dir EXIT
 
 
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
-# Replace JOBID with your actual ad-scale-adr0p2_1 pretraining job ID
-PRETRAIN_CHECKPOINT="experiments/expts/ad-scale-adr0p2_1/pretrain-ad-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar"
+# Replace JOBID with your actual poisson-scale-k1_5 pretraining job ID
+PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar"
 
 # Verify checkpoint exists for fine-tuning tasks
 if [ $SLURM_ARRAY_TASK_ID -lt 2 ]; then
@@ -87,12 +87,12 @@ fi
 # Define experiments
 # Format: "config_name:experiment_description"
 experiments=(
-    # Fine-tuning experiments from adr0.2_1 pretrained (tasks 0-1)
-    "ad-adr0p2_0p4-finetune-4k:finetune-adr0p2_1-4k-samples"
-    "ad-adr0p2_0p4-finetune-8k:finetune-adr0p2_1-8k-samples"
+    # Fine-tuning experiments from k1_5 pretrained (tasks 0-1)
+    "poisson-k1_2.5-finetune-16k:finetune-k1_5-16k-samples"
+    "poisson-k1_2.5-finetune-32k:finetune-k1_5-32k-samples"
     # From-scratch experiments (tasks 2-3)
-    "ad-adr0p2_0p4-scratch-4k:scratch-4k-samples"
-    "ad-adr0p2_0p4-scratch-8k:scratch-8k-samples"
+    "poisson-k1_2.5-scratch-16k:scratch-16k-samples"
+    "poisson-k1_2.5-scratch-32k:scratch-32k-samples"
 )
 
 # Get experiment for this task
@@ -105,7 +105,7 @@ echo ""
 # Determine if this is fine-tuning or from-scratch
 if [ $SLURM_ARRAY_TASK_ID -lt 2 ]; then
     exp_type="finetune"
-    echo "Type: Fine-tuning with adr0.2_1 pre-trained weights"
+    echo "Type: Fine-tuning with k1_5 pre-trained weights"
 else
     exp_type="scratch"
     echo "Type: Training from scratch"
@@ -119,7 +119,7 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command
 CMD="python /workspace/train.py \
-    --yaml_config=/workspace/config/operators_ad.yaml \
+    --yaml_config=/workspace/config/operators_poisson.yaml \
     --config=$config_name \
     --run_num=transfer-${exp_desc}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments"

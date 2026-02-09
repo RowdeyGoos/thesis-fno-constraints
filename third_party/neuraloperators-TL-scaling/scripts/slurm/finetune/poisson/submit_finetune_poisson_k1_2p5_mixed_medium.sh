@@ -1,33 +1,33 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-ad-mixed-small
+#SBATCH --job-name=neuralop-mixed-medium
 #SBATCH --output=experiments/%x-%A_%a.out
 #SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=4:00:00
-#SBATCH --qos=short
+#SBATCH --time=6:00:00
+#SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=16G
-#SBATCH --array=0-3
+#SBATCH --array=0
 
-# Mixed Dataset Fine-Tuning (AdvDiff): Small Sample Sizes (16, 64, 256, 1k samples)
-# This script fine-tunes the mixed-pretrained model on AdvDiff adr∈[0.2,0.4] domain
-# with small numbers of downstream examples: 16, 64, 256, 1k
+# Mixed Dataset Fine-Tuning: Medium Sample Sizes (4k, 8k samples)
+# This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
+# with medium numbers of downstream examples: 4k, 8k
 #
-# Time allocation: 30 minutes (sufficient for small sample training)
+# Time allocation: 1 hour (sufficient for medium sample training)
 #
 # Prerequisites:
 #   1. Completed mixed dataset pretraining (submit_mixed_pretrain.sh)
-#   2. Updated checkpoint paths in config/operators_ad.yaml
+#   2. Updated checkpoint paths in config/operators_mixed.yaml
 #
 # Usage:
-#   sbatch scripts/slurm/transfer_learning/submit_ad_mixed_small.sh
+#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_medium.sh
 
 echo "=========================================="
-echo "Mixed Dataset Fine-Tuning (AdvDiff) - Small Samples (Task $SLURM_ARRAY_TASK_ID)"
+echo "Mixed Dataset Fine-Tuning - Medium Samples (Task $SLURM_ARRAY_TASK_ID)"
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: $SLURM_NODELIST"
 echo "=========================================="
@@ -66,14 +66,12 @@ trap cleanup_tmp_dir EXIT
 
 
 # Configuration file
-CONFIG_FILE="config/operators_ad.yaml"
+CONFIG_FILE="config/operators_mixed.yaml"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(
-    "ad-adr0p2_0p4-finetune-mixed-16:finetune-mixed-16"
-    "ad-adr0p2_0p4-finetune-mixed-64:finetune-mixed-64"
-    "ad-adr0p2_0p4-finetune-mixed-256:finetune-mixed-256"
-    "ad-adr0p2_0p4-finetune-mixed-1k:finetune-mixed-1k"
+    # "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k"
+    "poisson-k1_2.5-finetune-mixed-8k:finetune-mixed-8k"
 )
 
 # Get current task configuration

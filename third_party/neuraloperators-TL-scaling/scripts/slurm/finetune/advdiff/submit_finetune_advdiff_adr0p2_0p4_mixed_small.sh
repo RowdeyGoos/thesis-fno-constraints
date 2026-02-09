@@ -1,34 +1,33 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-mixed-finetune
+#SBATCH --job-name=neuralop-ad-mixed-small
 #SBATCH --output=experiments/%x-%A_%a.out
 #SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=2:00:00
+#SBATCH --time=4:00:00
+#SBATCH --qos=short
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=16G
-#SBATCH --array=0-4
+#SBATCH --array=0-3
 
-# Mixed Dataset Fine-Tuning Array Job
-# This script fine-tunes the mixed-pretrained model on Poisson k∈[5,10] domain
-# with different numbers of downstream examples: 16, 64, 256, 1k, 4k
+# Mixed Dataset Fine-Tuning (AdvDiff): Small Sample Sizes (16, 64, 256, 1k samples)
+# This script fine-tunes the mixed-pretrained model on AdvDiff adr∈[0.2,0.4] domain
+# with small numbers of downstream examples: 16, 64, 256, 1k
+#
+# Time allocation: 30 minutes (sufficient for small sample training)
 #
 # Prerequisites:
 #   1. Completed mixed dataset pretraining (submit_mixed_pretrain.sh)
-#   2. Updated checkpoint paths using update_checkpoint_path.sh
+#   2. Updated checkpoint paths in config/operators_ad.yaml
 #
 # Usage:
-#   # Update checkpoint path after pretraining
-#   bash scripts/utils/update_checkpoint_path.sh <mixed_pretrain_job_id>
-#   
-#   # Submit fine-tuning jobs
-#   sbatch scripts/slurm/submit_mixed_finetune_array.sh
+#   sbatch scripts/slurm/finetune/advdiff/submit_finetune_advdiff_adr0p2_0p4_mixed_small.sh
 
 echo "=========================================="
-echo "Mixed Dataset Fine-Tuning (Task $SLURM_ARRAY_TASK_ID)"
+echo "Mixed Dataset Fine-Tuning (AdvDiff) - Small Samples (Task $SLURM_ARRAY_TASK_ID)"
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: $SLURM_NODELIST"
 echo "=========================================="
@@ -65,16 +64,16 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
+
 # Configuration file
-CONFIG_FILE="config/operators_mixed.yaml"
+CONFIG_FILE="config/operators_ad.yaml"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(
-    "poisson-k1_2.5-finetune-mixed-16:finetune-mixed-16"
-    "poisson-k1_2.5-finetune-mixed-64:finetune-mixed-64"
-    "poisson-k1_2.5-finetune-mixed-256:finetune-mixed-256"
-    "poisson-k1_2.5-finetune-mixed-1k:finetune-mixed-1k"
-    "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k"
+    "ad-adr0p2_0p4-finetune-mixed-16:finetune-mixed-16"
+    "ad-adr0p2_0p4-finetune-mixed-64:finetune-mixed-64"
+    "ad-adr0p2_0p4-finetune-mixed-256:finetune-mixed-256"
+    "ad-adr0p2_0p4-finetune-mixed-1k:finetune-mixed-1k"
 )
 
 # Get current task configuration
@@ -89,7 +88,7 @@ echo ""
 CHECKPOINT_LINE=$(grep -A 20 "^$CONFIG_NAME:" "$CONFIG_FILE" | grep "weights:" | head -n 1)
 if [[ "$CHECKPOINT_LINE" == *"JOBID"* ]]; then
     echo "ERROR: Checkpoint path contains placeholder 'JOBID'!"
-    echo "Please run: bash scripts/utils/update_checkpoint_path.sh <mixed_pretrain_job_id>"
+    echo "Please update the checkpoint path in $CONFIG_FILE"
     echo "Found line: $CHECKPOINT_LINE"
     exit 1
 fi

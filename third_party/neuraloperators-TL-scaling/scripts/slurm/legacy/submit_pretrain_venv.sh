@@ -11,7 +11,7 @@
 #SBATCH --mem=32G
 
 # SLURM job using virtual environment (for development/debugging)
-# Submit from project root: sbatch scripts/slurm/submit_job.sh
+# Submit from project root: sbatch scripts/slurm/legacy/submit_pretrain_venv.sh
 
 echo "=========================================="
 echo "Starting neuraloperators-TL-scaling Training (venv)"

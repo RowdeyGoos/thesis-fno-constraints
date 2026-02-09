@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-ad-mixed-medium
+#SBATCH --job-name=neuralop-ad-mixed-large
 #SBATCH --output=experiments/%x-%A_%a.out
 #SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=7:00:00
+#SBATCH --time=25:00:00
 #SBATCH --qos=medium
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
@@ -13,21 +13,21 @@
 #SBATCH --mem=16G
 #SBATCH --array=0-1
 
-# Mixed Dataset Fine-Tuning (AdvDiff): Medium Sample Sizes (4k, 8k samples)
+# Mixed Dataset Fine-Tuning (AdvDiff): Large Sample Sizes (16k, 32k samples)
 # This script fine-tunes the mixed-pretrained model on AdvDiff adr∈[0.2,0.4] domain
-# with medium numbers of downstream examples: 4k, 8k
+# with large numbers of downstream examples: 16k, 32k
 #
-# Time allocation: 1 hour (sufficient for medium sample training)
+# Time allocation: 2 hours (sufficient for large sample training)
 #
 # Prerequisites:
 #   1. Completed mixed dataset pretraining (submit_mixed_pretrain.sh)
 #   2. Updated checkpoint paths in config/operators_ad.yaml
 #
 # Usage:
-#   sbatch scripts/slurm/transfer_learning/submit_ad_mixed_medium.sh
+#   sbatch scripts/slurm/finetune/advdiff/submit_finetune_advdiff_adr0p2_0p4_mixed_large.sh
 
 echo "=========================================="
-echo "Mixed Dataset Fine-Tuning (AdvDiff) - Medium Samples (Task $SLURM_ARRAY_TASK_ID)"
+echo "Mixed Dataset Fine-Tuning (AdvDiff) - Large Samples (Task $SLURM_ARRAY_TASK_ID)"
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: $SLURM_NODELIST"
 echo "=========================================="
@@ -70,8 +70,8 @@ CONFIG_FILE="config/operators_ad.yaml"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(
-    "ad-adr0p2_0p4-finetune-mixed-4k:finetune-mixed-4k"
-    "ad-adr0p2_0p4-finetune-mixed-8k:finetune-mixed-8k"
+    "ad-adr0p2_0p4-finetune-mixed-16k:finetune-mixed-16k"
+    "ad-adr0p2_0p4-finetune-mixed-32k:finetune-mixed-32k"
 )
 
 # Get current task configuration

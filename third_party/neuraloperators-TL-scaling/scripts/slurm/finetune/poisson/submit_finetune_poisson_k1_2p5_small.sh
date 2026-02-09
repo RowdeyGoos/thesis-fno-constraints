@@ -1,24 +1,17 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-k1_2.5-large
+#SBATCH --job-name=neuralop-k1_2.5-small
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=25:00:00
-#SBATCH --qos=medium
-#SBATCH --partition=insy,general
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=6
-#SBATCH --gres=gpu:a40:1
-#SBATCH --mem=16G
-#SBATCH --array=0-3
+#SBATCH --time=4:00:00
+#SBATCH --qos=short
 
-# Transfer Learning: Poisson k∈[1,2.5] - Large Sample Sizes (16k, 32k samples)
-# This script runs 4 experiments:
-#   - 2 fine-tuning experiments (16k, 32k samples) with pre-trained weights from k1_5
-#   - 2 from-scratch experiments (16k, 32k samples) without pre-training
+# Transfer Learning: Poisson k∈[1,2.5] - Small Sample Sizes (16, 64, 256, 1k samples)
+# This script runs 8 experiments:
+#   - 4 fine-tuning experiments (16, 64, 256, 1k samples) with pre-trained weights from k1_5
+#   - 4 from-scratch experiments (16, 64, 256, 1k samples) without pre-training
 # 
-# Time allocation: 2 hours (sufficient for large sample training)
+# Time allocation: 30 minutes (sufficient for small sample training)
 #
 # Prerequisites:
 #   1. Pre-trained model checkpoint from poisson-scale-k1_5 pretraining
@@ -27,10 +20,10 @@
 #
 # Usage:
 #   Before submitting, update PRETRAIN_CHECKPOINT with your actual pretrain job ID
-#   sbatch scripts/slurm/transfer_learning/submit_k1_2.5_large.sh
+#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_small.sh
 
 echo "=========================================="
-echo "Transfer Learning Experiment (Poisson k∈[1,2.5] - Large Samples)"
+echo "Transfer Learning Experiment (Poisson k∈[1,2.5] - Small Samples)"
 echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node: $SLURM_NODELIST"
@@ -74,7 +67,7 @@ trap cleanup_tmp_dir EXIT
 PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar"
 
 # Verify checkpoint exists for fine-tuning tasks
-if [ $SLURM_ARRAY_TASK_ID -lt 2 ]; then
+if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
     if [ ! -f "$PRETRAIN_CHECKPOINT" ]; then
         echo "WARNING: Pre-trained checkpoint not found at: $PRETRAIN_CHECKPOINT"
         echo "Please update PRETRAIN_CHECKPOINT variable in this script with the correct path"
@@ -87,12 +80,16 @@ fi
 # Define experiments
 # Format: "config_name:experiment_description"
 experiments=(
-    # Fine-tuning experiments from k1_5 pretrained (tasks 0-1)
-    "poisson-k1_2.5-finetune-16k:finetune-k1_5-16k-samples"
-    "poisson-k1_2.5-finetune-32k:finetune-k1_5-32k-samples"
-    # From-scratch experiments (tasks 2-3)
-    "poisson-k1_2.5-scratch-16k:scratch-16k-samples"
-    "poisson-k1_2.5-scratch-32k:scratch-32k-samples"
+    # Fine-tuning experiments from k1_5 pretrained (tasks 0-3)
+    "poisson-k1_2.5-finetune-16:finetune-k1_5-16-samples"
+    "poisson-k1_2.5-finetune-64:finetune-k1_5-64-samples"
+    "poisson-k1_2.5-finetune-256:finetune-k1_5-256-samples"
+    "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples"
+    # From-scratch experiments (tasks 4-7)
+    "poisson-k1_2.5-scratch-16:scratch-16-samples"
+    "poisson-k1_2.5-scratch-64:scratch-64-samples"
+    "poisson-k1_2.5-scratch-256:scratch-256-samples"
+    "poisson-k1_2.5-scratch-1k:scratch-1k-samples"
 )
 
 # Get experiment for this task
@@ -103,7 +100,7 @@ echo "Experiment: $exp_desc"
 echo ""
 
 # Determine if this is fine-tuning or from-scratch
-if [ $SLURM_ARRAY_TASK_ID -lt 2 ]; then
+if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
     exp_type="finetune"
     echo "Type: Fine-tuning with k1_5 pre-trained weights"
 else

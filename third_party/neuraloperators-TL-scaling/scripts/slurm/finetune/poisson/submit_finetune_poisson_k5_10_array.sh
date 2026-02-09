@@ -1,36 +1,33 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-ad-0p2_0p4-small
+#SBATCH --job-name=neuralop-transfer-learning
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
-#SBATCH --time=1:00:00
-#SBATCH --qos=short
+#SBATCH --time=2:00:00
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=6
+#SBATCH --cpus-per-task=10
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=16G
-#SBATCH --array=0
+#SBATCH --mem=32G
+#SBATCH --array=0-9
 
-# Transfer Learning: AdvDiff adr∈[0.2,0.4] - Small Sample Sizes (16, 64, 256, 1k samples)
-# This script runs 8 experiments:
-#   - 4 fine-tuning experiments (16, 64, 256, 1k samples) with pre-trained weights from adr0.2_1
-#   - 4 from-scratch experiments (16, 64, 256, 1k samples) without pre-training
+# Transfer Learning Array Job: Fine-tuning vs From-Scratch Comparison
+# This script runs 10 experiments:
+#   - 5 fine-tuning experiments (16, 64, 256, 1k, 4k samples) with pre-trained weights
+#   - 5 from-scratch experiments (16, 64, 256, 1k, 4k samples) without pre-training
 # 
-# Time allocation: 30 minutes (sufficient for small sample training)
-#
 # Prerequisites:
-#   1. Pre-trained model checkpoint from ad-scale-adr0p2_1 pretraining
-#   2. Generated data for AdvDiff adr∈[0.2,0.4] domain
-#   3. Computed scales for adr∈[0.2,0.4] data
+#   1. Pre-trained model checkpoint from poisson-scale-k1_5 pretraining
+#   2. Generated data for poisson k5_10 domain
+#   3. Computed scales for k5_10 data
 #
 # Usage:
 #   Before submitting, update PRETRAIN_CHECKPOINT with your actual pretrain job ID
-#   sbatch scripts/slurm/transfer_learning/submit_ad_adr0p2_0p4_small.sh
+#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh
 
 echo "=========================================="
-echo "Transfer Learning Experiment (AdvDiff adr∈[0.2,0.4] - Small Samples)"
+echo "Transfer Learning Experiment (Poisson k5_10)"
 echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node: $SLURM_NODELIST"
@@ -70,33 +67,33 @@ trap cleanup_tmp_dir EXIT
 
 
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
-# Replace JOBID with your actual ad-scale-adr0p2_1 pretraining job ID
-PRETRAIN_CHECKPOINT="experiments/expts/ad-scale-adr0p2_1/pretrain-ad-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar"
+# Replace JOBID with your actual pretraining job ID
+PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar"
 
 # Verify checkpoint exists for fine-tuning tasks
-if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
+if [ $SLURM_ARRAY_TASK_ID -lt 5 ]; then
     if [ ! -f "$PRETRAIN_CHECKPOINT" ]; then
         echo "WARNING: Pre-trained checkpoint not found at: $PRETRAIN_CHECKPOINT"
         echo "Please update PRETRAIN_CHECKPOINT variable in this script with the correct path"
         echo "Continuing anyway - training will start from scratch if weights file not found"
-    else
-        echo "✓ Pre-trained checkpoint found: $PRETRAIN_CHECKPOINT"
     fi
 fi
 
 # Define experiments
 # Format: "config_name:experiment_description"
 experiments=(
-    # Fine-tuning experiments from adr0.2_1 pretrained (tasks 0-3)
-    # "ad-adr0p2_0p4-finetune-16:finetune-adr0p2_1-16-samples"
-    # "ad-adr0p2_0p4-finetune-64:finetune-adr0p2_1-64-samples"
-    # "ad-adr0p2_0p4-finetune-256:finetune-adr0p2_1-256-samples"
-    # "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples"
-    # From-scratch experiments (tasks 4-7)
-    "ad-adr0p2_0p4-scratch-16:scratch-16-samples"
-    # "ad-adr0p2_0p4-scratch-64:scratch-64-samples"
-    # "ad-adr0p2_0p4-scratch-256:scratch-256-samples"
-    # "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples"
+    # Fine-tuning experiments (tasks 0-4)
+    "poisson-k5_10-finetune-16:finetune-16-samples"
+    "poisson-k5_10-finetune-64:finetune-64-samples"
+    "poisson-k5_10-finetune-256:finetune-256-samples"
+    "poisson-k5_10-finetune-1k:finetune-1k-samples"
+    "poisson-k5_10-finetune-4k:finetune-4k-samples"
+    # From-scratch experiments (tasks 5-9)
+    "poisson-k5_10-scratch-16:scratch-16-samples"
+    "poisson-k5_10-scratch-64:scratch-64-samples"
+    "poisson-k5_10-scratch-256:scratch-256-samples"
+    "poisson-k5_10-scratch-1k:scratch-1k-samples"
+    "poisson-k5_10-scratch-4k:scratch-4k-samples"
 )
 
 # Get experiment for this task
@@ -107,9 +104,9 @@ echo "Experiment: $exp_desc"
 echo ""
 
 # Determine if this is fine-tuning or from-scratch
-if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
+if [ $SLURM_ARRAY_TASK_ID -lt 5 ]; then
     exp_type="finetune"
-    echo "Type: Fine-tuning with adr0.2_1 pre-trained weights"
+    echo "Type: Fine-tuning with pre-trained weights"
 else
     exp_type="scratch"
     echo "Type: Training from scratch"
@@ -123,7 +120,7 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command
 CMD="python /workspace/train.py \
-    --yaml_config=/workspace/config/operators_ad.yaml \
+    --yaml_config=/workspace/config/operators_poisson.yaml \
     --config=$config_name \
     --run_num=transfer-${exp_desc}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments"

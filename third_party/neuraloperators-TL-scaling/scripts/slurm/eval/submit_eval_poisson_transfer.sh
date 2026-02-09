@@ -22,7 +22,7 @@
 # And generates a comparison plot showing test error vs number of training samples.
 #
 # Usage:
-#   sbatch scripts/slurm/submit_eval_transfer_learning.sh
+#   sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh
 
 echo "=========================================="
 echo "Transfer Learning Batch Evaluation"

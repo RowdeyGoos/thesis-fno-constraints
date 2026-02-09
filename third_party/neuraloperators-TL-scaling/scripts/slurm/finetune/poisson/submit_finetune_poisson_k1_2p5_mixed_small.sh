@@ -24,7 +24,7 @@
 #   2. Updated checkpoint paths in config/operators_mixed.yaml
 #
 # Usage:
-#   sbatch scripts/slurm/transfer_learning/submit_mixed_small.sh
+#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_small.sh
 
 echo "=========================================="
 echo "Mixed Dataset Fine-Tuning - Small Samples (Task $SLURM_ARRAY_TASK_ID)"
