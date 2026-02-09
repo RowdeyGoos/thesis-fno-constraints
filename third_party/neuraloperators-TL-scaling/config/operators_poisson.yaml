@@ -194,6 +194,13 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
   max_epochs: 500
   plot_figs: !!bool True
 
+# Zero-shot evaluation config (no downstream training)
+poisson-k1_2.5-zeroshot:
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
 # Fine-tuning configs (with pre-trained weights from k1_5)
 poisson-k1_2.5-finetune-16: &poisson_k1_2p5_ft_16
   <<: *poisson_k1_2p5_base
@@ -301,4 +308,3 @@ poisson-k1_2.5-scratch-32k: &poisson_k1_2p5_scratch_32k
   subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
   batch_size: 128
   valid_batch_size: 128
-

@@ -105,11 +105,11 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     ax.set_ylabel('Test Error (Relative L2)', fontsize=14, fontweight='bold')
     ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
     
-    # Log scale for both axes (base-10 for y-axis for better differentiation)
-    ax.set_xscale('log')
+    # Use symlog on x-axis so zero-shot (0 samples) can be plotted.
+    ax.set_xscale('symlog', linthresh=1)
     ax.set_yscale('log', base=10)
     ax.set_xticks(all_sizes)
-    ax.set_xticklabels([str(n) for n in all_sizes])
+    ax.set_xticklabels(['0-shot' if n == 0 else str(n) for n in all_sizes])
     
     # Grid
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.8)

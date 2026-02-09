@@ -17,6 +17,7 @@
 #   1) Fine-tuned from Mixed-Domain pretraining
 #   2) Fine-tuned from AdvDiff pretraining (adr∈[0.2,1])
 #   3) Trained from scratch
+#   4) Zero-shot from pretrained checkpoints (no downstream training)
 #
 # It then generates a combined comparison plot.
 #
@@ -58,7 +59,7 @@ mkdir -p experiments/logs
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 echo ""
-echo "Step 1: Evaluating mixed-pretrained models..."
+echo "Step 1: Evaluating mixed-pretrained models (including zero-shot)..."
 echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
@@ -66,7 +67,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_ad.yaml \
                 --experiment_type advdiff \
-                --configs ad-adr0p2_0p4-finetune-mixed-16 \
+                --configs ad-adr0p2_0p4-zeroshot-mixed \
+                         ad-adr0p2_0p4-finetune-mixed-16 \
                          ad-adr0p2_0p4-finetune-mixed-64 \
                          ad-adr0p2_0p4-finetune-mixed-256 \
                          ad-adr0p2_0p4-finetune-mixed-1k \
@@ -79,7 +81,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                 --device cuda:0'
 
 echo ""
-echo "Step 2: Evaluating AdvDiff-pretrained models..."
+echo "Step 2: Evaluating AdvDiff-pretrained models (including zero-shot)..."
 echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
@@ -87,7 +89,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_ad.yaml \
                 --experiment_type advdiff \
-                --configs ad-adr0p2_0p4-finetune-16 \
+                --configs ad-adr0p2_0p4-zeroshot \
+                         ad-adr0p2_0p4-finetune-16 \
                          ad-adr0p2_0p4-finetune-64 \
                          ad-adr0p2_0p4-finetune-256 \
                          ad-adr0p2_0p4-finetune-1k \

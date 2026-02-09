@@ -114,6 +114,19 @@ ad-adr0p2_0p4-mixed-base: &ad_adr0p2_0p4_mixed_base
   system: 'advection-diffusion'
   in_dim: 7  # AdvDiff with mixed format: 1 (source) + 6 (tensor) = 7 input channels
 
+# Zero-shot evaluation configs (no downstream training)
+ad-adr0p2_0p4-zeroshot:
+  <<: *ad_adr0p2_0p4_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-zeroshot-mixed:
+  <<: *ad_adr0p2_0p4_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
 # Fine-tuning configs from AD pretraining (adr0.2_1)
 ad-adr0p2_0p4-finetune-16: &ad_adr0p2_0p4_ft_16
   <<: *ad_adr0p2_0p4_base

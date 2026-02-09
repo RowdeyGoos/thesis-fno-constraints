@@ -131,6 +131,12 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
 # ==============================================================================
 # Fine-tuning mixed-pretrained model on Poisson k∈[1,2.5] (SYS-1) with varying data sizes
 
+poisson-k1_2.5-zeroshot-mixed:
+  <<: *poisson_k1_2p5_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
 poisson-k1_2.5-finetune-mixed-16:
   <<: *poisson_k1_2p5_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'

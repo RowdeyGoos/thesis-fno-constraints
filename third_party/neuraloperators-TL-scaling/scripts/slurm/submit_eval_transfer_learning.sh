@@ -17,6 +17,7 @@
 #   1. Fine-tuned from mixed-domain pretraining
 #   2. Fine-tuned from k1_5 Poisson pretraining
 #   3. Trained from scratch
+#   4. Zero-shot from pretrained checkpoints (no downstream training)
 #
 # And generates a comparison plot showing test error vs number of training samples.
 #
@@ -58,7 +59,7 @@ mkdir -p experiments/logs
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 echo ""
-echo "Step 1: Evaluating mixed-pretrained models..."
+echo "Step 1: Evaluating mixed-pretrained models (including zero-shot)..."
 echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
@@ -66,7 +67,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_mixed.yaml \
                 --experiment_type poisson \
-                --configs poisson-k1_2.5-finetune-mixed-16 \
+                --configs poisson-k1_2.5-zeroshot-mixed \
+                         poisson-k1_2.5-finetune-mixed-16 \
                          poisson-k1_2.5-finetune-mixed-64 \
                          poisson-k1_2.5-finetune-mixed-256 \
                          poisson-k1_2.5-finetune-mixed-1k \
@@ -79,7 +81,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                 --device cuda:0'
 
 echo ""
-echo "Step 2: Evaluating k1_5-pretrained models..."
+echo "Step 2: Evaluating k1_5-pretrained models (including zero-shot)..."
 echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
@@ -87,7 +89,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_poisson.yaml \
                 --experiment_type poisson \
-                --configs poisson-k1_2.5-finetune-16 \
+                --configs poisson-k1_2.5-zeroshot \
+                         poisson-k1_2.5-finetune-16 \
                          poisson-k1_2.5-finetune-64 \
                          poisson-k1_2.5-finetune-256 \
                          poisson-k1_2.5-finetune-1k \

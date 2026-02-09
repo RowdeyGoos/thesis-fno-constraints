@@ -59,6 +59,9 @@ mpl.rcParams['figure.dpi'] = 150
 
 def parse_sample_size(config_name: str) -> Optional[int]:
     """Extract sample size from config name (e.g., 'finetune-16' -> 16)."""
+    if 'zeroshot' in config_name.lower():
+        return 0
+
     parts = config_name.split('-')
     for part in parts:
         if part.isdigit():
@@ -227,6 +230,31 @@ def find_checkpoint(experiment_dir: str, config_name: str, run_pattern: str = "*
     return None
 
 
+def get_checkpoint_from_config(yaml_config: str, config_name: str) -> Optional[str]:
+    """
+    Read checkpoint path from a config's `weights` field.
+
+    Used for zero-shot configs that are evaluated directly from pretraining
+    checkpoints and therefore have no downstream run directory.
+    """
+    try:
+        params = YParams(os.path.abspath(yaml_config), config_name)
+    except Exception as exc:
+        logging.warning(f"Could not load config {config_name}: {exc}")
+        return None
+
+    if 'weights' not in params:
+        logging.warning(f"Config {config_name} has no `weights` field")
+        return None
+
+    checkpoint = params['weights']
+    if not checkpoint:
+        logging.warning(f"Config {config_name} has empty `weights`")
+        return None
+
+    return str(checkpoint)
+
+
 def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str, 
                    device: str = 'cuda:0') -> Dict[str, float]:
     """
@@ -370,11 +398,11 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     ax.set_xlabel('Number of downstream examples', fontsize=14, fontweight='bold')
     ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=14, fontweight='bold')
     ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
-    ax.set_xscale('log', base=2)
+    ax.set_xscale('symlog', base=2, linthresh=1)
     
     # Set x-ticks to match paper
-    xticks = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
-    xtick_labels = ['8', '16', '32', '64', '128', '256', '512', '1K', '2K', '4K', '8K', '16K', '32K']
+    xticks = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+    xtick_labels = ['0-shot', '8', '16', '32', '64', '128', '256', '512', '1K', '2K', '4K', '8K', '16K', '32K']
     
     # Filter to only show ticks in data range
     data_samples = []
@@ -385,8 +413,12 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         min_sample = min(data_samples)
         max_sample = max(data_samples)
         
-        valid_ticks = [(t, label) for t, label in zip(xticks, xtick_labels)
-                      if t >= min_sample/2 and t <= max_sample*2]
+        valid_ticks = []
+        for t, label in zip(xticks, xtick_labels):
+            if t == 0 and min_sample == 0:
+                valid_ticks.append((t, label))
+            elif t > 0 and t >= max(min_sample / 2, 1) and t <= max_sample * 2:
+                valid_ticks.append((t, label))
         
         if valid_ticks:
             xticks_filtered, xtick_labels_filtered = zip(*valid_ticks)
@@ -467,8 +499,8 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
     }
     
     # Set x-ticks
-    xticks = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
-    xtick_labels = ['8', '16', '32', '64', '128', '256', '512', '1K', '2K', '4K', '8K', '16K', '32K']
+    xticks = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+    xtick_labels = ['0-shot', '8', '16', '32', '64', '128', '256', '512', '1K', '2K', '4K', '8K', '16K', '32K']
     
     # Get data range
     data_samples = []
@@ -478,8 +510,12 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
     min_sample = min(data_samples) if data_samples else 16
     max_sample = max(data_samples) if data_samples else 4096
     
-    valid_ticks = [(t, label) for t, label in zip(xticks, xtick_labels) 
-                  if t >= min_sample/2 and t <= max_sample*2]
+    valid_ticks = []
+    for t, label in zip(xticks, xtick_labels):
+        if t == 0 and min_sample == 0:
+            valid_ticks.append((t, label))
+        elif t > 0 and t >= max(min_sample / 2, 1) and t <= max_sample * 2:
+            valid_ticks.append((t, label))
     
     if valid_ticks:
         xticks_filtered, xtick_labels_filtered = zip(*valid_ticks)
@@ -522,7 +558,7 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
         if idx == 0:
             ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=12, fontweight='bold')
         ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
-        ax.set_xscale('log', base=2)
+        ax.set_xscale('symlog', base=2, linthresh=1)
         ax.set_xticks(xticks_filtered)
         ax.set_xticklabels(xtick_labels_filtered)
         ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
@@ -711,13 +747,6 @@ def main():
         results = defaultdict(dict)
         
         for config_name in configs_to_eval:
-            # Find checkpoint
-            checkpoint = find_checkpoint(args.experiment_dir, config_name)
-            
-            if checkpoint is None:
-                logging.warning(f"Skipping {config_name}: checkpoint not found")
-                continue
-            
             # Determine model type and sample size
             if 'scratch' in config_name:
                 model_type = 'scratch'
@@ -730,6 +759,19 @@ def main():
             if sample_size is None:
                 logging.warning(f"Could not parse sample size from {config_name}")
                 continue
+
+            # Zero-shot configs evaluate directly from their configured pretraining
+            # checkpoint instead of a downstream run directory.
+            if sample_size == 0:
+                checkpoint = get_checkpoint_from_config(args.yaml_config, config_name)
+                if checkpoint is None:
+                    logging.warning(f"Skipping {config_name}: zero-shot weights not found in config")
+                    continue
+            else:
+                checkpoint = find_checkpoint(args.experiment_dir, config_name)
+                if checkpoint is None:
+                    logging.warning(f"Skipping {config_name}: checkpoint not found")
+                    continue
             
             # Evaluate
             metrics = evaluate_model(
