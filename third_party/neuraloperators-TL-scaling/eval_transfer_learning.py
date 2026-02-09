@@ -173,8 +173,51 @@ def get_experiment_groups(experiment_type: str, include_mixed: bool = False) -> 
             },
         }
     elif experiment_type == 'helmholtz':
-        # Add helmholtz configs here when ready
-        base_configs = {}
+        # Helmholtz transfer learning experiments (see config/operators_helmholtz.yaml)
+        # Downstream: o∈[1,5]
+        # Pretrain:   o∈[1,10]
+        base_configs = {
+            16: {
+                'finetune': 'helm-o1_5-finetune-16',
+                'scratch': 'helm-o1_5-scratch-16',
+                'mixed': 'helm-o1_5-finetune-mixed-16',
+            },
+            64: {
+                'finetune': 'helm-o1_5-finetune-64',
+                'scratch': 'helm-o1_5-scratch-64',
+                'mixed': 'helm-o1_5-finetune-mixed-64',
+            },
+            256: {
+                'finetune': 'helm-o1_5-finetune-256',
+                'scratch': 'helm-o1_5-scratch-256',
+                'mixed': 'helm-o1_5-finetune-mixed-256',
+            },
+            1024: {
+                'finetune': 'helm-o1_5-finetune-1k',
+                'scratch': 'helm-o1_5-scratch-1k',
+                'mixed': 'helm-o1_5-finetune-mixed-1k',
+            },
+            4096: {
+                'finetune': 'helm-o1_5-finetune-4k',
+                'scratch': 'helm-o1_5-scratch-4k',
+                'mixed': 'helm-o1_5-finetune-mixed-4k',
+            },
+            8192: {
+                'finetune': 'helm-o1_5-finetune-8k',
+                'scratch': 'helm-o1_5-scratch-8k',
+                'mixed': 'helm-o1_5-finetune-mixed-8k',
+            },
+            16384: {
+                'finetune': 'helm-o1_5-finetune-16k',
+                'scratch': 'helm-o1_5-scratch-16k',
+                'mixed': 'helm-o1_5-finetune-mixed-16k',
+            },
+            32768: {
+                'finetune': 'helm-o1_5-finetune-32k',
+                'scratch': 'helm-o1_5-scratch-32k',
+                'mixed': 'helm-o1_5-finetune-mixed-32k',
+            },
+        }
     else:
         raise ValueError(f"Unknown experiment type: {experiment_type}")
     

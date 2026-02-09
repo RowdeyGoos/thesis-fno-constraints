@@ -27,6 +27,7 @@ See `scripts/slurm/finetune/README.md`.
 
 - `sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh`
 - `sbatch scripts/slurm/eval/submit_eval_advdiff_transfer.sh`
+- `sbatch scripts/slurm/eval/submit_eval_helmholtz_transfer.sh`
 
 ### Legacy
 

@@ -79,3 +79,219 @@ helm-scale-o1_10: &helm_o1_10
   fc_cut: 2
   lr: 1E-3
   subsample: 1
+
+# ========================================
+# Transfer Learning: Helmholtz o∈[1,5]
+# ========================================
+
+# Base config for o1_5 domain (downstream task)
+helm-o1_5-base: &helm_o1_5_base
+  <<: *helmholtz
+  train_path:    'data/helmholtz/_train_o1_5_32k.h5'
+  val_path:      'data/helmholtz/_val_o1_5_4k.h5'
+  test_path:     'data/helmholtz/_test_o1_5_4k.h5'
+  scales_path:   'data/helmholtz/_train_o1_5_32k_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+  system: 'helmholtz'
+  in_dim: 3
+  out_dim: 1
+
+# Base config for o1_5 with mixed format (6-component tensors)
+helm-o1_5-mixed-base: &helm_o1_5_mixed_base
+  <<: *helmholtz
+  train_path:    'data/helmholtz/_train_o1_5_32k_mixed.h5'
+  val_path:      'data/helmholtz/_val_o1_5_4k_mixed.h5'
+  test_path:     'data/helmholtz/_test_o1_5_4k_mixed.h5'
+  scales_path:   'data/helmholtz/_train_o1_5_32k_mixed_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+  system: 'helmholtz'
+  in_dim: 7  # Helmholtz with mixed format: 1 (source) + 6 (tensor) = 7 input channels
+  out_dim: 1
+
+# Zero-shot evaluation configs (no downstream training)
+helm-o1_5-zeroshot:
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-zeroshot-mixed:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
+# Fine-tuning configs from Helmholtz pretraining (o1_10)
+helm-o1_5-finetune-16: &helm_o1_5_ft_16
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+helm-o1_5-finetune-64: &helm_o1_5_ft_64
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+helm-o1_5-finetune-256: &helm_o1_5_ft_256
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+helm-o1_5-finetune-1k: &helm_o1_5_ft_1k
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-4k: &helm_o1_5_ft_4k
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-8k: &helm_o1_5_ft_8k
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-16k: &helm_o1_5_ft_16k
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-32k: &helm_o1_5_ft_32k
+  <<: *helm_o1_5_base
+  weights: 'experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar'
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
+# Fine-tuning configs from Mixed pretraining
+helm-o1_5-finetune-mixed-16:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+helm-o1_5-finetune-mixed-64:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+helm-o1_5-finetune-mixed-256:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+helm-o1_5-finetune-mixed-1k:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-mixed-4k:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-mixed-8k:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-mixed-16k:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-finetune-mixed-32k:
+  <<: *helm_o1_5_mixed_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
+# From-scratch training configs (no pre-trained weights)
+helm-o1_5-scratch-16: &helm_o1_5_scratch_16
+  <<: *helm_o1_5_base
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+helm-o1_5-scratch-64: &helm_o1_5_scratch_64
+  <<: *helm_o1_5_base
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+helm-o1_5-scratch-256: &helm_o1_5_scratch_256
+  <<: *helm_o1_5_base
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+helm-o1_5-scratch-1k: &helm_o1_5_scratch_1k
+  <<: *helm_o1_5_base
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-scratch-4k: &helm_o1_5_scratch_4k
+  <<: *helm_o1_5_base
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-scratch-8k: &helm_o1_5_scratch_8k
+  <<: *helm_o1_5_base
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-scratch-16k: &helm_o1_5_scratch_16k
+  <<: *helm_o1_5_base
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o1_5-scratch-32k: &helm_o1_5_scratch_32k
+  <<: *helm_o1_5_base
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128

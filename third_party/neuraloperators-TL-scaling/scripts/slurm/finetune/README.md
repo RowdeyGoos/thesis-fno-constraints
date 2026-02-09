@@ -30,7 +30,19 @@ This folder contains transfer-learning / downstream fine-tuning scripts by PDE f
 - `sbatch scripts/slurm/finetune/advdiff/submit_finetune_advdiff_adr0p2_0p4_mixed_medium.sh`
 - `sbatch scripts/slurm/finetune/advdiff/submit_finetune_advdiff_adr0p2_0p4_mixed_large.sh`
 
+## Helmholtz
+
+### Split by Data Regime
+
+- `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_small.sh`
+- `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_medium.sh`
+- `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_large.sh`
+- `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_mixed_small.sh`
+- `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_mixed_medium.sh`
+- `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_mixed_large.sh`
+
 ## Related Evaluation Jobs
 
 - `sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh`
 - `sbatch scripts/slurm/eval/submit_eval_advdiff_transfer.sh`
+- `sbatch scripts/slurm/eval/submit_eval_helmholtz_transfer.sh`
