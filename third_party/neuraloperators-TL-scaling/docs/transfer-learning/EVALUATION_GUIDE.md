@@ -21,7 +21,7 @@ Each approach was tested at 5 data sizes: 16, 64, 256, 1k, 4k samples.
 Run all evaluations and generate plots in a single SLURM job:
 
 ```bash
-sbatch scripts/slurm/submit_eval_transfer_learning.sh
+sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh
 ```
 
 This will:

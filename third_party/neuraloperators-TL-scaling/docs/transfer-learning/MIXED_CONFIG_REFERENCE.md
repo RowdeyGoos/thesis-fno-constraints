@@ -70,7 +70,7 @@ python utils/create_mixed_dataset.py \
 ### 2. Pretrain on Mixed Dataset
 
 ```bash
-sbatch scripts/slurm/submit_mixed_pretrain.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh
 ```
 
 This uses `config/operators_mixed.yaml` with config name `mixed-scale-all`.
@@ -88,7 +88,7 @@ This updates all fine-tuning configs in `operators_mixed.yaml` to point to the c
 ### 4. Fine-Tune on Downstream Tasks
 
 ```bash
-sbatch scripts/slurm/submit_mixed_finetune_array.sh
+sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
 ```
 
 This submits 5 jobs (array 0-4) for different data sizes, all using `config/operators_mixed.yaml`.
@@ -161,10 +161,10 @@ poisson-k1_2.5-finetune-mixed-256:
 
 The following scripts now use `config/operators_mixed.yaml`:
 
-1. **`scripts/slurm/submit_mixed_pretrain.sh`**
+1. **`scripts/slurm/pretrain/submit_pretrain_mixed.sh`**
    - Line 57: `CONFIG_FILE="config/operators_mixed.yaml"`
    
-2. **`scripts/slurm/submit_mixed_finetune_array.sh`**
+2. **`scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh`**
    - Line 59: `CONFIG_FILE="config/operators_mixed.yaml"`
 
 3. **`scripts/utils/update_mixed_checkpoint_path.sh`** (new file)
@@ -185,8 +185,8 @@ To verify the configuration is correct:
 grep -n "mixed-scale-all:" config/operators_mixed.yaml
 
 # Check that scripts reference correct file
-grep "CONFIG_FILE=" scripts/slurm/submit_mixed_pretrain.sh
-grep "CONFIG_FILE=" scripts/slurm/submit_mixed_finetune_array.sh
+grep "CONFIG_FILE=" scripts/slurm/pretrain/submit_pretrain_mixed.sh
+grep "CONFIG_FILE=" scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
 
 # Verify no mixed configs remain in Poisson file
 grep -i "mixed" config/operators_poisson.yaml

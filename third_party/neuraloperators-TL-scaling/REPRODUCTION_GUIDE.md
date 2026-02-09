@@ -341,7 +341,7 @@ If on a SLURM cluster:
 
 ```bash
 # Submit array job for all three PDE systems
-sbatch scripts/slurm/submit_job_array_container.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_array_ddp.sh
 ```
 
 ### Step 4: Evaluation and Analysis
@@ -491,10 +491,10 @@ First, complete the pretraining on Poisson k∈[1,5] using the array script:
 
 ```bash
 # Submit pretraining array job (includes all three PDE systems)
-sbatch scripts/slurm/submit_job_array_container_single_gpu.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_array_single_gpu.sh
 
 # Or submit just Poisson pretraining manually:
-sbatch scripts/slurm/submit_job_container.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_single_ddp.sh
 ```
 
 Wait for the job to complete and note the job ID (e.g., `12345`).
@@ -540,7 +540,7 @@ bash scripts/utils/update_checkpoint_path.sh 12345
 
 This automatically updates:
 - `config/operators_poisson.yaml` - Fine-tuning configs with correct checkpoint path
-- `scripts/slurm/submit_transfer_learning_array.sh` - SLURM script checkpoint verification
+- `scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh` - SLURM script checkpoint verification
 
 #### Step 4: Verify Configuration
 
@@ -573,7 +573,7 @@ Each config uses the `subsample` parameter to train on a subset of the 32k datas
 
 ```bash
 # Submit array job for all 10 experiments (5 fine-tuning + 5 from-scratch)
-sbatch scripts/slurm/submit_transfer_learning_array.sh
+sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh
 
 # This will launch 10 array tasks (0-9):
 # Tasks 0-4: Fine-tuning experiments
@@ -864,7 +864,7 @@ Expected output file: `data/mixed/_mixed_scales.txt`
 
 ```bash
 # Submit mixed dataset pretraining job
-sbatch scripts/slurm/submit_mixed_pretrain.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh
 
 # Note the job ID (e.g., 67890)
 ```
@@ -891,7 +891,7 @@ Submit the mixed fine-tuning experiments to compare with single-domain pretraini
 
 ```bash
 # Submit array job for 5 fine-tuning experiments (16, 64, 256, 1k, 4k samples)
-sbatch scripts/slurm/submit_mixed_finetune_array.sh
+sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
 ```
 
 This launches 5 jobs:

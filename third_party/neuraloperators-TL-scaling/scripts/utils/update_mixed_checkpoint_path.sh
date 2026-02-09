@@ -31,4 +31,4 @@ fi
 
 echo ""
 echo "Done! You can now submit the mixed fine-tuning jobs:"
-echo "  sbatch scripts/slurm/submit_mixed_finetune_array.sh"
+echo "  sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh"

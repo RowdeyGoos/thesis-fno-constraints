@@ -5,7 +5,7 @@
 ### 1. Evaluation Scripts
 - **`scripts/eval_all_transfer_learning.sh`** - Bash script to run all evaluations
 - **`utils/plot_transfer_learning_comparison.py`** - Create combined comparison plot
-- **`scripts/slurm/submit_eval_transfer_learning.sh`** - SLURM job submission
+- **`scripts/slurm/eval/submit_eval_poisson_transfer.sh`** - SLURM job submission
 
 ### 2. Documentation
 - **`EVALUATION_GUIDE.md`** - Comprehensive evaluation guide
@@ -19,7 +19,7 @@
 ### SLURM (Recommended)
 
 ```bash
-sbatch scripts/slurm/submit_eval_transfer_learning.sh
+sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh
 ```
 
 This evaluates all models and creates the comparison plot automatically.
@@ -122,7 +122,7 @@ results/transfer_learning_k1_2.5/
 
 ## Next Steps
 
-1. Submit evaluation job: `sbatch scripts/slurm/submit_eval_transfer_learning.sh`
+1. Submit evaluation job: `sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh`
 2. Wait for completion (~2-4 hours)
 3. Check results: `ls results/transfer_learning_k1_2.5/`
 4. View plot: `transfer_learning_comparison.png`

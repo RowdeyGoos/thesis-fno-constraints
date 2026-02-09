@@ -98,7 +98,7 @@ bash scripts/utils/update_mixed_checkpoint_path.sh <mixed_pretrain_job_id>
 
 ```bash
 # Submit fine-tuning array job
-sbatch scripts/slurm/submit_mixed_finetune_array.sh
+sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
 ```
 
 The config already points to the correct paths:

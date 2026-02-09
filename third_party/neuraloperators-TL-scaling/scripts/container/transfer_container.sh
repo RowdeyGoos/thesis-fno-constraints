@@ -56,7 +56,7 @@ if [ $? -eq 0 ]; then
     echo "   apptainer exec neuraloperators.sif python -c 'import torch; print(torch.__version__)'"
     echo ""
     echo "4. Submit a job:"
-    echo "   sbatch scripts/slurm/submit_job_container.sh"
+    echo "   sbatch scripts/slurm/pretrain/submit_pretrain_single_ddp.sh"
     echo ""
 else
     echo "✗ Transfer failed"

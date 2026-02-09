@@ -46,7 +46,7 @@ if [ $? -eq 0 ]; then
     echo "  - poisson-k1_2.5-finetune-4k"
     echo ""
     echo "You can now submit the transfer learning job array:"
-    echo "  sbatch scripts/slurm/submit_k1_2.5_transfer_learning_array.sh"
+    echo "  sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_array.sh"
 else
     echo "✗ Error updating checkpoint paths"
     exit 1

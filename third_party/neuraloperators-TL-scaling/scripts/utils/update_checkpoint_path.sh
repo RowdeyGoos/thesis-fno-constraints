@@ -30,7 +30,7 @@ else
 fi
 
 # Update SLURM script
-SLURM_SCRIPT="scripts/slurm/submit_transfer_learning_array.sh"
+SLURM_SCRIPT="scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh"
 if [ -f "$SLURM_SCRIPT" ]; then
     echo "Updating $SLURM_SCRIPT..."
     sed -i "s|PRETRAIN_CHECKPOINT=\"experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-JOBID-0/checkpoints/ckpt_best.tar\"|PRETRAIN_CHECKPOINT=\"$CHECKPOINT_PATH\"|g" "$SLURM_SCRIPT"
@@ -41,4 +41,4 @@ fi
 
 echo ""
 echo "Done! You can now submit the transfer learning jobs:"
-echo "  sbatch scripts/slurm/submit_transfer_learning_array.sh"
+echo "  sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh"

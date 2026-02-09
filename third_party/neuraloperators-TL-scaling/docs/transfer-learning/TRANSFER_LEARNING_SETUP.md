@@ -35,7 +35,7 @@ Test with varying amounts of downstream data: **16, 64, 256, 1k, and 4k samples*
 - `poisson-k5_10-scratch-4k`: Train from scratch with 4k samples
 
 ### 2. SLURM Array Script
-**File**: `scripts/slurm/submit_transfer_learning_array.sh`
+**File**: `scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh`
 
 **Features**:
 - Single GPU per task (10 tasks total)
@@ -122,7 +122,7 @@ python utils/compute_scales.py --datapath data/poisson --filename _train_k5_10_3
 
 ### Step 2: Pretrain
 ```bash
-sbatch scripts/slurm/submit_job_array_container_single_gpu.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_array_single_gpu.sh
 # Note the job ID (e.g., 12345)
 ```
 
@@ -133,7 +133,7 @@ bash scripts/utils/update_checkpoint_path.sh 12345
 
 ### Step 4: Run Transfer Learning Experiments
 ```bash
-sbatch scripts/slurm/submit_transfer_learning_array.sh
+sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh
 ```
 
 ### Step 5: Analyze Results

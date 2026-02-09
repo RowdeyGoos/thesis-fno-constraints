@@ -215,11 +215,11 @@ poisson-k1_2.5-finetune-mixed-32k:
 # 1. Create mixed datasets:
 #    python utils/create_mixed_dataset.py --poisson_path ... --advdiff_path ... --helmholtz_path ...
 # 2. Pretrain on mixed dataset:
-#    sbatch scripts/slurm/submit_mixed_pretrain.sh
+#    sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh
 # 3. Update checkpoint paths:
 #    bash scripts/utils/update_mixed_checkpoint_path.sh <job_id>
 # 4. Fine-tune on downstream tasks (Poisson k∈[1,2.5] SYS-1):
-#    sbatch scripts/slurm/submit_mixed_finetune_array.sh
+#    sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
 # 5. Evaluate and compare:
 #    python eval_transfer_learning.py --include_mixed
 #

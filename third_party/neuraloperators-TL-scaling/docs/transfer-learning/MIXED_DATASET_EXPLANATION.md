@@ -108,8 +108,8 @@ When fine-tuning the mixed-pretrained model on a single PDE (e.g., Poisson k∈[
 ## Implementation Files
 1. **`utils/create_mixed_dataset.py`**: Creates the mixed HDF5 file with zero-padding
 2. **`config/operators_poisson.yaml`**: Contains `mixed-scale-all` and fine-tuning configs
-3. **`scripts/slurm/submit_mixed_pretrain.sh`**: Runs mixed pretraining
-4. **`scripts/slurm/submit_mixed_finetune_array.sh`**: Runs fine-tuning experiments
+3. **`scripts/slurm/pretrain/submit_pretrain_mixed.sh`**: Runs mixed pretraining
+4. **`scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh`**: Runs fine-tuning experiments
 
 ## Verification
 To verify the mixed dataset was created correctly:

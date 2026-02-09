@@ -62,7 +62,7 @@ third_party/neuraloperators-TL-scaling/
 4. **Navigate to project and submit job:**
    ```bash
    cd ~/thesis-fno-constraints/third_party/neuraloperators-TL-scaling
-   sbatch scripts/slurm/submit_job_container.sh
+   sbatch scripts/slurm/pretrain/submit_pretrain_single_ddp.sh
    ```
 
 ### Option 2: Virtual Environment (for Development)
@@ -75,14 +75,14 @@ third_party/neuraloperators-TL-scaling/
 
 2. **Submit job:**
    ```bash
-   sbatch scripts/slurm/submit_job.sh
+   sbatch scripts/slurm/legacy/submit_pretrain_venv.sh
    ```
 
 ## 📝 Customizing Training Jobs
 
 ### Single Training Run
 
-Edit `scripts/slurm/submit_job_container.sh` to modify:
+Edit `scripts/slurm/pretrain/submit_pretrain_single_ddp.sh` to modify:
 
 ```bash
 # Configuration file
@@ -104,7 +104,7 @@ The array job script runs three different PDE systems:
 
 Submit with:
 ```bash
-sbatch scripts/slurm/submit_job_array_container.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_array_ddp.sh
 ```
 
 Customize the configurations in the script:
@@ -121,13 +121,13 @@ configs=(
 ### Submit Jobs
 ```bash
 # Single training run (container)
-sbatch scripts/slurm/submit_job_container.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_single_ddp.sh
 
 # Array job for multiple PDEs (container)
-sbatch scripts/slurm/submit_job_array_container.sh
+sbatch scripts/slurm/pretrain/submit_pretrain_array_ddp.sh
 
 # Single run with venv (development)
-sbatch scripts/slurm/submit_job.sh
+sbatch scripts/slurm/legacy/submit_pretrain_venv.sh
 ```
 
 ### Monitor Jobs
@@ -267,7 +267,7 @@ sinfo -p gpu
 ls -lh ~/neuraloperators.sif
 
 # Check path in SLURM script
-grep CONTAINER_PATH scripts/slurm/submit_job_container.sh
+grep CONTAINER_PATH scripts/slurm/pretrain/submit_pretrain_single_ddp.sh
 ```
 
 ### Module Loading Issues
