@@ -13,7 +13,7 @@
 #SBATCH --array=0-4
 
 # Mixed Dataset Fine-Tuning Array Job
-# This script fine-tunes the mixed-pretrained model on Poisson k∈[5,10] domain
+# This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
 # with different numbers of downstream examples: 16, 64, 256, 1k, 4k
 #
 # Prerequisites:

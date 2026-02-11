@@ -1,192 +1,77 @@
-# Converting Poisson Datasets for Mixed-Pretrained Model Fine-Tuning
+# Converting Poisson Datasets For Mixed-Pretrained Fine-Tuning
 
 ## Problem
 
-When fine-tuning a mixed-pretrained model on a single-domain Poisson task, there's a tensor dimension mismatch:
+Mixed-pretrained checkpoints expect mixed-format inputs:
 
-- **Standard Poisson datasets**: 3-component tensors `[k11, k12, k22]`
-- **Mixed-pretrained model**: Expects 6 input channels = 1 (source) + 5 (tensor)
+- mixed model input: `in_dim = 7`
+- composition: `1 source + 6 tensor channels`
+
+Standard Poisson datasets use only 3 tensor coefficients (`k11, k12, k22`), so they must be converted for mixed-finetune configs.
 
 ## Solution
 
-Convert Poisson datasets to have 5-component tensors with zero-padding: `[k11, k12, k22, 0, 0]`
+Convert Poisson tensors from 3 to 6 components with zero padding:
 
-This maintains compatibility with the mixed-pretrained model while preserving all Poisson data.
+```text
+[k11, k12, k22] -> [k11, k12, k22, 0, 0, 0]
+```
 
 ## Quick Start
 
-### Option 1: Batch Convert All Splits (Recommended)
+Batch convert all `k in [1.0, 2.5]` Poisson splits:
 
 ```bash
-# Convert train, val, and test datasets at once
 bash scripts/utils/convert_k1_2.5_to_mixed_format.sh
 ```
 
-This will:
-- Convert all three splits in place
-- Create `.backup` files of originals
-- Verify the conversion
-
-### Option 2: Convert Individual Files
+Or convert one file:
 
 ```bash
-# Convert a single dataset
-python utils/convert_poisson_to_mixed_format.py \
-    --input_path data/poisson/_train_k1_2.5_32k.h5 \
-    --in_place
+python utils/convert_poisson_to_mixed_format.py   --input_path data/poisson/_train_k1.0_2.5_32k.h5   --in_place
 ```
 
-### Option 3: Convert to New File (Keep Original)
+## Before vs After
+
+Before:
+
+- `fields`: `(n, 2, 128, 128)`
+- `tensor`: `(n, 3)`
+
+After:
+
+- `fields`: `(n, 2, 128, 128)`
+- `tensor`: `(n, 6)`
+
+## Workflow
+
+1. Generate Poisson downstream data (`k in [1.0, 2.5]`)
+2. Convert with `convert_poisson_to_mixed_format.py`
+3. Update mixed checkpoint path:
 
 ```bash
-# Create a new file instead of modifying in place
-python utils/convert_poisson_to_mixed_format.py \
-    --input_path data/poisson/_train_k1_2.5_32k.h5 \
-    --output_path data/poisson/_train_k1_2.5_32k_mixed_format.h5
-```
-
-## What the Conversion Does
-
-### Before Conversion
-```
-HDF5 Structure:
-  fields: (n, 2, 128, 128)  - Source field and solution
-  tensor: (n, 3)            - [k11, k12, k22]
-```
-
-### After Conversion
-```
-HDF5 Structure:
-  fields: (n, 2, 128, 128)  - Unchanged
-  tensor: (n, 5)            - [k11, k12, k22, 0, 0]
-```
-
-The last two components are zero-padded to match the mixed dataset format.
-
-## Complete Workflow
-
-### 1. Generate Poisson k∈[1,2.5] Dataset
-
-```bash
-# On the cluster or locally
-python utils/gen_data_poisson.py \
-    --train_samples 32768 \
-    --val_samples 4096 \
-    --test_samples 4096 \
-    --e1 1.0 \
-    --e2 2.5 \
-    --save_name k1_2.5 \
-    --nx 128 \
-    --ny 128
-```
-
-### 2. Convert to Mixed-Compatible Format
-
-```bash
-# Batch convert all splits
-bash scripts/utils/convert_k1_2.5_to_mixed_format.sh
-```
-
-### 3. Update Config Checkpoint Paths
-
-```bash
-# After mixed pretraining completes
 bash scripts/utils/update_mixed_checkpoint_path.sh <mixed_pretrain_job_id>
 ```
 
-### 4. Fine-Tune on Converted Datasets
+4. Run mixed fine-tuning:
 
 ```bash
-# Submit fine-tuning array job
 sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
 ```
 
-The config already points to the correct paths:
-- `data/poisson/_train_k1_2.5_32k.h5`
-- `data/poisson/_val_k1_2.5_4k.h5`
-- `data/poisson/_test_k1_2.5_4k.h5`
-
 ## Verification
 
-After conversion, the script shows verification output:
+Expected converter output:
 
-```
-Verification:
-  Output tensor shape: (32768, 5)
-  First sample (original): [k11_value, k12_value, k22_value]
-  First sample (new):      [k11_value, k12_value, k22_value, 0.0000, 0.0000]
+```text
+Output tensor shape: (N, 6)
+First sample (new): [k11, k12, k22, 0, 0, 0]
 ```
 
-## Backup and Recovery
+## Notes
 
-### Automatic Backup
-When using `--in_place`, a backup is automatically created:
-```
-data/poisson/_train_k1_2.5_32k.h5.backup
-```
-
-### Restore from Backup
-```bash
-# If you need to restore the original
-cp data/poisson/_train_k1_2.5_32k.h5.backup data/poisson/_train_k1_2.5_32k.h5
-```
-
-## Technical Details
-
-### Why This is Needed
-
-The mixed-pretrained model has learned to handle 6 input channels:
-- 1 source field
-- 5 tensor components (expanded spatially by PDESolns)
-
-When loading Poisson data for fine-tuning:
-- Original format: 3 tensor components → 4 total channels (1 + 3)
-- Mixed format: 5 tensor components → 6 total channels (1 + 5)
-
-By zero-padding Poisson tensors to 5 components, we match the mixed model's architecture without retraining.
-
-### Model Compatibility
-
-The fine-tuning configs in `operators_mixed.yaml` specify:
-```yaml
-in_dim: 6  # Must match mixed model (6 input channels)
-```
-
-This ensures the model architecture matches between pretraining and fine-tuning.
-
-### Zero-Padding Layout
-
-The tensor layout across all three PDE systems is:
-```
-Poisson:    [k11, k12, k22,  0,  0]  ← zero-padded
-AdvDiff:    [k11, k12, k22, vx, vy]
-Helmholtz:  [k,  omega,  0,  0,  0]
-```
-
-## Troubleshooting
-
-### "Expected 3-component tensor" Error
-The dataset is already in 5-component format or not a Poisson dataset. Check:
-```bash
-python -c "import h5py; f=h5py.File('data/poisson/_train_k1_2.5_32k.h5','r'); print(f['tensor'].shape)"
-```
-
-Should show `(n, 3)` before conversion, `(n, 5)` after.
-
-### File Not Found
-Generate the dataset first:
-```bash
-python utils/gen_data_poisson.py --e1 1.0 --e2 2.5 --save_name k1_2.5 ...
-```
-
-### Different Number of Samples
-Update the script if you generated datasets with different sizes:
-- Training: default 32768 (32k)
-- Validation: default 4096 (4k)
-- Test: default 4096 (4k)
-
-## Related Documentation
-
-- `MIXED_CONFIG_REFERENCE.md` - Mixed dataset configuration guide
-- `MIXED_DATASET_EXPLANATION.md` - Mixed dataset format details
-- `EVAL_TRANSFER_LEARNING.md` - Evaluation and comparison guide
+- `--in_place` creates `.backup` files automatically.
+- Mixed layout convention remains:
+  - Poisson: `[k11, k12, k22, 0, 0, 0]`
+  - AdvDiff: `[k11, k12, k22, vx, vy, 0]`
+  - Helmholtz: `[k, 0, k, 0, 0, omega]`

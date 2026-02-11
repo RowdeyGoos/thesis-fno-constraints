@@ -7,7 +7,7 @@
 
 echo "=============================================="
 echo "Converting Poisson k∈[1,2.5] datasets"
-echo "to mixed-compatible format (5-component tensors)"
+echo "to mixed-compatible format (6-component tensors)"
 echo "=============================================="
 echo ""
 
@@ -60,7 +60,7 @@ echo "=============================================="
 echo "✓ All datasets converted successfully!"
 echo "=============================================="
 echo ""
-echo "Your Poisson k∈[1,2.5] datasets now have 5-component tensors"
+echo "Your Poisson k∈[1,2.5] datasets now have 6-component tensors"
 echo "and are compatible with the mixed-pretrained model."
 echo ""
 echo "Backup files created:"

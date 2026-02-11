@@ -45,24 +45,24 @@ def check_dataset_format(data_path):
         # Check tensor dimensions
         if tensor_shape[1] == 3:
             print(f"\n  ⚠️  WARNING: Dataset has 3-component tensors")
-            print(f"      Mixed model expects 5-component tensors!")
+            print(f"      Mixed model expects 6-component tensors!")
             print(f"      This will cause dimension mismatch and slow performance.")
             print(f"\n  Solution: Run conversion script:")
             print(f"      bash scripts/utils/convert_k1_2.5_to_mixed_format.sh")
             return False
-        elif tensor_shape[1] == 5:
-            print(f"\n  ✓ Dataset has 5-component tensors (correct for mixed model)")
+        elif tensor_shape[1] == 6:
+            print(f"\n  ✓ Dataset has 6-component tensors (correct for mixed model)")
             
             # Show first sample
             tensor_sample = f['tensor'][0]
             print(f"\n  First sample tensor: [{tensor_sample[0]:.4f}, {tensor_sample[1]:.4f}, "
-                  f"{tensor_sample[2]:.4f}, {tensor_sample[3]:.4f}, {tensor_sample[4]:.4f}]")
+                  f"{tensor_sample[2]:.4f}, {tensor_sample[3]:.4f}, {tensor_sample[4]:.4f}, {tensor_sample[5]:.4f}]")
             
-            # Check if last two components are zero (should be for Poisson)
+            # Check if last three components are zero (should be for Poisson)
             if np.allclose(tensor_sample[3:], 0.0):
-                print(f"  ✓ Last two components are zero (correct for Poisson)")
+                print(f"  ✓ Last three components are zero (correct for Poisson)")
             else:
-                print(f"  ⚠️  Last two components are non-zero (unexpected for Poisson)")
+                print(f"  ⚠️  Last three components are non-zero (unexpected for Poisson)")
             
             return True
         else:
@@ -98,8 +98,8 @@ def check_checkpoint(checkpoint_path):
                     in_channels = first_layer.shape[1]
                     print(f"\n  Model input channels: {in_channels}")
                     
-                    if in_channels == 6:
-                        print(f"  ✓ Model expects 6 input channels (correct for mixed model)")
+                    if in_channels == 7:
+                        print(f"  ✓ Model expects 7 input channels (correct for mixed model)")
                     elif in_channels == 4:
                         print(f"  ⚠️  Model expects 4 input channels (single-domain Poisson)")
                     else:
@@ -271,7 +271,7 @@ def main():
     print("="*60)
     
     if not dataset_ok:
-        print("\n❌ CRITICAL ISSUE: Dataset needs conversion to 5-component format")
+        print("\n❌ CRITICAL ISSUE: Dataset needs conversion to 6-component format")
         print("\n   Run this command:")
         print("   bash scripts/utils/convert_k1_2.5_to_mixed_format.sh")
         return 1

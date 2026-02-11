@@ -4,7 +4,7 @@ Create a mixed dataset combining Poisson, Advection-Diffusion, and Helmholtz dat
 
 This script combines three PDE datasets into a single mixed dataset for multi-task learning,
 following the approach described in the paper (Figure 6a). Datasets are unified by zero-padding
-the tensor coefficients to a common size (5 components).
+the tensor coefficients to a common size (6 components).
 
 As described in the paper:
 "When pre-training a single model on this 'mixed' dataset, we simply use zero channels 

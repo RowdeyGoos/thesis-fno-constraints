@@ -199,15 +199,15 @@ poisson-k1_2.5-finetune-mixed-32k:
 # 
 # Mixed Dataset Structure:
 # - The mixed dataset combines three PDE systems with zero-padding
-# - Tensor layout: [coef0, coef1, coef2, coef3, coef4]
-#   * Poisson:    [k11, k12, k22,  0,  0]
-#   * AdvDiff:    [k11, k12, k22, vx, vy]
-#   * Helmholtz:  [k,  omega,  0,  0,  0]
-# - When loaded, PDESolns expands tensor to spatial channels: 1 + 5 = 6 channels
+# - Tensor layout: [k11, k12, k22, vx, vy, omega]
+#   * Poisson:    [k11, k12, k22,  0,  0,     0]
+#   * AdvDiff:    [k11, k12, k22, vx, vy,     0]
+#   * Helmholtz:  [k,   0,   k,   0,  0, omega]
+# - When loaded, PDESolns expands tensor to spatial channels: 1 + 6 = 7 channels
 #
 # Fine-tuning Strategy:
-# - The mixed-pretrained model has 6 input channels
-# - When fine-tuning on Poisson (normally 4 channels), we keep in_dim: 6
+# - The mixed-pretrained model has 7 input channels
+# - When fine-tuning on Poisson (normally 4 channels), we keep in_dim: 7
 # - The extra channels will receive zero-padded values for Poisson data
 # - This maintains compatibility with the pretrained weights
 #

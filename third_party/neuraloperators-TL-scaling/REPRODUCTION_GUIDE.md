@@ -763,7 +763,7 @@ This section demonstrates multi-task learning by training a single model on mult
 **Experiment Setup:**
 - **Training Systems**: Poisson k∈[1,5] + AdvDiff αdr∈[0.2,1.0] + Helmholtz ω∈[1,10]
 - **Mixed Dataset**: ~10,922 samples per system (total ~32k combined)
-- **Model Input**: 6 channels (zero-padded to handle different PDE input dimensions)
+- **Model Input**: 7 channels (1 source + 6 zero-padded tensor channels)
 - **Target Domain**: Poisson k∈[5,10] (for comparison with single-domain pretraining)
 - **Comparison**: Mixed-domain pretrained vs Single-domain pretrained
 
@@ -778,13 +778,13 @@ As stated in the paper:
 > "When pre-training a single model on this 'mixed' dataset, we simply use zero channels 
 > for those coefficients that do not exist when using examples from a specific operator."
 
-To train a unified model, we **zero-pad all tensor coefficients to 5 components**:
-- Poisson: `[k11, k12, k22, 0, 0]` → 3 diffusion coefficients + 2 zeros
-- AdvDiff: `[k11, k12, k22, vx, vy]` → 3 diffusion + 2 advection (no change)
-- Helmholtz: `[k_constant, omega, 0, 0, 0]` → constant diffusion + wavenumber + 3 zeros
+To train a unified model, we **zero-pad all tensor coefficients to 6 components**:
+- Poisson: `[k11, k12, k22, 0, 0, 0]` → 3 diffusion coefficients + 3 zeros
+- AdvDiff: `[k11, k12, k22, vx, vy, 0]` → 3 diffusion + 2 advection + zero omega
+- Helmholtz: `[k_constant, 0, k_constant, 0, 0, omega]` → isotropic diffusion + wavenumber
 
 During data loading, the PDESolns class expands each tensor component to a spatial channel:
-- **Input to model**: 1 (source) + 5 (tensor expanded) = **6 channels total**
+- **Input to model**: 1 (source) + 6 (tensor expanded) = **7 channels total**
 - The zero-padded values effectively signal which operator is being used
 
 This simple approach allows the model to learn representations across multiple PDE systems
