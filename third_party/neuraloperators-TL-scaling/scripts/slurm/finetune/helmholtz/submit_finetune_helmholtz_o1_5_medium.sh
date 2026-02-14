@@ -61,7 +61,7 @@ trap cleanup_tmp_dir EXIT
 
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
 # Replace JOBID with your actual helm-scale-o1_10 pretraining job ID
-PRETRAIN_CHECKPOINT="experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-JOBID-2/checkpoints/ckpt_best.tar"
+PRETRAIN_CHECKPOINT="experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-12147812-2/checkpoints/ckpt_best.tar"
 
 if [ $SLURM_ARRAY_TASK_ID -lt 2 ]; then
     if [ ! -f "$PRETRAIN_CHECKPOINT" ]; then
