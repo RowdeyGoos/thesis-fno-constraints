@@ -148,6 +148,12 @@ helm-o1_5-zeroshot-mixed:
   batch_size: 128
   valid_batch_size: 128
 
+# Zero-shot scratch baseline (random initialization, no downstream training)
+helm-o1_5-scratch-zeroshot:
+  <<: *helm_o1_5_base
+  batch_size: 128
+  valid_batch_size: 128
+
 # Fine-tuning configs from Helmholtz pretraining (o1_10)
 helm-o1_5-finetune-16: &helm_o1_5_ft_16
   <<: *helm_o1_5_base

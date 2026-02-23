@@ -153,6 +153,12 @@ poisson-k5_10-finetune-4k: &poisson_k5_10_ft_4k
   max_epochs: 50
 
 # From-scratch training configs (no pre-trained weights)
+poisson-k5_10-scratch-zeroshot:
+  <<: *poisson_k5_10_base
+  batch_size: 128
+  valid_batch_size: 128
+  max_epochs: 50
+
 poisson-k5_10-scratch-16: &poisson_k5_10_scratch_16
   <<: *poisson_k5_10_base
   subsample: 2048  # 32768 / 2048 = 16 samples
@@ -212,6 +218,12 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
 poisson-k1_2.5-zeroshot:
   <<: *poisson_k1_2p5_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
+# Zero-shot scratch baseline (random initialization, no downstream training)
+poisson-k1_2.5-scratch-zeroshot:
+  <<: *poisson_k1_2p5_base
   batch_size: 128
   valid_batch_size: 128
 

@@ -103,7 +103,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                 --device cuda:0'
 
 echo ""
-echo "Step 3: Evaluating from-scratch models..."
+echo "Step 3: Evaluating from-scratch models (including zero-shot)..."
 echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
@@ -111,7 +111,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_poisson.yaml \
                 --experiment_type poisson \
-                --configs poisson-k1_2.5-scratch-16 \
+                --configs poisson-k1_2.5-scratch-zeroshot \
+                         poisson-k1_2.5-scratch-16 \
                          poisson-k1_2.5-scratch-64 \
                          poisson-k1_2.5-scratch-256 \
                          poisson-k1_2.5-scratch-1k \

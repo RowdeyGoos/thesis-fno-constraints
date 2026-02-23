@@ -103,7 +103,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                 --device cuda:0'
 
 echo ""
-echo "Step 3: Evaluating from-scratch models..."
+echo "Step 3: Evaluating from-scratch models (including zero-shot)..."
 echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
@@ -111,7 +111,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
              python eval_transfer_learning.py \
                 --yaml_config config/operators_ad.yaml \
                 --experiment_type advdiff \
-                --configs ad-adr0p2_0p4-scratch-16 \
+                --configs ad-adr0p2_0p4-scratch-zeroshot \
+                         ad-adr0p2_0p4-scratch-16 \
                          ad-adr0p2_0p4-scratch-64 \
                          ad-adr0p2_0p4-scratch-256 \
                          ad-adr0p2_0p4-scratch-1k \

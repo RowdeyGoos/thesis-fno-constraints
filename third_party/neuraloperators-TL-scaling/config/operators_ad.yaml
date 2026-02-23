@@ -142,6 +142,12 @@ ad-adr0p2_0p4-zeroshot-mixed:
   batch_size: 128
   valid_batch_size: 128
 
+# Zero-shot scratch baseline (random initialization, no downstream training)
+ad-adr0p2_0p4-scratch-zeroshot:
+  <<: *ad_adr0p2_0p4_base
+  batch_size: 128
+  valid_batch_size: 128
+
 # Fine-tuning configs from AD pretraining (adr0.2_1)
 ad-adr0p2_0p4-finetune-16: &ad_adr0p2_0p4_ft_16
   <<: *ad_adr0p2_0p4_base
