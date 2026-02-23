@@ -7,6 +7,7 @@ This directory is organized by workflow stage.
 - `scripts/slurm/pretrain/` - pretraining jobs (single, array, mixed)
 - `scripts/slurm/finetune/` - downstream fine-tuning and transfer learning jobs
 - `scripts/slurm/eval/` - batch evaluation and plotting jobs
+- `scripts/slurm/smoke/` - quick runtime smoke tests (train + eval)
 - `scripts/slurm/legacy/` - legacy/venv-based submission scripts
 
 ## Primary Entry Points
@@ -28,6 +29,10 @@ See `scripts/slurm/finetune/README.md`.
 - `sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh`
 - `sbatch scripts/slurm/eval/submit_eval_advdiff_transfer.sh`
 - `sbatch scripts/slurm/eval/submit_eval_helmholtz_transfer.sh`
+
+### Smoke test
+
+- `sbatch scripts/slurm/smoke/submit_smoke_train_eval_constraints.sh`
 
 ### Legacy
 
