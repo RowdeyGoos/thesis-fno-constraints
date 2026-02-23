@@ -343,21 +343,31 @@ def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str,
         # Extract metrics from logs
         test_error = inferencer.logs['test_err']
         test_loss = inferencer.logs['test_loss']
+        test_pde_residual_norm = inferencer.logs.get('test_pde_residual_norm', np.nan)
+        test_zero_mode_violation = inferencer.logs.get('test_zero_mode_violation', np.nan)
         
         # Handle tensor values
         if torch.is_tensor(test_error):
             test_error = test_error.item()
         if torch.is_tensor(test_loss):
             test_loss = test_loss.item()
+        if torch.is_tensor(test_pde_residual_norm):
+            test_pde_residual_norm = test_pde_residual_norm.item()
+        if torch.is_tensor(test_zero_mode_violation):
+            test_zero_mode_violation = test_zero_mode_violation.item()
         
         metrics = {
             'test_error': test_error,
             'test_loss': test_loss,
+            'test_pde_residual_norm': test_pde_residual_norm,
+            'test_zero_mode_violation': test_zero_mode_violation,
             'test_time': 0,  # Not returned by launch()
         }
         
         logging.info(f"Results: test_error={metrics['test_error']:.6f}, "
-                    f"test_loss={metrics['test_loss']:.6f}")
+                    f"test_loss={metrics['test_loss']:.6f}, "
+                    f"test_pde_residual_norm={metrics['test_pde_residual_norm']:.6f}, "
+                    f"test_zero_mode_violation={metrics['test_zero_mode_violation']:.6f}")
         
         return metrics
         
@@ -365,7 +375,13 @@ def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str,
         logging.error(f"Error evaluating {config_name}: {e}")
         import traceback
         traceback.print_exc()
-        return {'test_error': np.nan, 'test_loss': np.nan, 'test_time': 0}
+        return {
+            'test_error': np.nan,
+            'test_loss': np.nan,
+            'test_pde_residual_norm': np.nan,
+            'test_zero_mode_violation': np.nan,
+            'test_time': 0
+        }
 
 
 def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]],

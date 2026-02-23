@@ -138,6 +138,7 @@ class Inferencer():
             print("model wt norm = {}".format(self.get_model_wt_norm(self.model)))
 
         self.logs = {}
+        self.loss_func.set_phase('eval')
         test_time, fields = self.test()
         logging.info("testing time = {}".format(test_time))
         if self.log_to_wandb:
@@ -161,9 +162,11 @@ class Inferencer():
         #self.model.train() # need gradients
         test_start = time.time()
 
-        logs_buff = torch.zeros((2), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((4), dtype=torch.float32, device=self.device)
         self.logs['test_err'] = logs_buff[0].view(-1)
         self.logs['test_loss'] = logs_buff[1].view(-1)
+        self.logs['test_pde_residual_norm'] = logs_buff[2].view(-1)
+        self.logs['test_zero_mode_violation'] = logs_buff[3].view(-1)
 
         num_examples = 3
         idx = [np.random.randint(0, len(self.test_data_loader)) for _ in range(num_examples)] # index of batch
@@ -182,9 +185,13 @@ class Inferencer():
                 loss_pde = self.loss_func.pde(inputs, u, targets)
                 loss_bc = self.loss_func.bc(inputs, u, targets)
                 loss = loss_data + loss_bc + loss_pde
+                pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
+                zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
 
                 self.logs['test_err'] += l2_err(u.detach(), targets.detach()) # computes rel l2 err of each image and averages across batches
                 self.logs['test_loss'] += loss.detach()
+                self.logs['test_pde_residual_norm'] += pde_residual_norm.detach()
+                self.logs['test_zero_mode_violation'] += zero_mode_violation.detach()
                 if i in idx: 
                     source = inputs[img_idx[ii],0].detach().cpu().numpy() 
                     soln = targets[img_idx[ii],0].detach().cpu().numpy()
@@ -194,13 +201,15 @@ class Inferencer():
 
         self.logs['test_err'] /= len(self.test_data_loader)
         self.logs['test_loss'] /= len(self.test_data_loader)
+        self.logs['test_pde_residual_norm'] /= len(self.test_data_loader)
+        self.logs['test_zero_mode_violation'] /= len(self.test_data_loader)
 
         if dist.is_initialized():
-            for key in ['test_loss', 'test_err']:
+            for key in ['test_loss', 'test_err', 'test_pde_residual_norm', 'test_zero_mode_violation']:
                 dist.all_reduce(self.logs[key].detach())
                 self.logs[key] = float(self.logs[key]/dist.get_world_size())
         else:
-            for key in ['test_loss', 'test_err']:
+            for key in ['test_loss', 'test_err', 'test_pde_residual_norm', 'test_zero_mode_violation']:
                 self.logs[key] = float(self.logs[key])
 
         if self.log_to_screen:
@@ -214,7 +223,11 @@ class Inferencer():
         return test_time, fields
 
     def restore_checkpoint(self, checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location='cuda:{}'.format(self.local_rank)) 
+        if torch.cuda.is_available():
+            map_location = 'cuda:{}'.format(self.local_rank)
+        else:
+            map_location = torch.device('cpu')
+        checkpoint = torch.load(checkpoint_path, map_location=map_location)
         try:
             self.model.load_state_dict(checkpoint['model_state'])
         except:

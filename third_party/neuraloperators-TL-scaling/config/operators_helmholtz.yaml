@@ -32,6 +32,20 @@ default: &DEFAULT
   log_to_wandb: !!bool False
   distill: !!bool False
   subsample: 1
+  # constraint defaults (all off for baseline comparability)
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool False
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.1
+  constraint_pde_eps: 1.0e-8
+  constraint_pde_relative_norm: !!bool True
+  constraint_pde_method: 'penalty'  # options: penalty, augmented_lagrangian
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+  constraint_diffusion_tensor_order: 'k11_k22_k12'
 
 helmholtz: &helmholtz
   <<: *DEFAULT
@@ -118,6 +132,7 @@ helm-o1_5-mixed-base: &helm_o1_5_mixed_base
   max_epochs: 500
   system: 'helmholtz'
   in_dim: 7  # Helmholtz with mixed format: 1 (source) + 6 (tensor) = 7 input channels
+  constraint_diffusion_tensor_order: 'k11_k12_k22'
   out_dim: 1
 
 # Zero-shot evaluation configs (no downstream training)

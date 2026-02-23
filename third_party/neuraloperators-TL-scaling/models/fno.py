@@ -11,7 +11,10 @@ class FNN2d(nn.Module):
                  in_dim=3, out_dim=1,
                  dropout=0,
                  activation='tanh',
-                 mean_constraint=False):
+                 mean_constraint=False,
+                 mean_constraint_mode='all',
+                 mean_constraint_omega_channel=None,
+                 mean_constraint_omega_tol=1.0e-8):
         super(FNN2d, self).__init__()
 
         """
@@ -51,11 +54,27 @@ class FNN2d(nn.Module):
         self.fc2 = nn.Linear(fc_dim, out_dim)
         self.activation = _get_act(activation)
         self.mean_constraint = mean_constraint
+        self.mean_constraint_mode = mean_constraint_mode
+        self.mean_constraint_omega_channel = mean_constraint_omega_channel
+        self.mean_constraint_omega_tol = mean_constraint_omega_tol
+
+    def _mean_projection_mask(self, inputs):
+        if self.mean_constraint_mode == 'all':
+            return None
+
+        if self.mean_constraint_mode == 'gauge_aware':
+            if self.mean_constraint_omega_channel is None:
+                return None
+            omega = inputs[:, self.mean_constraint_omega_channel:self.mean_constraint_omega_channel+1]
+            return (torch.abs(omega) <= self.mean_constraint_omega_tol)
+
+        return None
 
     def forward(self, x):
         '''
         (b,c,h,w) -> (b,1,h,w)
         '''
+        input_tensor = x
         length = len(self.ws)
         batchsize = x.shape[0]
         size_x, size_y = x.shape[2], x.shape[3]
@@ -80,7 +99,12 @@ class FNN2d(nn.Module):
         x = x.permute(0, 3, 1, 2)
 
         if self.mean_constraint:
-            x = x - torch.mean(x, dim=(-2,-1), keepdim=True)
+            dc = torch.mean(x, dim=(-2, -1), keepdim=True)
+            mean_mask = self._mean_projection_mask(input_tensor)
+            if mean_mask is None:
+                x = x - dc
+            else:
+                x = x - dc * mean_mask.to(x.dtype)
 
         return x
 
@@ -97,6 +121,23 @@ def fno(params):
 
     input_dim = params.in_dim
 
+    zero_mode_enable = bool(getattr(params, 'constraint_zero_mode_enable', False))
+    zero_mode_mode = str(getattr(params, 'constraint_zero_mode_mode', 'all')).lower()
+    zero_mode_tol = float(getattr(params, 'constraint_zero_mode_omega_tol', 1.0e-8))
+
+    omega_channel = getattr(params, 'constraint_zero_mode_omega_channel', None)
+    if omega_channel is None:
+        system = str(getattr(params, 'system', '')).lower()
+        if input_dim >= 7:
+            omega_channel = 6
+        elif system == 'helmholtz' and input_dim >= 3:
+            omega_channel = 2
+    else:
+        omega_channel = int(omega_channel)
+
     return FNN2d(params.modes1, params.modes2, layers=params.layers, fc_dim=params.fc_dim,
                 in_dim=input_dim, out_dim=params.out_dim, dropout=params.dropout,
-                activation='gelu', mean_constraint=(params.loss_func == 'pde'))
+                activation='gelu', mean_constraint=zero_mode_enable,
+                mean_constraint_mode=zero_mode_mode,
+                mean_constraint_omega_channel=omega_channel,
+                mean_constraint_omega_tol=zero_mode_tol)

@@ -222,10 +222,14 @@ class Trainer():
                 self.train_sampler.set_epoch(epoch)
             start = time.time()
 
+            self.loss_func.set_epoch(self.epoch, self.params.max_epochs)
+            self.loss_func.set_phase('train')
             # train
             tr_time = self.train_one_epoch()
+            self.loss_func.set_phase('eval')
             val_time, fields = self.val_one_epoch()
             self.logs['wt_norm'] = self.get_model_wt_norm(self.model)
+            self.logs['pde_al_lambda'] = self.loss_func.get_aug_lagrange_multiplier()
 
             if self.params.scheduler == 'reducelr':
                 self.scheduler.step(self.logs['train_loss'])
@@ -265,6 +269,11 @@ class Trainer():
                 logging.info('Time taken for epoch {} is {} sec; with {}/{} in tr/val'.format(self.epoch+1, time.time()-start, tr_time, val_time))
                 logging.info('Loss (total = data + bc + pde) {} = {} + {} + {}'.format(self.logs['train_loss'], self.logs['data_loss'],
                 self.logs['bc_loss'], self.logs['pde_loss']))
+                logging.info('Constraint metrics: tr_pde_res={} tr_zero_mode={} val_pde_res={} val_zero_mode={} pde_al_lambda={}'.format(
+                    self.logs['pde_residual_norm'], self.logs['zero_mode_violation'],
+                    self.logs['val_pde_residual_norm'], self.logs['val_zero_mode_violation'],
+                    self.logs['pde_al_lambda']
+                ))
 
 
         if self.log_to_wandb:
@@ -291,13 +300,16 @@ class Trainer():
         self.model.train()
 
         # buffers for logs
-        logs_buff = torch.zeros((6), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((9), dtype=torch.float32, device=self.device)
         self.logs['train_loss'] = logs_buff[0].view(-1)
         self.logs['data_loss'] = logs_buff[1].view(-1)
         self.logs['bc_loss'] = logs_buff[2].view(-1)
         self.logs['pde_loss'] = logs_buff[3].view(-1)
-        self.logs['grad'] = logs_buff[4].view(-1)
-        self.logs['tr_err'] = logs_buff[5].view(-1)
+        self.logs['pde_residual_norm'] = logs_buff[4].view(-1)
+        self.logs['zero_mode_violation'] = logs_buff[5].view(-1)
+        self.logs['grad'] = logs_buff[6].view(-1)
+        self.logs['tr_err'] = logs_buff[7].view(-1)
+        self.logs['pde_al_lambda'] = logs_buff[8].view(-1)
 
 
         for i, (inputs, targets) in enumerate(self.train_data_loader):
@@ -318,6 +330,8 @@ class Trainer():
             loss.backward()
             self.optimizer.step()
 
+            pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
+            zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
             grad_norm = compute_grad_norm(self.model.parameters())
             tr_err = l2_err(u.detach(), targets.detach())
     
@@ -326,8 +340,13 @@ class Trainer():
             self.logs['data_loss'] += loss_data.detach()
             self.logs['bc_loss'] += loss_bc.detach()
             self.logs['pde_loss'] += loss_pde.detach()
+            self.logs['pde_residual_norm'] += pde_residual_norm.detach()
+            self.logs['zero_mode_violation'] += zero_mode_violation.detach()
             self.logs['grad'] += grad_norm
             self.logs['tr_err'] += tr_err
+            self.logs['pde_al_lambda'] += torch.tensor(
+                self.loss_func.get_aug_lagrange_multiplier(), device=self.device, dtype=torch.float32
+            )
 
             tr_time += time.time() - tr_start
 
@@ -335,10 +354,16 @@ class Trainer():
         self.logs['data_loss'] /= len(self.train_data_loader)
         self.logs['bc_loss'] /= len(self.train_data_loader)
         self.logs['pde_loss'] /= len(self.train_data_loader)
+        self.logs['pde_residual_norm'] /= len(self.train_data_loader)
+        self.logs['zero_mode_violation'] /= len(self.train_data_loader)
         self.logs['grad'] /= len(self.train_data_loader)
         self.logs['tr_err'] /= len(self.train_data_loader)
+        self.logs['pde_al_lambda'] /= len(self.train_data_loader)
 
-        logs_to_reduce = ['train_loss', 'data_loss', 'bc_loss', 'pde_loss', 'grad', 'tr_err']
+        logs_to_reduce = [
+            'train_loss', 'data_loss', 'bc_loss', 'pde_loss',
+            'pde_residual_norm', 'zero_mode_violation', 'grad', 'tr_err', 'pde_al_lambda'
+        ]
 
         if dist.is_initialized():
             for key in logs_to_reduce:
@@ -353,9 +378,11 @@ class Trainer():
         #self.model.train() # need gradients
         val_start = time.time()
 
-        logs_buff = torch.zeros((2), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((4), dtype=torch.float32, device=self.device)
         self.logs['val_err'] = logs_buff[0].view(-1)
         self.logs['val_loss'] = logs_buff[1].view(-1)
+        self.logs['val_pde_residual_norm'] = logs_buff[2].view(-1)
+        self.logs['val_zero_mode_violation'] = logs_buff[3].view(-1)
         idx = np.random.randint(0, len(self.val_data_loader))
         img_idx = np.random.randint(0, self.params.local_valid_batch_size)
         with torch.no_grad():
@@ -367,21 +394,31 @@ class Trainer():
                 loss_pde = self.loss_func.pde(inputs, u, targets)
                 loss_bc = self.loss_func.bc(inputs, u, targets)
                 loss = loss_data + loss_bc + loss_pde
+                pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
+                zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
                 self.logs['val_err'] += l2_err(u.detach(), targets.detach())
                 self.logs['val_loss'] += loss.detach()
+                self.logs['val_pde_residual_norm'] += pde_residual_norm.detach()
+                self.logs['val_zero_mode_violation'] += zero_mode_violation.detach()
                 if i == idx: 
                     source = inputs[img_idx,0].detach().cpu().numpy() 
                     soln = targets[img_idx,0].detach().cpu().numpy()
                     pred = u[img_idx,0].detach().cpu().numpy()
-                    pde_res = 0*pred
-                    temp = 0*pred
+                    pde_residual = self.loss_func.get_last_pde_residual_map()
+                    if pde_residual is None:
+                        pde_res = 0*pred
+                    else:
+                        pde_res = pde_residual[img_idx].detach().cpu().numpy()
+                    temp = np.abs(pde_res)
 
         fields = [source, soln, pred, pde_res, temp]
 
         self.logs['val_loss'] /= len(self.val_data_loader)
         self.logs['val_err'] /= len(self.val_data_loader)
+        self.logs['val_pde_residual_norm'] /= len(self.val_data_loader)
+        self.logs['val_zero_mode_violation'] /= len(self.val_data_loader)
         if dist.is_initialized():
-            for key in ['val_loss', 'val_err']:
+            for key in ['val_loss', 'val_err', 'val_pde_residual_norm', 'val_zero_mode_violation']:
                 dist.all_reduce(self.logs[key].detach())
                 self.logs[key] = float(self.logs[key]/dist.get_world_size())
 
@@ -397,7 +434,11 @@ class Trainer():
             torch.save({'iters': self.iters, 'epoch': self.epoch, 'model_state': model.state_dict(), 'optimizer_state_dict': self.optimizer.state_dict(), 'scheduler_state_dict': (self.scheduler.state_dict() if  self.scheduler is not None else None)}, checkpoint_path.replace('.tar', '_best.tar'))
 
     def restore_checkpoint(self, checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location='cuda:{}'.format(self.local_rank)) 
+        if torch.cuda.is_available():
+            map_location = 'cuda:{}'.format(self.local_rank)
+        else:
+            map_location = torch.device('cpu')
+        checkpoint = torch.load(checkpoint_path, map_location=map_location) 
         try:
             self.model.load_state_dict(checkpoint['model_state'])
         except:
@@ -414,7 +455,11 @@ class Trainer():
             self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
     def load_model(self, checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location='cuda:{}'.format(self.local_rank)) 
+        if torch.cuda.is_available():
+            map_location = 'cuda:{}'.format(self.local_rank)
+        else:
+            map_location = torch.device('cpu')
+        checkpoint = torch.load(checkpoint_path, map_location=map_location) 
         try:
             self.model.load_state_dict(checkpoint['model_state'])
         except:

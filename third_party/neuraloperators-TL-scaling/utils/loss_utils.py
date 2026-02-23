@@ -2,10 +2,7 @@
   loss functions
 """
 import torch
-import logging
 import numpy as np
-import time
-import torchvision
 
 
 class LossMSE():
@@ -13,6 +10,194 @@ class LossMSE():
     def __init__(self, params, model):
         self.params = params
         self.model = model
+        self.device = params.device
+        self.system = str(getattr(params, 'system', '')).lower()
+        self.phase = 'eval'
+        self.epoch = 0
+        self.max_epochs = max(1, int(getattr(params, 'max_epochs', 1)))
+
+        # PDE residual settings
+        self.constraint_pde_enable = bool(getattr(params, 'constraint_pde_enable', False))
+        self.constraint_pde_weight = float(getattr(params, 'constraint_pde_weight', 0.0))
+        self.constraint_pde_warmup_fraction = float(getattr(params, 'constraint_pde_warmup_fraction', 0.0))
+        self.constraint_pde_eps = float(getattr(params, 'constraint_pde_eps', 1.0e-8))
+        self.constraint_pde_relative_norm = bool(getattr(params, 'constraint_pde_relative_norm', True))
+        self.constraint_pde_method = str(getattr(params, 'constraint_pde_method', 'penalty')).lower()
+        self.constraint_pde_al_rho = float(getattr(params, 'constraint_pde_al_rho', 1.0))
+        self.constraint_pde_al_lambda0 = float(getattr(params, 'constraint_pde_al_lambda0', 0.0))
+        self.constraint_pde_al_dual_clip = float(getattr(params, 'constraint_pde_al_dual_clip', 1.0e6))
+
+        # Zero-mode metric settings
+        self.constraint_zero_mode_mode = str(getattr(params, 'constraint_zero_mode_mode', 'all')).lower()
+        self.constraint_zero_mode_omega_tol = float(getattr(params, 'constraint_zero_mode_omega_tol', 1.0e-8))
+
+        self.constraint_diffusion_tensor_order = str(
+            getattr(params, 'constraint_diffusion_tensor_order', 'k11_k22_k12')
+        ).lower()
+
+        self._layout = self._infer_layout()
+        self._coeff_scales = self._load_coeff_scales()
+        self._fft_cache = {}
+
+        self._al_lambda = self.constraint_pde_al_lambda0
+        self._epoch_constraint_sum = 0.0
+        self._epoch_constraint_count = 0
+
+        self._last_pde_residual_norm = torch.tensor(0.0, device=self.device, dtype=torch.float32)
+        self._last_pde_constraint = torch.tensor(0.0, device=self.device, dtype=torch.float32)
+        self._last_pde_residual_map = None
+
+    def _load_coeff_scales(self):
+        if not hasattr(self.params, 'scales_path'):
+            return None
+        try:
+            scales = np.load(self.params.scales_path).astype('float32')
+        except Exception:
+            return None
+
+        n_tensor_channels = max(0, int(getattr(self.params, 'in_dim', 1)) - 1)
+        if n_tensor_channels == 0:
+            return None
+
+        coeff_scales = scales[1:1+n_tensor_channels]
+        if len(coeff_scales) == 0:
+            return None
+        return torch.tensor(coeff_scales, device=self.device, dtype=torch.float32)
+
+    def _infer_layout(self):
+        in_dim = int(getattr(self.params, 'in_dim', 1))
+        layout = {
+            'source_idx': 0,
+            'k11_idx': None,
+            'k12_idx': None,
+            'k22_idx': None,
+            'vx_idx': None,
+            'vy_idx': None,
+            'omega_idx': None,
+        }
+
+        # Mixed-format layout is canonical and reused by some single-system configs.
+        if in_dim >= 7:
+            layout.update({
+                'k11_idx': 1,
+                'k12_idx': 2,
+                'k22_idx': 3,
+                'vx_idx': 4,
+                'vy_idx': 5,
+                'omega_idx': 6,
+            })
+            return layout
+
+        diffusion_triplets = {
+            'k11_k22_k12': (1, 3, 2),
+            'k11_k12_k22': (1, 2, 3),
+        }
+        if self.constraint_diffusion_tensor_order not in diffusion_triplets:
+            raise ValueError(
+                "constraint_diffusion_tensor_order must be one of "
+                "['k11_k22_k12', 'k11_k12_k22']"
+            )
+
+        k11_idx, k12_idx, k22_idx = diffusion_triplets[self.constraint_diffusion_tensor_order]
+
+        if self.system in ['poisson'] and in_dim >= 4:
+            layout.update({'k11_idx': k11_idx, 'k12_idx': k12_idx, 'k22_idx': k22_idx})
+        elif self.system in ['advection-diffusion', 'advdiff', 'advection_diffusion'] and in_dim >= 6:
+            layout.update({
+                'k11_idx': k11_idx,
+                'k12_idx': k12_idx,
+                'k22_idx': k22_idx,
+                'vx_idx': 4,
+                'vy_idx': 5,
+            })
+        elif self.system in ['helmholtz'] and in_dim >= 3:
+            # Helmholtz legacy format uses [source, diff_coef, omega].
+            layout.update({
+                'k11_idx': 1,
+                'k12_idx': None,
+                'k22_idx': 1,
+                'omega_idx': 2,
+            })
+        elif in_dim >= 4:
+            layout.update({'k11_idx': k11_idx, 'k12_idx': k12_idx, 'k22_idx': k22_idx})
+
+        return layout
+
+    def _get_fft_factors(self, nx, ny, dtype, device):
+        complex_dtype = torch.complex64 if dtype in [torch.float16, torch.bfloat16, torch.float32] else torch.complex128
+        key = (nx, ny, complex_dtype, device)
+        if key in self._fft_cache:
+            return self._fft_cache[key]
+
+        kx = torch.fft.fftfreq(nx, d=1.0 / nx, device=device).view(1, nx, 1)
+        ky = torch.fft.fftfreq(ny, d=1.0 / ny, device=device).view(1, 1, ny)
+
+        factor_x = (2.0 * np.pi / float(self.params.Lx))
+        factor_y = (2.0 * np.pi / float(self.params.Ly))
+        ikx = (1j * kx * factor_x).to(complex_dtype)
+        iky = (1j * ky * factor_y).to(complex_dtype)
+
+        self._fft_cache[key] = (ikx, iky)
+        return ikx, iky
+
+    def _grad(self, u):
+        # u is [B, nx, ny]
+        nx, ny = u.shape[-2], u.shape[-1]
+        ikx, iky = self._get_fft_factors(nx, ny, u.dtype, u.device)
+        u_hat = torch.fft.fft2(u, dim=(-2, -1))
+        ux = torch.fft.ifft2(u_hat * ikx, dim=(-2, -1)).real
+        uy = torch.fft.ifft2(u_hat * iky, dim=(-2, -1)).real
+        return ux, uy
+
+    def _div(self, ux, uy):
+        # ux, uy are [B, nx, ny]
+        nx, ny = ux.shape[-2], ux.shape[-1]
+        ikx, iky = self._get_fft_factors(nx, ny, ux.dtype, ux.device)
+        ux_hat = torch.fft.fft2(ux, dim=(-2, -1))
+        uy_hat = torch.fft.fft2(uy, dim=(-2, -1))
+        div_hat = ux_hat * ikx + uy_hat * iky
+        return torch.fft.ifft2(div_hat, dim=(-2, -1)).real
+
+    def _get_channel(self, inputs, idx):
+        if idx is None or idx >= inputs.shape[1]:
+            return torch.zeros_like(inputs[:, 0])
+        return inputs[:, idx]
+
+    def _get_coeff_channel(self, inputs, idx):
+        coeff = self._get_channel(inputs, idx)
+        if self._coeff_scales is None or idx is None:
+            return coeff
+        coeff_idx = idx - 1
+        if coeff_idx < 0 or coeff_idx >= len(self._coeff_scales):
+            return coeff
+        return coeff * self._coeff_scales[coeff_idx].to(coeff.dtype)
+
+    def _current_pde_weight(self):
+        warmup_epochs = int(self.constraint_pde_warmup_fraction * self.max_epochs)
+        if warmup_epochs <= 0:
+            return self.constraint_pde_weight
+        warmup_scale = min(1.0, float(self.epoch + 1) / float(warmup_epochs))
+        return self.constraint_pde_weight * warmup_scale
+
+    def set_phase(self, phase):
+        self.phase = phase
+
+    def set_epoch(self, epoch, max_epochs):
+        self.epoch = int(epoch)
+        self.max_epochs = max(1, int(max_epochs))
+
+        if self.constraint_pde_method != 'augmented_lagrangian' or not self.constraint_pde_enable:
+            self._epoch_constraint_sum = 0.0
+            self._epoch_constraint_count = 0
+            return
+
+        if self.epoch > 0 and self._epoch_constraint_count > 0:
+            avg_constraint = self._epoch_constraint_sum / float(self._epoch_constraint_count)
+            self._al_lambda += self.constraint_pde_al_rho * avg_constraint
+            self._al_lambda = max(0.0, min(self._al_lambda, self.constraint_pde_al_dual_clip))
+
+        self._epoch_constraint_sum = 0.0
+        self._epoch_constraint_count = 0
 
     def data(self, inputs, pred, target):
         if self.params.loss_style == 'mean':
@@ -21,11 +206,119 @@ class LossMSE():
             loss = torch.sum((target - pred)**2)/pred.shape[0]
         return loss
 
+    def _zero_mode_mask(self, inputs):
+        if self.constraint_zero_mode_mode == 'all':
+            return None
+
+        if self.constraint_zero_mode_mode == 'gauge_aware':
+            omega_idx = self._layout.get('omega_idx')
+            if omega_idx is None:
+                if self.system == 'helmholtz':
+                    return torch.zeros((inputs.shape[0],), dtype=torch.bool, device=inputs.device)
+                return None
+            omega = self._get_channel(inputs, omega_idx)
+            omega_sample = torch.mean(torch.abs(omega), dim=(-2, -1))
+            return omega_sample <= self.constraint_zero_mode_omega_tol
+
+        return None
+
+    def zero_mode_violation(self, inputs, pred):
+        means = torch.abs(torch.mean(pred, dim=(-2, -1))).squeeze(1)
+        mask = self._zero_mode_mask(inputs)
+        if mask is None:
+            return torch.mean(means)
+        if torch.any(mask):
+            return torch.mean(means[mask])
+        return torch.zeros((), dtype=means.dtype, device=means.device)
+
+    def _compute_residual(self, inputs, pred):
+        source = self._get_channel(inputs, self._layout['source_idx'])
+        u = pred[:, 0]
+
+        k11 = self._get_coeff_channel(inputs, self._layout.get('k11_idx'))
+        k12 = self._get_coeff_channel(inputs, self._layout.get('k12_idx'))
+        k22 = self._get_coeff_channel(inputs, self._layout.get('k22_idx'))
+        vx = self._get_coeff_channel(inputs, self._layout.get('vx_idx'))
+        vy = self._get_coeff_channel(inputs, self._layout.get('vy_idx'))
+        omega = self._get_coeff_channel(inputs, self._layout.get('omega_idx'))
+
+        ux, uy = self._grad(u)
+        flux_x = k11 * ux + k12 * uy
+        flux_y = k12 * ux + k22 * uy
+        diffusion_term = self._div(flux_x, flux_y)
+        advection_term = vx * ux + vy * uy
+        helmholtz_term = omega * u
+
+        residual = torch.zeros_like(source)
+
+        if self.system == 'mixed':
+            omega_abs = torch.mean(torch.abs(omega), dim=(-2, -1))
+            vel_norm = torch.sqrt(torch.mean(vx**2 + vy**2, dim=(-2, -1)))
+            helm_mask = omega_abs > self.constraint_zero_mode_omega_tol
+            adv_mask = (~helm_mask) & (vel_norm > self.constraint_zero_mode_omega_tol)
+            poisson_mask = ~(helm_mask | adv_mask)
+
+            if torch.any(poisson_mask):
+                residual[poisson_mask] = diffusion_term[poisson_mask] + source[poisson_mask]
+            if torch.any(adv_mask):
+                residual[adv_mask] = diffusion_term[adv_mask] - advection_term[adv_mask] + source[adv_mask]
+            if torch.any(helm_mask):
+                residual[helm_mask] = diffusion_term[helm_mask] + helmholtz_term[helm_mask] + source[helm_mask]
+
+        elif self.system in ['advection-diffusion', 'advdiff', 'advection_diffusion']:
+            residual = diffusion_term - advection_term + source
+        elif self.system in ['helmholtz']:
+            residual = diffusion_term + helmholtz_term + source
+        else:
+            residual = diffusion_term + source
+
+        return residual, source
+
+    def _pde_metric(self, residual, source):
+        res_norm = torch.sqrt(torch.sum(residual**2, dim=(-2, -1)))
+        src_norm = torch.sqrt(torch.sum(source**2, dim=(-2, -1)))
+        if self.constraint_pde_relative_norm:
+            metric = res_norm / (src_norm + self.constraint_pde_eps)
+        else:
+            metric = res_norm
+
+        raw_loss = torch.mean(metric**2)
+        constraint_value = torch.mean(metric)
+        residual_norm = constraint_value
+        return raw_loss, constraint_value, residual_norm
+
     def bc(self, inputs, pred, targets):
         # currently no BC
         return torch.tensor(0.).to(self.params.device, dtype=torch.float32)
 
     def pde(self, inputs, pred, targets):
-        # currently no PDE loss
-        return torch.tensor(0.).to(self.params.device, dtype=torch.float32)
+        residual, source = self._compute_residual(inputs, pred)
+        raw_loss, constraint_value, residual_norm = self._pde_metric(residual, source)
 
+        self._last_pde_residual_norm = residual_norm.detach()
+        self._last_pde_constraint = constraint_value.detach()
+        self._last_pde_residual_map = residual.detach()
+
+        if self.constraint_pde_enable and self.phase == 'train' and torch.is_grad_enabled():
+            self._epoch_constraint_sum += float(constraint_value.detach())
+            self._epoch_constraint_count += 1
+
+        if not self.constraint_pde_enable or self.constraint_pde_weight <= 0:
+            return torch.zeros((), dtype=pred.dtype, device=pred.device)
+
+        pde_weight = self._current_pde_weight()
+        if self.constraint_pde_method == 'augmented_lagrangian':
+            lagrange_term = self._al_lambda * constraint_value
+            penalty_term = 0.5 * self.constraint_pde_al_rho * (constraint_value**2)
+            return pde_weight * (lagrange_term + penalty_term)
+
+        return pde_weight * raw_loss
+
+    def get_last_pde_residual_norm(self):
+        return self._last_pde_residual_norm
+
+    def get_last_pde_residual_map(self):
+        return self._last_pde_residual_map
+
+    def get_aug_lagrange_multiplier(self):
+        return self._al_lambda
