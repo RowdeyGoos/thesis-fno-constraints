@@ -4,6 +4,29 @@ import torch.nn as nn
 from .basics import SpectralConv2dV2, _get_act
 
 
+def _coerce_bool(val):
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.strip().lower() in ['1', 'true', 'yes', 'y', 'on']
+    return bool(val)
+
+
+def _resolve_zero_mode_enforcement(params):
+    enforcement = getattr(params, 'constraint_zero_mode_enforcement', None)
+    if enforcement is not None:
+        if isinstance(enforcement, bool):
+            return 'hard' if enforcement else 'off'
+        enforcement = str(enforcement).strip().lower()
+        if enforcement in ['true', 'false']:
+            return 'hard' if enforcement == 'true' else 'off'
+        if enforcement not in ['off', 'hard', 'soft']:
+            raise ValueError("constraint_zero_mode_enforcement must be one of ['off', 'hard', 'soft']")
+        return enforcement
+
+    return 'hard' if _coerce_bool(getattr(params, 'constraint_zero_mode_enable', False)) else 'off'
+
+
 class FNN2d(nn.Module):
     def __init__(self, modes1, modes2,
                  width=64, fc_dim=128,
@@ -121,7 +144,8 @@ def fno(params):
 
     input_dim = params.in_dim
 
-    zero_mode_enable = bool(getattr(params, 'constraint_zero_mode_enable', False))
+    zero_mode_enforcement = _resolve_zero_mode_enforcement(params)
+    zero_mode_enable = (zero_mode_enforcement == 'hard')
     zero_mode_mode = str(getattr(params, 'constraint_zero_mode_mode', 'all')).lower()
     zero_mode_tol = float(getattr(params, 'constraint_zero_mode_omega_tol', 1.0e-8))
 

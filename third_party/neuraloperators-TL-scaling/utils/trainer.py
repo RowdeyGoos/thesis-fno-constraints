@@ -267,10 +267,17 @@ class Trainer():
 
             if self.log_to_screen:
                 logging.info('Time taken for epoch {} is {} sec; with {}/{} in tr/val'.format(self.epoch+1, time.time()-start, tr_time, val_time))
-                logging.info('Loss (total = data + bc + pde) {} = {} + {} + {}'.format(self.logs['train_loss'], self.logs['data_loss'],
-                self.logs['bc_loss'], self.logs['pde_loss']))
-                logging.info('Constraint metrics: tr_pde_res={} tr_zero_mode={} val_pde_res={} val_zero_mode={} pde_al_lambda={}'.format(
+                logging.info(
+                    'Loss (total = data + bc + pde + zero) {} = {} + {} + {} + {}'.format(
+                        self.logs['train_loss'], self.logs['data_loss'],
+                        self.logs['bc_loss'], self.logs['pde_loss'],
+                        self.logs['zero_mode_constraint_loss']
+                    )
+                )
+                logging.info('Constraint metrics: tr_zero_loss={} tr_pde_res={} tr_zero_mode={} val_zero_loss={} val_pde_res={} val_zero_mode={} pde_al_lambda={}'.format(
+                    self.logs['zero_mode_constraint_loss'],
                     self.logs['pde_residual_norm'], self.logs['zero_mode_violation'],
+                    self.logs['val_zero_mode_constraint_loss'],
                     self.logs['val_pde_residual_norm'], self.logs['val_zero_mode_violation'],
                     self.logs['pde_al_lambda']
                 ))
@@ -300,16 +307,17 @@ class Trainer():
         self.model.train()
 
         # buffers for logs
-        logs_buff = torch.zeros((9), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((10), dtype=torch.float32, device=self.device)
         self.logs['train_loss'] = logs_buff[0].view(-1)
         self.logs['data_loss'] = logs_buff[1].view(-1)
         self.logs['bc_loss'] = logs_buff[2].view(-1)
         self.logs['pde_loss'] = logs_buff[3].view(-1)
-        self.logs['pde_residual_norm'] = logs_buff[4].view(-1)
-        self.logs['zero_mode_violation'] = logs_buff[5].view(-1)
-        self.logs['grad'] = logs_buff[6].view(-1)
-        self.logs['tr_err'] = logs_buff[7].view(-1)
-        self.logs['pde_al_lambda'] = logs_buff[8].view(-1)
+        self.logs['zero_mode_constraint_loss'] = logs_buff[4].view(-1)
+        self.logs['pde_residual_norm'] = logs_buff[5].view(-1)
+        self.logs['zero_mode_violation'] = logs_buff[6].view(-1)
+        self.logs['grad'] = logs_buff[7].view(-1)
+        self.logs['tr_err'] = logs_buff[8].view(-1)
+        self.logs['pde_al_lambda'] = logs_buff[9].view(-1)
 
 
         for i, (inputs, targets) in enumerate(self.train_data_loader):
@@ -325,7 +333,8 @@ class Trainer():
             loss_data = self.loss_func.data(inputs, u, targets)
             loss_pde = self.loss_func.pde(inputs, u, targets)
             loss_bc = self.loss_func.bc(inputs, u, targets)
-            loss = loss_data + loss_bc + loss_pde
+            loss_zero = self.loss_func.zero_mode_constraint(inputs, u, targets)
+            loss = loss_data + loss_bc + loss_pde + loss_zero
 
             loss.backward()
             self.optimizer.step()
@@ -340,6 +349,7 @@ class Trainer():
             self.logs['data_loss'] += loss_data.detach()
             self.logs['bc_loss'] += loss_bc.detach()
             self.logs['pde_loss'] += loss_pde.detach()
+            self.logs['zero_mode_constraint_loss'] += loss_zero.detach()
             self.logs['pde_residual_norm'] += pde_residual_norm.detach()
             self.logs['zero_mode_violation'] += zero_mode_violation.detach()
             self.logs['grad'] += grad_norm
@@ -354,6 +364,7 @@ class Trainer():
         self.logs['data_loss'] /= len(self.train_data_loader)
         self.logs['bc_loss'] /= len(self.train_data_loader)
         self.logs['pde_loss'] /= len(self.train_data_loader)
+        self.logs['zero_mode_constraint_loss'] /= len(self.train_data_loader)
         self.logs['pde_residual_norm'] /= len(self.train_data_loader)
         self.logs['zero_mode_violation'] /= len(self.train_data_loader)
         self.logs['grad'] /= len(self.train_data_loader)
@@ -362,7 +373,8 @@ class Trainer():
 
         logs_to_reduce = [
             'train_loss', 'data_loss', 'bc_loss', 'pde_loss',
-            'pde_residual_norm', 'zero_mode_violation', 'grad', 'tr_err', 'pde_al_lambda'
+            'zero_mode_constraint_loss', 'pde_residual_norm', 'zero_mode_violation',
+            'grad', 'tr_err', 'pde_al_lambda'
         ]
 
         if dist.is_initialized():
@@ -378,11 +390,12 @@ class Trainer():
         #self.model.train() # need gradients
         val_start = time.time()
 
-        logs_buff = torch.zeros((4), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((5), dtype=torch.float32, device=self.device)
         self.logs['val_err'] = logs_buff[0].view(-1)
         self.logs['val_loss'] = logs_buff[1].view(-1)
-        self.logs['val_pde_residual_norm'] = logs_buff[2].view(-1)
-        self.logs['val_zero_mode_violation'] = logs_buff[3].view(-1)
+        self.logs['val_zero_mode_constraint_loss'] = logs_buff[2].view(-1)
+        self.logs['val_pde_residual_norm'] = logs_buff[3].view(-1)
+        self.logs['val_zero_mode_violation'] = logs_buff[4].view(-1)
         idx = np.random.randint(0, len(self.val_data_loader))
         img_idx = np.random.randint(0, self.params.local_valid_batch_size)
         with torch.no_grad():
@@ -393,11 +406,13 @@ class Trainer():
                 loss_data = self.loss_func.data(inputs, u, targets)
                 loss_pde = self.loss_func.pde(inputs, u, targets)
                 loss_bc = self.loss_func.bc(inputs, u, targets)
-                loss = loss_data + loss_bc + loss_pde
+                loss_zero = self.loss_func.zero_mode_constraint(inputs, u, targets)
+                loss = loss_data + loss_bc + loss_pde + loss_zero
                 pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
                 zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
                 self.logs['val_err'] += l2_err(u.detach(), targets.detach())
                 self.logs['val_loss'] += loss.detach()
+                self.logs['val_zero_mode_constraint_loss'] += loss_zero.detach()
                 self.logs['val_pde_residual_norm'] += pde_residual_norm.detach()
                 self.logs['val_zero_mode_violation'] += zero_mode_violation.detach()
                 if i == idx: 
@@ -415,10 +430,11 @@ class Trainer():
 
         self.logs['val_loss'] /= len(self.val_data_loader)
         self.logs['val_err'] /= len(self.val_data_loader)
+        self.logs['val_zero_mode_constraint_loss'] /= len(self.val_data_loader)
         self.logs['val_pde_residual_norm'] /= len(self.val_data_loader)
         self.logs['val_zero_mode_violation'] /= len(self.val_data_loader)
         if dist.is_initialized():
-            for key in ['val_loss', 'val_err', 'val_pde_residual_norm', 'val_zero_mode_violation']:
+            for key in ['val_loss', 'val_err', 'val_zero_mode_constraint_loss', 'val_pde_residual_norm', 'val_zero_mode_violation']:
                 dist.all_reduce(self.logs[key].detach())
                 self.logs[key] = float(self.logs[key]/dist.get_world_size())
 

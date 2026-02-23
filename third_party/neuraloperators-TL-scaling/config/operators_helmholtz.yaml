@@ -34,6 +34,9 @@ default: &DEFAULT
   subsample: 1
   # constraint defaults (all off for baseline comparability)
   constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'  # off | hard | soft
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
   constraint_zero_mode_mode: 'gauge_aware'
   constraint_zero_mode_omega_tol: 1.0e-8
   constraint_pde_enable: !!bool False

@@ -27,7 +27,12 @@ class LossMSE():
         self.constraint_pde_al_lambda0 = float(getattr(params, 'constraint_pde_al_lambda0', 0.0))
         self.constraint_pde_al_dual_clip = float(getattr(params, 'constraint_pde_al_dual_clip', 1.0e6))
 
-        # Zero-mode metric settings
+        # Zero-mode settings (hard/soft use same masking semantics)
+        self.constraint_zero_mode_enforcement = self._resolve_zero_mode_enforcement()
+        self.constraint_zero_mode_weight = float(getattr(params, 'constraint_zero_mode_weight', 0.0))
+        self.constraint_zero_mode_warmup_fraction = float(
+            getattr(params, 'constraint_zero_mode_warmup_fraction', 0.0)
+        )
         self.constraint_zero_mode_mode = str(getattr(params, 'constraint_zero_mode_mode', 'all')).lower()
         self.constraint_zero_mode_omega_tol = float(getattr(params, 'constraint_zero_mode_omega_tol', 1.0e-8))
 
@@ -46,6 +51,31 @@ class LossMSE():
         self._last_pde_residual_norm = torch.tensor(0.0, device=self.device, dtype=torch.float32)
         self._last_pde_constraint = torch.tensor(0.0, device=self.device, dtype=torch.float32)
         self._last_pde_residual_map = None
+        self._last_zero_mode_constraint_loss = torch.tensor(0.0, device=self.device, dtype=torch.float32)
+
+    @staticmethod
+    def _coerce_bool(val):
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, str):
+            return val.strip().lower() in ['1', 'true', 'yes', 'y', 'on']
+        return bool(val)
+
+    def _resolve_zero_mode_enforcement(self):
+        enforcement = getattr(self.params, 'constraint_zero_mode_enforcement', None)
+        if enforcement is not None:
+            if isinstance(enforcement, bool):
+                return 'hard' if enforcement else 'off'
+            enforcement = str(enforcement).strip().lower()
+            if enforcement in ['true', 'false']:
+                return 'hard' if enforcement == 'true' else 'off'
+            if enforcement not in ['off', 'hard', 'soft']:
+                raise ValueError(
+                    "constraint_zero_mode_enforcement must be one of ['off', 'hard', 'soft']"
+                )
+            return enforcement
+
+        return 'hard' if self._coerce_bool(getattr(self.params, 'constraint_zero_mode_enable', False)) else 'off'
 
     def _load_coeff_scales(self):
         if not hasattr(self.params, 'scales_path'):
@@ -179,6 +209,13 @@ class LossMSE():
         warmup_scale = min(1.0, float(self.epoch + 1) / float(warmup_epochs))
         return self.constraint_pde_weight * warmup_scale
 
+    def _current_zero_mode_weight(self):
+        warmup_epochs = int(self.constraint_zero_mode_warmup_fraction * self.max_epochs)
+        if warmup_epochs <= 0:
+            return self.constraint_zero_mode_weight
+        warmup_scale = min(1.0, float(self.epoch + 1) / float(warmup_epochs))
+        return self.constraint_zero_mode_weight * warmup_scale
+
     def set_phase(self, phase):
         self.phase = phase
 
@@ -222,14 +259,39 @@ class LossMSE():
 
         return None
 
-    def zero_mode_violation(self, inputs, pred):
-        means = torch.abs(torch.mean(pred, dim=(-2, -1))).squeeze(1)
+    def _zero_mode_dc(self, inputs, pred):
+        # Returns per-sample DC component for selected samples, shape [N, C].
+        dc = torch.mean(pred, dim=(-2, -1))
         mask = self._zero_mode_mask(inputs)
         if mask is None:
-            return torch.mean(means)
+            return dc
         if torch.any(mask):
-            return torch.mean(means[mask])
-        return torch.zeros((), dtype=means.dtype, device=means.device)
+            return dc[mask]
+        return None
+
+    def zero_mode_violation(self, inputs, pred):
+        dc = self._zero_mode_dc(inputs, pred)
+        if dc is None:
+            return torch.zeros((), dtype=pred.dtype, device=pred.device)
+        return torch.mean(torch.abs(dc))
+
+    def zero_mode_constraint(self, inputs, pred, targets=None):
+        zero = torch.zeros((), dtype=pred.dtype, device=pred.device)
+        self._last_zero_mode_constraint_loss = zero.detach()
+
+        if self.constraint_zero_mode_enforcement != 'soft':
+            return zero
+        if self.constraint_zero_mode_weight <= 0:
+            return zero
+
+        dc = self._zero_mode_dc(inputs, pred)
+        if dc is None:
+            return zero
+
+        raw_loss = torch.mean(dc**2)
+        loss = self._current_zero_mode_weight() * raw_loss
+        self._last_zero_mode_constraint_loss = loss.detach()
+        return loss
 
     def _compute_residual(self, inputs, pred):
         source = self._get_channel(inputs, self._layout['source_idx'])
@@ -322,3 +384,6 @@ class LossMSE():
 
     def get_aug_lagrange_multiplier(self):
         return self._al_lambda
+
+    def get_last_zero_mode_constraint_loss(self):
+        return self._last_zero_mode_constraint_loss

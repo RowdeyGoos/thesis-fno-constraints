@@ -162,11 +162,12 @@ class Inferencer():
         #self.model.train() # need gradients
         test_start = time.time()
 
-        logs_buff = torch.zeros((4), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((5), dtype=torch.float32, device=self.device)
         self.logs['test_err'] = logs_buff[0].view(-1)
         self.logs['test_loss'] = logs_buff[1].view(-1)
-        self.logs['test_pde_residual_norm'] = logs_buff[2].view(-1)
-        self.logs['test_zero_mode_violation'] = logs_buff[3].view(-1)
+        self.logs['test_zero_mode_constraint_loss'] = logs_buff[2].view(-1)
+        self.logs['test_pde_residual_norm'] = logs_buff[3].view(-1)
+        self.logs['test_zero_mode_violation'] = logs_buff[4].view(-1)
 
         num_examples = 3
         idx = [np.random.randint(0, len(self.test_data_loader)) for _ in range(num_examples)] # index of batch
@@ -184,12 +185,14 @@ class Inferencer():
                 loss_data = self.loss_func.data(inputs, u, targets)
                 loss_pde = self.loss_func.pde(inputs, u, targets)
                 loss_bc = self.loss_func.bc(inputs, u, targets)
-                loss = loss_data + loss_bc + loss_pde
+                loss_zero = self.loss_func.zero_mode_constraint(inputs, u, targets)
+                loss = loss_data + loss_bc + loss_pde + loss_zero
                 pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
                 zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
 
                 self.logs['test_err'] += l2_err(u.detach(), targets.detach()) # computes rel l2 err of each image and averages across batches
                 self.logs['test_loss'] += loss.detach()
+                self.logs['test_zero_mode_constraint_loss'] += loss_zero.detach()
                 self.logs['test_pde_residual_norm'] += pde_residual_norm.detach()
                 self.logs['test_zero_mode_violation'] += zero_mode_violation.detach()
                 if i in idx: 
@@ -201,15 +204,16 @@ class Inferencer():
 
         self.logs['test_err'] /= len(self.test_data_loader)
         self.logs['test_loss'] /= len(self.test_data_loader)
+        self.logs['test_zero_mode_constraint_loss'] /= len(self.test_data_loader)
         self.logs['test_pde_residual_norm'] /= len(self.test_data_loader)
         self.logs['test_zero_mode_violation'] /= len(self.test_data_loader)
 
         if dist.is_initialized():
-            for key in ['test_loss', 'test_err', 'test_pde_residual_norm', 'test_zero_mode_violation']:
+            for key in ['test_loss', 'test_err', 'test_zero_mode_constraint_loss', 'test_pde_residual_norm', 'test_zero_mode_violation']:
                 dist.all_reduce(self.logs[key].detach())
                 self.logs[key] = float(self.logs[key]/dist.get_world_size())
         else:
-            for key in ['test_loss', 'test_err', 'test_pde_residual_norm', 'test_zero_mode_violation']:
+            for key in ['test_loss', 'test_err', 'test_zero_mode_constraint_loss', 'test_pde_residual_norm', 'test_zero_mode_violation']:
                 self.logs[key] = float(self.logs[key])
 
         if self.log_to_screen:
