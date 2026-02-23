@@ -12,8 +12,6 @@
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=24G
 
-set -euo pipefail
-
 echo "=========================================="
 echo "Smoke Train+Eval (constraints) starting"
 echo "Job ID:      ${SLURM_JOB_ID:-local}"
