@@ -49,7 +49,23 @@ DATA_DIR="data/local_smoke_poisson"
 RESULTS_ROOT="${RESULTS_ROOT:-experiments_local_smoke}"
 RUN_NAME="${RUN_NAME:-local-smoke}"
 CONFIG_FILE="config/operators_local_smoke.yaml"
-CONFIG_NAME="${CONFIG_NAME:-poisson-local-smoke-constraints}"
+ZERO_MODE_ENFORCEMENT="${ZERO_MODE_ENFORCEMENT:-hard}"  # hard | soft
+
+if [ -z "${CONFIG_NAME:-}" ]; then
+  case "$ZERO_MODE_ENFORCEMENT" in
+    hard)
+      CONFIG_NAME="poisson-local-smoke-constraints"
+      ;;
+    soft)
+      CONFIG_NAME="poisson-local-smoke-constraints-soft-zero"
+      ;;
+    *)
+      echo "Error: ZERO_MODE_ENFORCEMENT must be 'hard' or 'soft' (got '$ZERO_MODE_ENFORCEMENT')."
+      echo "Tip: set CONFIG_NAME explicitly to bypass automatic selection."
+      exit 1
+      ;;
+  esac
+fi
 
 NTRAIN="${NTRAIN:-64}"
 NVAL="${NVAL:-16}"
@@ -103,6 +119,7 @@ echo "Computing scales..."
   --output "local_smoke_scales.npy"
 
 echo "Running local smoke training..."
+echo "Config: $CONFIG_NAME (ZERO_MODE_ENFORCEMENT=$ZERO_MODE_ENFORCEMENT)"
 "$PYTHON_BIN" train.py \
   --yaml_config "$CONFIG_FILE" \
   --config "$CONFIG_NAME" \
@@ -133,9 +150,11 @@ EVAL_LOG="${RESULTS_ROOT}/expts/${CONFIG_NAME}/${RUN_NAME}-eval/logs_best.txt"
 
 echo "Checking expected metrics..."
 grep -q "pde_residual_norm" "$TRAIN_LOG" || { echo "Missing pde_residual_norm in $TRAIN_LOG"; exit 4; }
-grep -q "pde_al_lambda" "$TRAIN_LOG" || { echo "Missing pde_al_lambda in $TRAIN_LOG"; exit 5; }
-grep -q "test_pde_residual_norm" "$EVAL_LOG" || { echo "Missing test_pde_residual_norm in $EVAL_LOG"; exit 6; }
-grep -q "test_zero_mode_violation" "$EVAL_LOG" || { echo "Missing test_zero_mode_violation in $EVAL_LOG"; exit 7; }
+grep -q "zero_mode_constraint_loss" "$TRAIN_LOG" || { echo "Missing zero_mode_constraint_loss in $TRAIN_LOG"; exit 5; }
+grep -q "pde_al_lambda" "$TRAIN_LOG" || { echo "Missing pde_al_lambda in $TRAIN_LOG"; exit 6; }
+grep -q "test_zero_mode_constraint_loss" "$EVAL_LOG" || { echo "Missing test_zero_mode_constraint_loss in $EVAL_LOG"; exit 7; }
+grep -q "test_pde_residual_norm" "$EVAL_LOG" || { echo "Missing test_pde_residual_norm in $EVAL_LOG"; exit 8; }
+grep -q "test_zero_mode_violation" "$EVAL_LOG" || { echo "Missing test_zero_mode_violation in $EVAL_LOG"; exit 9; }
 
 echo ""
 echo "Smoke run completed."
