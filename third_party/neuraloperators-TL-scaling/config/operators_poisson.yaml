@@ -95,6 +95,31 @@ poisson-scale-k1_5: &poisson_scale_k1_5
   fc_cut: 2
   max_epochs: 50
 
+# Runtime smoke config for SLURM validation on the real Poisson dataset.
+# Keeps dataset/scales identical to poisson-scale-k1_5 and reduces runtime
+# via aggressive subsampling and a short training schedule.
+poisson-smoke-k1_5-constraints:
+  <<: *poisson_scale_k1_5
+  log_to_wandb: !!bool False
+  plot_figs: !!bool False
+  save_checkpoint: !!bool True
+  scheduler: 'none'
+  max_epochs: 2
+  batch_size: 8
+  valid_batch_size: 8
+  subsample: 4096
+  constraint_zero_mode_enable: !!bool True
+  constraint_zero_mode_enforcement: 'hard'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool True
+  constraint_pde_method: 'augmented_lagrangian'
+  constraint_pde_weight: 0.1
+  constraint_pde_warmup_fraction: 0.0
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+
 # ========================================
 # Transfer Learning: Poisson k∈[5,10]
 # ========================================
