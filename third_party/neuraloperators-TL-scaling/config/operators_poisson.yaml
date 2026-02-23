@@ -58,7 +58,7 @@ poisson: &poisson
   ny: 128
   log_to_wandb: !!bool True
   save_checkpoint: !!bool True
-  max_epochs: 50
+  max_epochs: 500
   scheduler: 'cosine'
   plot_figs: !!bool True
   loss_style: 'sum'
@@ -93,7 +93,7 @@ poisson-scale-k1_5: &poisson_scale_k1_5
   mode_cut: 32
   embed_cut: 64
   fc_cut: 2
-  max_epochs: 50
+  max_epochs: 500
 
 # Runtime smoke config for SLURM validation on the real Poisson dataset.
 # Keeps dataset/scales identical to poisson-scale-k1_5 and reduces runtime
@@ -137,7 +137,7 @@ poisson-k5_10-base: &poisson_k5_10_base
   mode_cut: 32
   embed_cut: 64
   fc_cut: 2
-  max_epochs: 50
+  max_epochs: 500
 
 # Transfer configs initialized from k1_5 pretraining should keep the source
 # normalization scales so the pretrained model sees the same input normalization
@@ -153,7 +153,7 @@ poisson-k5_10-finetune-16: &poisson_k5_10_ft_16
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-finetune-64: &poisson_k5_10_ft_64
   <<: *poisson_k5_10_pretrained_base
@@ -161,7 +161,7 @@ poisson-k5_10-finetune-64: &poisson_k5_10_ft_64
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-finetune-256: &poisson_k5_10_ft_256
   <<: *poisson_k5_10_pretrained_base
@@ -169,7 +169,7 @@ poisson-k5_10-finetune-256: &poisson_k5_10_ft_256
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-finetune-1k: &poisson_k5_10_ft_1k
   <<: *poisson_k5_10_pretrained_base
@@ -177,7 +177,7 @@ poisson-k5_10-finetune-1k: &poisson_k5_10_ft_1k
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-finetune-4k: &poisson_k5_10_ft_4k
   <<: *poisson_k5_10_pretrained_base
@@ -185,49 +185,49 @@ poisson-k5_10-finetune-4k: &poisson_k5_10_ft_4k
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 # From-scratch training configs (no pre-trained weights)
 poisson-k5_10-scratch-zeroshot:
   <<: *poisson_k5_10_base
   batch_size: 128
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-scratch-16: &poisson_k5_10_scratch_16
   <<: *poisson_k5_10_base
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-scratch-64: &poisson_k5_10_scratch_64
   <<: *poisson_k5_10_base
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-scratch-256: &poisson_k5_10_scratch_256
   <<: *poisson_k5_10_base
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-scratch-1k: &poisson_k5_10_scratch_1k
   <<: *poisson_k5_10_base
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 poisson-k5_10-scratch-4k: &poisson_k5_10_scratch_4k
   <<: *poisson_k5_10_base
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
-  max_epochs: 50
+  max_epochs: 500
 
 # ========================================
 # Transfer Learning: Poisson k∈[1,2.5]
