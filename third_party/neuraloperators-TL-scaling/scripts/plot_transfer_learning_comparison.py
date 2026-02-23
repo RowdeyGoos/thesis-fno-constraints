@@ -46,6 +46,30 @@ def extract_errors_by_size(results):
     return errors
 
 
+def _format_sample_tick(size):
+    if size == 0:
+        return '0-shot'
+    if size >= 1024 and size % 1024 == 0:
+        return f'{size // 1024}K'
+    return str(size)
+
+
+def _sample_to_plot_x(size, min_positive_size):
+    """
+    Map sample sizes to plotting coordinates with explicit log2 spacing.
+
+    This avoids symlog's linear threshold region around zero, which makes the
+    0-shot point look oddly spaced relative to the positive sample counts.
+    """
+    if size > 0:
+        return float(np.log2(size))
+
+    if min_positive_size is None:
+        return 0.0
+
+    return float(np.log2(min_positive_size) - 1.5)
+
+
 def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, title="Transfer Learning Comparison"):
     """Generate comparison plot"""
     
@@ -64,6 +88,10 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     if not all_sizes:
         print("⚠️  No data to plot!")
         return
+
+    positive_sizes = [s for s in all_sizes if s > 0]
+    min_positive_size = min(positive_sizes) if positive_sizes else None
+    x_map = {s: _sample_to_plot_x(s, min_positive_size) for s in all_sizes}
     
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 7))
@@ -81,8 +109,9 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
         if errors_dict:
             sizes = sorted(errors_dict.keys())
             errors = [errors_dict[s] for s in sizes]
+            x_vals = [x_map[s] for s in sizes]
             
-            ax.plot(sizes, errors, 
+            ax.plot(x_vals, errors,
                    marker=markers[key],
                    linestyle='-',
                    linewidth=2.5,
@@ -96,10 +125,10 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     ax.set_ylabel('Test Error (Relative L2)', fontsize=14, fontweight='bold')
     ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
     
-    # Use symlog on x-axis so zero-shot (0 samples) can be plotted.
-    ax.set_xscale('symlog', linthresh=1)
-    ax.set_xticks(all_sizes)
-    ax.set_xticklabels(['0-shot' if n == 0 else str(n) for n in all_sizes])
+    xtick_positions = [x_map[s] for s in all_sizes]
+    ax.set_xticks(xtick_positions)
+    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes])
+    ax.margins(x=0.05)
     
     # Grid
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.8)

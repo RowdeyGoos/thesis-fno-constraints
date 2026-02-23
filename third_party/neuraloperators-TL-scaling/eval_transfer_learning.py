@@ -72,6 +72,30 @@ def parse_sample_size(config_name: str) -> Optional[int]:
     return None
 
 
+def format_sample_tick(size: int) -> str:
+    """Format sample-size tick labels compactly to avoid overlap."""
+    if size == 0:
+        return '0-shot'
+    if size >= 1024 and size % 1024 == 0:
+        return f'{size // 1024}K'
+    return str(size)
+
+
+def sample_to_plot_x(size: int, min_positive_size: Optional[int]) -> float:
+    """
+    Map sample sizes to plotting coordinates with explicit log2 spacing.
+
+    Positive sizes use log2(sample_size). Zero-shot gets a dedicated slot to the
+    left of the smallest positive sample, avoiding symlog's nonlinear transition
+    near zero that causes awkward spacing in these transfer-learning plots.
+    """
+    if size > 0:
+        return float(np.log2(size))
+    if min_positive_size is None:
+        return 0.0
+    return float(np.log2(min_positive_size) - 1.5)
+
+
 def get_experiment_groups(experiment_type: str, include_mixed: bool = False) -> Dict[str, List[str]]:
     """
     Get experiment configuration groups for different scenarios.
@@ -229,6 +253,15 @@ def get_experiment_groups(experiment_type: str, include_mixed: bool = False) -> 
     return base_configs
 
 
+def _config_exists(yaml_config: str, config_name: str) -> bool:
+    """Return True if a config exists in the YAML file."""
+    try:
+        YParams(os.path.abspath(yaml_config), config_name)
+        return True
+    except Exception:
+        return False
+
+
 def find_checkpoint(experiment_dir: str, config_name: str, run_pattern: str = "*") -> Optional[str]:
     """
     Find checkpoint file for a given experiment.
@@ -298,7 +331,7 @@ def get_checkpoint_from_config(yaml_config: str, config_name: str) -> Optional[s
     return str(checkpoint)
 
 
-def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str, 
+def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: Optional[str],
                    device: str = 'cuda:0') -> Dict[str, float]:
     """
     Evaluate a single model and return metrics.
@@ -306,7 +339,7 @@ def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str,
     Args:
         yaml_config: Path to YAML configuration file
         config_name: Configuration name
-        checkpoint_path: Path to model checkpoint
+        checkpoint_path: Path to model checkpoint, or None for random-init eval
         device: Device to run evaluation on
     
     Returns:
@@ -314,7 +347,10 @@ def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str,
     """
     logging.info(f"\n{'='*60}")
     logging.info(f"Evaluating: {config_name}")
-    logging.info(f"Checkpoint: {checkpoint_path}")
+    if checkpoint_path is None:
+        logging.info("Checkpoint: <random initialization>")
+    else:
+        logging.info(f"Checkpoint: {checkpoint_path}")
     logging.info(f"{'='*60}")
     
     # Create temporary args
@@ -332,7 +368,8 @@ def evaluate_model(yaml_config: str, config_name: str, checkpoint_path: str,
     try:
         # Load parameters
         params = YParams(os.path.abspath(args.yaml_config), args.config)
-        params['weights'] = checkpoint_path
+        if checkpoint_path is not None:
+            params['weights'] = checkpoint_path
         
         # Create inferencer
         inferencer = Inferencer(params, args)
@@ -398,6 +435,12 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         include_mixed: Whether mixed results are included
     """
     fig, ax = plt.subplots(figsize=(10, 6))
+
+    data_samples = []
+    for model_results in results.values():
+        data_samples.extend(model_results.keys())
+    positive_data_samples = [s for s in data_samples if s > 0]
+    min_positive_size = min(positive_data_samples) if positive_data_samples else None
     
     # Define colors and markers
     colors = {
@@ -442,7 +485,9 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         # Plot with appropriate style
         facecolors = 'none' if model_type == 'scratch' else colors[model_type]
         
-        ax.plot(sample_sizes_valid, errors_valid,
+        x_vals = [sample_to_plot_x(s, min_positive_size) for s in sample_sizes_valid]
+
+        ax.plot(x_vals, errors_valid,
                 marker=markers[model_type],
                 color=colors[model_type],
                 markerfacecolor=facecolors,
@@ -457,17 +502,12 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     ax.set_xlabel('Number of downstream examples', fontsize=14, fontweight='bold')
     ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=14, fontweight='bold')
     ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
-    ax.set_xscale('symlog', base=2, linthresh=1)
     
     # Set x-ticks to match paper
     xticks = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
-    xtick_labels = ['0-shot', '8', '16', '32', '64', '128', '256', '512', '1K', '2K', '4K', '8K', '16K', '32K']
+    xtick_labels = [format_sample_tick(x) for x in xticks]
     
     # Filter to only show ticks in data range
-    data_samples = []
-    for model_results in results.values():
-        data_samples.extend(model_results.keys())
-    
     if data_samples:
         min_sample = min(data_samples)
         max_sample = max(data_samples)
@@ -481,8 +521,10 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         
         if valid_ticks:
             xticks_filtered, xtick_labels_filtered = zip(*valid_ticks)
-            ax.set_xticks(xticks_filtered)
+            xtick_positions = [sample_to_plot_x(int(t), min_positive_size) for t in xticks_filtered]
+            ax.set_xticks(xtick_positions)
             ax.set_xticklabels(xtick_labels_filtered)
+            ax.margins(x=0.05)
     
     # Add grid
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
@@ -559,7 +601,7 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
     
     # Set x-ticks
     xticks = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
-    xtick_labels = ['0-shot', '8', '16', '32', '64', '128', '256', '512', '1K', '2K', '4K', '8K', '16K', '32K']
+    xtick_labels = [format_sample_tick(x) for x in xticks]
     
     # Get data range
     data_samples = []
@@ -568,6 +610,8 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
     
     min_sample = min(data_samples) if data_samples else 16
     max_sample = max(data_samples) if data_samples else 4096
+    positive_data_samples = [s for s in data_samples if s > 0]
+    min_positive_size = min(positive_data_samples) if positive_data_samples else None
     
     valid_ticks = []
     for t, label in zip(xticks, xtick_labels):
@@ -602,7 +646,9 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
         facecolors = 'none' if model_type == 'scratch' else colors[model_type]
         linestyle = '--' if model_type == 'scratch' else '-'
         
-        ax.plot(sample_sizes_valid, errors_valid,
+        x_vals = [sample_to_plot_x(s, min_positive_size) for s in sample_sizes_valid]
+
+        ax.plot(x_vals, errors_valid,
                 marker='o',
                 color=colors[model_type],
                 markerfacecolor=facecolors,
@@ -617,9 +663,10 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
         if idx == 0:
             ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=12, fontweight='bold')
         ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
-        ax.set_xscale('symlog', base=2, linthresh=1)
-        ax.set_xticks(xticks_filtered)
+        xtick_positions = [sample_to_plot_x(int(t), min_positive_size) for t in xticks_filtered]
+        ax.set_xticks(xtick_positions)
         ax.set_xticklabels(xtick_labels_filtered)
+        ax.margins(x=0.05)
         ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
         ax.set_title(titles[model_type], fontsize=13, fontweight='bold', pad=10)
     
@@ -799,6 +846,24 @@ def main():
             configs_to_eval = []
             for size, model_configs in config_groups.items():
                 configs_to_eval.extend(model_configs.values())
+
+            # Optional scratch zero-shot baseline (random initialization, no training).
+            # Add it only when the config exists for the selected YAML/experiment.
+            scratch_zeroshot_by_experiment = {
+                'poisson': 'poisson-k5_10-scratch-zeroshot',
+                'advdiff': 'ad-adr0p2_0p4-scratch-zeroshot',
+                'helmholtz': 'helm-o1_5-scratch-zeroshot',
+            }
+            scratch_zeroshot_cfg = scratch_zeroshot_by_experiment.get(args.experiment_type)
+            if scratch_zeroshot_cfg and scratch_zeroshot_cfg not in configs_to_eval:
+                if _config_exists(args.yaml_config, scratch_zeroshot_cfg):
+                    configs_to_eval = [scratch_zeroshot_cfg] + configs_to_eval
+                    logging.info(f"Added scratch zero-shot config to automatic evaluation: {scratch_zeroshot_cfg}")
+                else:
+                    logging.info(
+                        f"Scratch zero-shot config not found in {args.yaml_config}; skipping automatic addition: "
+                        f"{scratch_zeroshot_cfg}"
+                    )
         
         logging.info(f"Evaluating {len(configs_to_eval)} configurations")
         
@@ -822,10 +887,14 @@ def main():
             # Zero-shot configs evaluate directly from their configured pretraining
             # checkpoint instead of a downstream run directory.
             if sample_size == 0:
-                checkpoint = get_checkpoint_from_config(args.yaml_config, config_name)
-                if checkpoint is None:
-                    logging.warning(f"Skipping {config_name}: zero-shot weights not found in config")
-                    continue
+                if model_type == 'scratch':
+                    checkpoint = None
+                    logging.info(f"Using random-init zero-shot evaluation for {config_name}")
+                else:
+                    checkpoint = get_checkpoint_from_config(args.yaml_config, config_name)
+                    if checkpoint is None:
+                        logging.warning(f"Skipping {config_name}: zero-shot weights not found in config")
+                        continue
             else:
                 checkpoint = find_checkpoint(args.experiment_dir, config_name)
                 if checkpoint is None:
