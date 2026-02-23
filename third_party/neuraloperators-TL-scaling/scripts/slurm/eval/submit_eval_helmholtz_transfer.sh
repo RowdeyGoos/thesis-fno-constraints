@@ -3,7 +3,7 @@
 #SBATCH --output=experiments/%x-%j.out
 #SBATCH --error=experiments/%x-%j.err
 #SBATCH --mail-type=END
-#SBATCH --time=0:45:00
+#SBATCH --time=1:15:00
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

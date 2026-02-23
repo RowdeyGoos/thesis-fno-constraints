@@ -66,7 +66,7 @@ cleanup_tmp_dir() {
 trap cleanup_tmp_dir EXIT
 
 # Configuration file
-CONFIG_FILE="config/operators_mixed.yaml"
+CONFIG_FILE="config/operators_poisson.yaml"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(

@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=eval-transfer-learning
+#SBATCH --job-name=eval-tl-poisson
 #SBATCH --output=experiments/%x-%j.out
 #SBATCH --error=experiments/%x-%j.err
 #SBATCH --mail-type=END
-#SBATCH --time=2:00:00
+#SBATCH --time=1:15:00
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -65,7 +65,7 @@ echo "----------------------------------------------"
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
              python eval_transfer_learning.py \
-                --yaml_config config/operators_mixed.yaml \
+                --yaml_config config/operators_poisson.yaml \
                 --experiment_type poisson \
                 --configs poisson-k1_2.5-zeroshot-mixed \
                          poisson-k1_2.5-finetune-mixed-16 \

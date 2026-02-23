@@ -21,7 +21,7 @@
 #
 # Prerequisites:
 #   1. Completed mixed dataset pretraining (submit_mixed_pretrain.sh)
-#   2. Updated checkpoint paths in config/operators_mixed.yaml
+#   2. Updated checkpoint paths in config/operators_poisson.yaml
 #
 # Usage:
 #   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_small.sh
@@ -66,7 +66,7 @@ trap cleanup_tmp_dir EXIT
 
 
 # Configuration file
-CONFIG_FILE="config/operators_mixed.yaml"
+CONFIG_FILE="config/operators_poisson.yaml"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(

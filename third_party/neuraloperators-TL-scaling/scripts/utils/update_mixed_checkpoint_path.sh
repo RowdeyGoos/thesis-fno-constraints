@@ -19,8 +19,8 @@ CHECKPOINT_PATH="experiments/expts/mixed-scale-all/pretrain-mixed-${JOBID}-0/che
 echo "Updating mixed checkpoint path to: $CHECKPOINT_PATH"
 echo ""
 
-# Update config file
-CONFIG_FILE="config/operators_mixed.yaml"
+# Update config file (Poisson mixed-transfer configs now live in operators_poisson.yaml)
+CONFIG_FILE="config/operators_poisson.yaml"
 if [ -f "$CONFIG_FILE" ]; then
     echo "Updating $CONFIG_FILE..."
     sed -i "s|weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-JOBID-0/checkpoints/ckpt_best.tar'|weights: '$CHECKPOINT_PATH'|g" "$CONFIG_FILE"
