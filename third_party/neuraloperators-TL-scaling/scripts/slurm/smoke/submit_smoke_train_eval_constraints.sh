@@ -29,7 +29,41 @@ if [ ! -f "$CONTAINER_PATH" ]; then
     exit 1
 fi
 
-module load apptainer 2>/dev/null || module load singularity 2>/dev/null
+echo "Container image: ${CONTAINER_PATH}"
+echo "Resolving container runtime (apptainer/singularity)..."
+
+# On some SLURM clusters `module` is not initialized in non-interactive shells.
+if ! command -v apptainer >/dev/null 2>&1 && ! command -v singularity >/dev/null 2>&1; then
+    if ! command -v module >/dev/null 2>&1; then
+        if [ -f /etc/profile.d/modules.sh ]; then
+            # shellcheck disable=SC1091
+            . /etc/profile.d/modules.sh
+        elif [ -f /usr/share/Modules/init/bash ]; then
+            # shellcheck disable=SC1091
+            . /usr/share/Modules/init/bash
+        fi
+    fi
+
+    if command -v module >/dev/null 2>&1; then
+        if module load apptainer 2>/dev/null; then
+            :
+        elif module load singularity 2>/dev/null; then
+            :
+        fi
+    fi
+fi
+
+if command -v apptainer >/dev/null 2>&1; then
+    CONTAINER_BIN="apptainer"
+elif command -v singularity >/dev/null 2>&1; then
+    CONTAINER_BIN="singularity"
+else
+    echo "Error: neither 'apptainer' nor 'singularity' is available on PATH."
+    echo "If your cluster uses environment modules, ensure the module command is available in batch jobs."
+    exit 1
+fi
+
+echo "Container runtime: ${CONTAINER_BIN}"
 
 export PYTHONUNBUFFERED=1
 export WANDB_START_METHOD=thread
@@ -62,7 +96,7 @@ TRAIN_CMD="python /workspace/train.py \
 
 echo "Running smoke training..."
 echo "Command: ${TRAIN_CMD}"
-apptainer exec --nv $BIND "$CONTAINER_PATH" bash -lc "cd /workspace && mkdir -p ${ROOT_DIR} && ${TRAIN_CMD}"
+"${CONTAINER_BIN}" exec --nv $BIND "$CONTAINER_PATH" bash -lc "cd /workspace && mkdir -p ${ROOT_DIR} && ${TRAIN_CMD}"
 
 CKPT_BEST="${WORKDIR}/${ROOT_DIR}/expts/${CONFIG_NAME}/${RUN_TAG}-train/checkpoints/ckpt_best.tar"
 CKPT_LAST="${WORKDIR}/${ROOT_DIR}/expts/${CONFIG_NAME}/${RUN_TAG}-train/checkpoints/ckpt.tar"
@@ -86,7 +120,7 @@ EVAL_CMD="python /workspace/eval.py \
 
 echo "Running smoke eval..."
 echo "Command: ${EVAL_CMD}"
-apptainer exec --nv $BIND "$CONTAINER_PATH" bash -lc "cd /workspace && ${EVAL_CMD}"
+"${CONTAINER_BIN}" exec --nv $BIND "$CONTAINER_PATH" bash -lc "cd /workspace && ${EVAL_CMD}"
 
 TRAIN_LOG="${WORKDIR}/${ROOT_DIR}/expts/${CONFIG_NAME}/${RUN_TAG}-train/logs_best.txt"
 EVAL_LOG="${WORKDIR}/${ROOT_DIR}/expts/${CONFIG_NAME}/${RUN_TAG}-eval/logs_best.txt"
