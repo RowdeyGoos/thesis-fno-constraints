@@ -114,9 +114,16 @@ poisson-k5_10-base: &poisson_k5_10_base
   fc_cut: 2
   max_epochs: 50
 
+# Transfer configs initialized from k1_5 pretraining should keep the source
+# normalization scales so the pretrained model sees the same input normalization
+# during fine-tuning and evaluation.
+poisson-k5_10-pretrained-base: &poisson_k5_10_pretrained_base
+  <<: *poisson_k5_10_base
+  scales_path:   'data/poisson/train_k1_5_scales.npy'
+
 # Fine-tuning configs (with pre-trained weights from k1_5)
 poisson-k5_10-finetune-16: &poisson_k5_10_ft_16
-  <<: *poisson_k5_10_base
+  <<: *poisson_k5_10_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
@@ -124,7 +131,7 @@ poisson-k5_10-finetune-16: &poisson_k5_10_ft_16
   max_epochs: 50
 
 poisson-k5_10-finetune-64: &poisson_k5_10_ft_64
-  <<: *poisson_k5_10_base
+  <<: *poisson_k5_10_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
@@ -132,7 +139,7 @@ poisson-k5_10-finetune-64: &poisson_k5_10_ft_64
   max_epochs: 50
 
 poisson-k5_10-finetune-256: &poisson_k5_10_ft_256
-  <<: *poisson_k5_10_base
+  <<: *poisson_k5_10_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
@@ -140,7 +147,7 @@ poisson-k5_10-finetune-256: &poisson_k5_10_ft_256
   max_epochs: 50
 
 poisson-k5_10-finetune-1k: &poisson_k5_10_ft_1k
-  <<: *poisson_k5_10_base
+  <<: *poisson_k5_10_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
@@ -148,7 +155,7 @@ poisson-k5_10-finetune-1k: &poisson_k5_10_ft_1k
   max_epochs: 50
 
 poisson-k5_10-finetune-4k: &poisson_k5_10_ft_4k
-  <<: *poisson_k5_10_base
+  <<: *poisson_k5_10_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
@@ -235,15 +242,25 @@ poisson-k1_2.5-mixed-base: &poisson_k1_2p5_mixed_base
   in_dim: 7  # Poisson with mixed format: 1 (source) + 6 (tensor) = 7 input channels
   constraint_diffusion_tensor_order: 'k11_k12_k22'
 
+# Pretrained transfer configs use source-domain scales (single-domain pretrain).
+poisson-k1_2.5-pretrained-base: &poisson_k1_2p5_pretrained_base
+  <<: *poisson_k1_2p5_base
+  scales_path:   'data/poisson/train_k1_5_scales.npy'
+
+# Pretrained transfer configs use mixed pretraining scales (mixed-domain pretrain).
+poisson-k1_2.5-mixed-pretrained-base: &poisson_k1_2p5_mixed_pretrained_base
+  <<: *poisson_k1_2p5_mixed_base
+  scales_path:   'data/mixed/_train_mixed_32k_scales.npy'
+
 # Zero-shot evaluation config (no downstream training)
 poisson-k1_2.5-zeroshot:
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-zeroshot-mixed:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
@@ -256,7 +273,7 @@ poisson-k1_2.5-scratch-zeroshot:
 
 # Fine-tuning configs (with pre-trained weights from k1_5)
 poisson-k1_2.5-finetune-16: &poisson_k1_2p5_ft_16
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
@@ -264,28 +281,28 @@ poisson-k1_2.5-finetune-16: &poisson_k1_2p5_ft_16
 
 
 poisson-k1_2.5-finetune-64: &poisson_k1_2p5_ft_64
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-256: &poisson_k1_2p5_ft_256
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-1k: &poisson_k1_2p5_ft_1k
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-4k: &poisson_k1_2p5_ft_4k
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
@@ -293,21 +310,21 @@ poisson-k1_2.5-finetune-4k: &poisson_k1_2p5_ft_4k
 
 
 poisson-k1_2.5-finetune-8k: &poisson_k1_2p5_ft_8k
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-16k: &poisson_k1_2p5_ft_16k
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-32k: &poisson_k1_2p5_ft_32k
-  <<: *poisson_k1_2p5_base
+  <<: *poisson_k1_2p5_pretrained_base
   weights: 'experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
   batch_size: 128
@@ -315,56 +332,56 @@ poisson-k1_2.5-finetune-32k: &poisson_k1_2p5_ft_32k
 
 # Fine-tuning configs from Mixed pretraining
 poisson-k1_2.5-finetune-mixed-16:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-mixed-64:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-mixed-256:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-mixed-1k:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-mixed-4k:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-mixed-8k:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-mixed-16k:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
 
 poisson-k1_2.5-finetune-mixed-32k:
-  <<: *poisson_k1_2p5_mixed_base
+  <<: *poisson_k1_2p5_mixed_pretrained_base
   weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
   batch_size: 128
