@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-transfer-learning
+#SBATCH --job-name=neuralop-poisson-k5_10-transfer
 #SBATCH --output=experiments/%x-%A-%a.out
 #SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END

@@ -176,16 +176,16 @@ Based on the paper, you should observe:
 
 ### Check Job Status
 ```bash
-squeue -u $USER | grep transfer-learning
+squeue -u $USER | grep poisson-k5_10-transfer
 ```
 
 ### View Logs
 ```bash
 # Specific task
-cat experiments/neuralop-transfer-learning-<JOBID>-<TASKID>.out
+cat experiments/neuralop-poisson-k5_10-transfer-<JOBID>-<TASKID>.out
 
 # All tasks
-ls -lh experiments/neuralop-transfer-learning-*
+ls -lh experiments/neuralop-poisson-k5_10-transfer-*
 ```
 
 ### Check W&B Dashboard

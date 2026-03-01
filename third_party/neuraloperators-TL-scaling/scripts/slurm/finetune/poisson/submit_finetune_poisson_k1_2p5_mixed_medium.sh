@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-mixed-medium
+#SBATCH --job-name=neuralop-poisson-mixed-medium
 #SBATCH --output=experiments/%x-%A_%a.out
 #SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END

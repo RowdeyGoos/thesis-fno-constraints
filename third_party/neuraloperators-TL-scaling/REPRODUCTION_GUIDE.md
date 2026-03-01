@@ -584,16 +584,16 @@ sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k5_10_array.sh
 
 Check job status:
 ```bash
-squeue -u $USER | grep transfer-learning
+squeue -u $USER | grep poisson-k5_10-transfer
 ```
 
 View logs:
 ```bash
 # Check specific task log
-cat experiments/neuralop-transfer-learning-<JOBID>-<TASKID>.out
+cat experiments/neuralop-poisson-k5_10-transfer-<JOBID>-<TASKID>.out
 
 # Check all logs
-ls -lh experiments/neuralop-transfer-learning-*
+ls -lh experiments/neuralop-poisson-k5_10-transfer-*
 ```
 
 Results will be saved in:

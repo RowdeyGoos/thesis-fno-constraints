@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=neuralop-k1_2.5-small
-#SBATCH --output=experiments/%x-%A_%a.out
-#SBATCH --error=experiments/%x-%A_%a.err
+#SBATCH --job-name=neuralop-poisson-k1_2p5-small
+#SBATCH --output=experiments/%x-%A-%a.out
+#SBATCH --error=experiments/%x-%A-%a.err
 #SBATCH --mail-type=END
 #SBATCH --time=4:00:00
 #SBATCH --qos=short
@@ -163,6 +163,6 @@ else
 fi
 echo "Type: $exp_type"
 echo "Config: $config_name"
-echo "Logs: experiments/${SLURM_JOB_NAME}-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out / .err"
+echo "Logs: experiments/${SLURM_JOB_NAME}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID}.out / .err"
 echo "Results: experiments/expts/$config_name/"
 echo "=========================================="
