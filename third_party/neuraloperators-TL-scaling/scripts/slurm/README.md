@@ -19,6 +19,7 @@ This directory is organized by workflow stage.
 - `sbatch scripts/slurm/pretrain/submit_pretrain_single_ddp.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_single_gpu.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh`
+- `sbatch scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh`
 
 ### Fine-Tuning
 

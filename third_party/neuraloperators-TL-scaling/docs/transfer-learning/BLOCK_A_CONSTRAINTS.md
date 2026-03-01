@@ -116,6 +116,18 @@ Inference / transfer eval:
 - `test_pde_residual_norm`
 - `test_zero_mode_violation`
 
+## Checkpoint selection
+
+Training supports:
+
+```yaml
+checkpoint_selection_metric: 'val_loss'  # val_loss | val_err
+```
+
+- Default: `val_loss` (backward compatible).
+- For accuracy-first studies with soft penalties, `val_err` is often preferred so
+  `ckpt_best.tar` reflects predictive performance rather than weighted constraint loss.
+
 ## Example toggles (A0-A5)
 
 ```yaml
