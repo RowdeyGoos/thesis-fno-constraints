@@ -73,36 +73,17 @@ Pass criteria:
 
 Run two sweeps.
 
-### A1) Penalty + PDE-only
+Recommended (single command):
 
 ```bash
-CREATE_JOB=$(sbatch --parsable \
-  --export=ALL,MODE=create,SWEEP_YAML=config/sweep_constraints_pretrain_penalty_pde_only.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh)
-
-SWEEP_ID=$(grep -ho 'SWEEP_ID=.*' experiments/neuralop-constraints-sweep-${CREATE_JOB}-*.out | tail -n1 | cut -d= -f2)
-
-echo "Penalty PDE-only sweep: $SWEEP_ID"
-
-sbatch --array=0-3 \
-  --export=ALL,MODE=agent,SWEEP_ID=${SWEEP_ID},SWEEP_YAML=config/sweep_constraints_pretrain_penalty_pde_only.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh
+bash scripts/utils/submit_constraints_stage_a.sh
 ```
 
-### A2) AL + PDE-only
+Equivalent per-sweep commands:
 
 ```bash
-CREATE_JOB=$(sbatch --parsable \
-  --export=ALL,MODE=create,SWEEP_YAML=config/sweep_constraints_pretrain_al_pde_only.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh)
-
-SWEEP_ID=$(grep -ho 'SWEEP_ID=.*' experiments/neuralop-constraints-sweep-${CREATE_JOB}-*.out | tail -n1 | cut -d= -f2)
-
-echo "AL PDE-only sweep: $SWEEP_ID"
-
-sbatch --array=0-3 \
-  --export=ALL,MODE=agent,SWEEP_ID=${SWEEP_ID},SWEEP_YAML=config/sweep_constraints_pretrain_al_pde_only.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh
+bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_penalty_pde_only.yaml
+bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_pde_only.yaml
 ```
 
 ### A3) Rank candidates
@@ -130,36 +111,17 @@ Decision output of Stage A:
 
 Run two sweeps.
 
-### B1) Penalty + hard
+Recommended (single command):
 
 ```bash
-CREATE_JOB=$(sbatch --parsable \
-  --export=ALL,MODE=create,SWEEP_YAML=config/sweep_constraints_pretrain_penalty_hard.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh)
-
-SWEEP_ID=$(grep -ho 'SWEEP_ID=.*' experiments/neuralop-constraints-sweep-${CREATE_JOB}-*.out | tail -n1 | cut -d= -f2)
-
-echo "Penalty hard sweep: $SWEEP_ID"
-
-sbatch --array=0-3 \
-  --export=ALL,MODE=agent,SWEEP_ID=${SWEEP_ID},SWEEP_YAML=config/sweep_constraints_pretrain_penalty_hard.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh
+bash scripts/utils/submit_constraints_stage_b.sh
 ```
 
-### B2) AL + hard
+Equivalent per-sweep commands:
 
 ```bash
-CREATE_JOB=$(sbatch --parsable \
-  --export=ALL,MODE=create,SWEEP_YAML=config/sweep_constraints_pretrain_al_hard.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh)
-
-SWEEP_ID=$(grep -ho 'SWEEP_ID=.*' experiments/neuralop-constraints-sweep-${CREATE_JOB}-*.out | tail -n1 | cut -d= -f2)
-
-echo "AL hard sweep: $SWEEP_ID"
-
-sbatch --array=0-3 \
-  --export=ALL,MODE=agent,SWEEP_ID=${SWEEP_ID},SWEEP_YAML=config/sweep_constraints_pretrain_al_hard.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh
+bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_penalty_hard.yaml
+bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_hard.yaml
 ```
 
 What to look for:
@@ -181,33 +143,13 @@ Run one new soft sweep (hard baseline already exists from Stage B for same PDE m
 If `PDE_WINNER_HARD=penalty`:
 
 ```bash
-CREATE_JOB=$(sbatch --parsable \
-  --export=ALL,MODE=create,SWEEP_YAML=config/sweep_constraints_pretrain_penalty_soft.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh)
-
-SWEEP_ID=$(grep -ho 'SWEEP_ID=.*' experiments/neuralop-constraints-sweep-${CREATE_JOB}-*.out | tail -n1 | cut -d= -f2)
-
-echo "Penalty soft sweep: $SWEEP_ID"
-
-sbatch --array=0-3 \
-  --export=ALL,MODE=agent,SWEEP_ID=${SWEEP_ID},SWEEP_YAML=config/sweep_constraints_pretrain_penalty_soft.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh
+bash scripts/utils/submit_constraints_stage_c.sh penalty
 ```
 
 If `PDE_WINNER_HARD=augmented_lagrangian`:
 
 ```bash
-CREATE_JOB=$(sbatch --parsable \
-  --export=ALL,MODE=create,SWEEP_YAML=config/sweep_constraints_pretrain_al_soft.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh)
-
-SWEEP_ID=$(grep -ho 'SWEEP_ID=.*' experiments/neuralop-constraints-sweep-${CREATE_JOB}-*.out | tail -n1 | cut -d= -f2)
-
-echo "AL soft sweep: $SWEEP_ID"
-
-sbatch --array=0-3 \
-  --export=ALL,MODE=agent,SWEEP_ID=${SWEEP_ID},SWEEP_YAML=config/sweep_constraints_pretrain_al_soft.yaml \
-  scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh
+bash scripts/utils/submit_constraints_stage_c.sh al
 ```
 
 What to look for:

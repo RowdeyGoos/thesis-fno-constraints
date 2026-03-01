@@ -50,6 +50,18 @@ Use:
 
 Use `scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh`.
 
+Recommended helper scripts:
+
+```bash
+# One sweep (create + wait for SWEEP_ID + submit agents)
+bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_hard.yaml
+
+# Whole stages
+bash scripts/utils/submit_constraints_stage_a.sh
+bash scripts/utils/submit_constraints_stage_b.sh
+bash scripts/utils/submit_constraints_stage_c.sh penalty   # or: al
+```
+
 ### 2.1 Create sweep ID
 
 ```bash
