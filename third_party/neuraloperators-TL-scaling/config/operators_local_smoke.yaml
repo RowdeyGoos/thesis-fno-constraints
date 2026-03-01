@@ -16,6 +16,7 @@ default: &DEFAULT
   # optimization
   loss_style: 'mean'
   loss_func: 'mse'
+  checkpoint_selection_metric: 'val_loss'  # options: val_loss, val_err
   optimizer: 'adam'
   scheduler: 'none'
   lr: !!float 1.0

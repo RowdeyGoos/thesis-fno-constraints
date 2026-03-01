@@ -62,10 +62,10 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-# Configuration
-CONFIG_FILE="config/operators_mixed.yaml"
-CONFIG_NAME="mixed-scale-all"
-RUN_NAME="pretrain-mixed"
+# Configuration (override via sbatch --export=ALL,CONFIG_NAME=...,RUN_NAME=...)
+CONFIG_FILE="${CONFIG_FILE:-config/operators_mixed.yaml}"
+CONFIG_NAME="${CONFIG_NAME:-mixed-scale-all}"
+RUN_NAME="${RUN_NAME:-pretrain-mixed}"
 
 # Verify mixed dataset exists
 MIXED_TRAIN="data/mixed/_train_mixed_32k.h5"

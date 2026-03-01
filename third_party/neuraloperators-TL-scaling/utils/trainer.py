@@ -80,6 +80,13 @@ class Trainer():
             self.device = torch.device('cpu')
         self.params = params
         self.params.device = self.device
+        self.checkpoint_selection_metric = str(
+            getattr(self.params, 'checkpoint_selection_metric', 'val_loss')
+        ).lower()
+        if self.checkpoint_selection_metric not in ['val_loss', 'val_err']:
+            raise ValueError(
+                "checkpoint_selection_metric must be one of ['val_loss', 'val_err']"
+            )
 
     def init_exp_dir(self, exp_dir):
         if self.world_rank==0:
@@ -208,6 +215,7 @@ class Trainer():
     def train(self):
         if self.log_to_screen:
             logging.info("Starting training loop...")
+        best_selection_value = np.inf
         best_loss = np.inf
 
         best_epoch = 0
@@ -236,14 +244,18 @@ class Trainer():
             elif self.params.scheduler == 'cosine':
                 self.scheduler.step()
 
-            if self.logs['val_loss'] <= best_loss:
+            selection_value = float(self.logs[self.checkpoint_selection_metric])
+            if selection_value <= best_selection_value:
                 is_best_loss = True
+                best_selection_value = selection_value
                 best_loss = self.logs['val_loss']
                 best_err = self.logs['val_err']
             else:
                 is_best_loss = False
             self.logs['best_val_loss'] = best_loss
             self.logs['best_val_err'] = best_err
+            self.logs['best_checkpoint_selection_metric'] = best_selection_value
+            self.logs['checkpoint_selection_metric'] = self.checkpoint_selection_metric
 
             best_epoch = self.epoch if is_best_loss else best_epoch
             self.logs['best_epoch'] = best_epoch
@@ -281,6 +293,12 @@ class Trainer():
                     self.logs['val_pde_residual_norm'], self.logs['val_zero_mode_violation'],
                     self.logs['pde_al_lambda']
                 ))
+                logging.info(
+                    'Checkpoint selection metric: {} (best={})'.format(
+                        self.checkpoint_selection_metric,
+                        self.logs['best_checkpoint_selection_metric']
+                    )
+                )
 
 
         if self.log_to_wandb:
