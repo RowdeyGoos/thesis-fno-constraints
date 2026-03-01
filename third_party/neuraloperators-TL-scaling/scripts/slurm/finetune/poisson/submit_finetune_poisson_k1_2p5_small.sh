@@ -1,10 +1,17 @@
 #!/bin/bash
 #SBATCH --job-name=neuralop-k1_2.5-small
-#SBATCH --output=experiments/%x-%A-%a.out
-#SBATCH --error=experiments/%x-%A-%a.err
+#SBATCH --output=experiments/%x-%A_%a.out
+#SBATCH --error=experiments/%x-%A_%a.err
 #SBATCH --mail-type=END
 #SBATCH --time=4:00:00
 #SBATCH --qos=short
+#SBATCH --partition=insy,general
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=6
+#SBATCH --gres=gpu:a40:1
+#SBATCH --mem=16G
+#SBATCH --array=0-7
 
 # Transfer Learning: Poisson k∈[1,2.5] - Small Sample Sizes (16, 64, 256, 1k samples)
 # This script runs 8 experiments:
@@ -24,10 +31,16 @@
 
 echo "=========================================="
 echo "Transfer Learning Experiment (Poisson k∈[1,2.5] - Small Samples)"
-echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
-echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
+echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: $SLURM_NODELIST"
 echo "=========================================="
+
+# Guard against running without an array task context.
+if [ -z "${SLURM_ARRAY_TASK_ID:-}" ]; then
+    echo "Error: SLURM_ARRAY_TASK_ID is not set."
+    echo "Submit this script with sbatch so the array directive (#SBATCH --array=0-7) is applied."
+    exit 1
+fi
 
 # Container location
 CONTAINER_PATH=/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/containers/neuraloperators.sif
@@ -92,6 +105,12 @@ experiments=(
     "poisson-k1_2.5-scratch-1k:scratch-1k-samples"
 )
 
+# Validate task index before reading the experiment entry.
+if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#experiments[@]}" ]; then
+    echo "Error: SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID is out of range (0-$((${#experiments[@]} - 1)))."
+    exit 1
+fi
+
 # Get experiment for this task
 IFS=':' read -r config_name exp_desc <<< "${experiments[$SLURM_ARRAY_TASK_ID]}"
 
@@ -144,6 +163,6 @@ else
 fi
 echo "Type: $exp_type"
 echo "Config: $config_name"
-echo "Logs: experiments/${SLURM_JOB_NAME}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID}.out / .err"
+echo "Logs: experiments/${SLURM_JOB_NAME}-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out / .err"
 echo "Results: experiments/expts/$config_name/"
 echo "=========================================="
