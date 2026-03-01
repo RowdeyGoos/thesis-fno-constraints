@@ -61,7 +61,6 @@ export WANDB__SERVICE_WAIT=300
 export WANDB_DIR=/workspace/wandb
 export WANDB_DATA_DIR=/workspace/wandb
 export WANDB_CACHE_DIR=/workspace/wandb/cache
-export WANDB_TEMP_DIR=/workspace/wandb/tmp
 
 MODE=${MODE:-agent}
 SWEEP_YAML=${SWEEP_YAML:-config/sweep_constraints_pretrain_al_hard.yaml}
@@ -82,12 +81,16 @@ fi
 mkdir -p experiments
 BIND="--bind $WORKDIR:/workspace"
 
-JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
-JOB_TMP_DIR="$WORKDIR/$JOB_TMP_REL"
+# Use node-local tmp for multiprocessing temp files to avoid NFS .nfs cleanup errors.
+LOCAL_TMP_BASE="${SLURM_TMPDIR:-/tmp}"
+JOB_TMP_NAME="neuralop-${SLURM_JOB_ID:-local}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+TMPDIR_LOCAL="${LOCAL_TMP_BASE}/${JOB_TMP_NAME}"
+WANDB_TEMP_DIR="${TMPDIR_LOCAL}/wandb-tmp"
+mkdir -p "$TMPDIR_LOCAL" "$WANDB_TEMP_DIR"
+export WANDB_TEMP_DIR
 
 cleanup_tmp_dir() {
-    rm -rf "$JOB_TMP_DIR"
-    rmdir "$WORKDIR/tmp" 2>/dev/null || true
+    rm -rf "$TMPDIR_LOCAL" 2>/dev/null || true
 }
 trap cleanup_tmp_dir EXIT
 
@@ -110,7 +113,10 @@ if [ "$MODE" = "create" ]; then
     fi
 
     CREATE_OUTPUT=$($CONTAINER_BIN exec --nv $BIND "$CONTAINER_PATH" \
-        bash -c "cd /workspace && mkdir -p wandb wandb/cache wandb/tmp tmp '$ROOT_DIR' '/workspace/$JOB_TMP_REL' && export TMPDIR='/workspace/$JOB_TMP_REL' && ${CREATE_CMD}")
+        bash -c "cd /workspace && mkdir -p wandb wandb/cache '$ROOT_DIR' && \
+                 export TMPDIR='${TMPDIR_LOCAL}' TMP='${TMPDIR_LOCAL}' TEMP='${TMPDIR_LOCAL}' && \
+                 export WANDB_TEMP_DIR='${WANDB_TEMP_DIR}' && \
+                 mkdir -p '${TMPDIR_LOCAL}' '${WANDB_TEMP_DIR}' && ${CREATE_CMD}")
 
     echo "$CREATE_OUTPUT"
     SWEEP_ID=$(echo "$CREATE_OUTPUT" | sed -n 's/^SWEEP_ID=//p' | tail -n 1)
@@ -157,10 +163,11 @@ for i in $(seq 1 "$AGENT_COUNT_PER_TASK"); do
     echo "Command: $CMD"
 
     $CONTAINER_BIN exec --nv $BIND "$CONTAINER_PATH" \
-        bash -c 'cd /workspace && \
-                 export TMPDIR="/workspace/'"$JOB_TMP_REL"'" && \
-                 mkdir -p wandb wandb/cache wandb/tmp tmp '"$ROOT_DIR"' "$TMPDIR" && \
-                 '"$CMD"
+        bash -c "cd /workspace && \
+                 export TMPDIR='${TMPDIR_LOCAL}' TMP='${TMPDIR_LOCAL}' TEMP='${TMPDIR_LOCAL}' && \
+                 export WANDB_TEMP_DIR='${WANDB_TEMP_DIR}' && \
+                 mkdir -p wandb wandb/cache '${ROOT_DIR}' '${TMPDIR_LOCAL}' '${WANDB_TEMP_DIR}' && \
+                 ${CMD}"
 
     status=$?
     if [ $status -ne 0 ]; then
