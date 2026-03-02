@@ -8,7 +8,37 @@ Expected layout:
 import argparse
 import json
 import math
+import re
 from pathlib import Path
+
+
+_FLOAT_RE = re.compile(r"[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?")
+
+
+def parse_numeric(value):
+    """Parse plain floats and tensor-formatted float strings."""
+    if isinstance(value, (float, int)):
+        return float(value)
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    try:
+        return float(text)
+    except ValueError:
+        pass
+
+    if "tensor" not in text:
+        return value
+
+    # Handle strings like "tensor(0.123, device='cuda:0')" or "tensor([0.1234])".
+    m = _FLOAT_RE.search(text)
+    if m:
+        try:
+            return float(m.group(0))
+        except ValueError:
+            return value
+    return value
 
 
 def parse_logs_best(path: Path):
@@ -24,10 +54,7 @@ def parse_logs_best(path: Path):
             key, value = line.split(",", 1)
             key = key.strip()
             value = value.strip()
-            try:
-                metrics[key] = float(value)
-            except ValueError:
-                metrics[key] = value
+            metrics[key] = parse_numeric(value)
     return metrics
 
 
@@ -58,6 +85,8 @@ def main():
             continue
 
         val_err = metrics.get("val_err")
+        if not finite(val_err):
+            val_err = metrics.get("best_val_err")
         val_pde = metrics.get("val_pde_residual_norm")
         if not finite(val_err):
             continue
