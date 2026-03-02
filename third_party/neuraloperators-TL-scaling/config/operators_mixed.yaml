@@ -195,6 +195,35 @@ mixed-scale-all-constraints-al-pde-only:
   constraint_pde_al_lambda0: 0.0
   constraint_pde_al_dual_clip: 1.0e6
 
+# Zero-mode-only constrained pretraining baselines (PDE residual disabled).
+mixed-scale-all-constraints-zero-hard-only:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool True
+  constraint_zero_mode_enforcement: 'hard'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_pde_enable: !!bool False
+  constraint_pde_method: 'penalty'
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.0
+
+mixed-scale-all-constraints-zero-soft-only:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'soft'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_zero_mode_weight: 0.1
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_pde_enable: !!bool False
+  constraint_pde_method: 'penalty'
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.0
+
 # ==============================================================================
 # NOTES
 # ==============================================================================
