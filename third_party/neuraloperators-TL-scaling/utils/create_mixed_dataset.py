@@ -47,14 +47,16 @@ def load_dataset_info(filepath):
     with h5py.File(filepath, 'r') as f:
         fields = f['fields'][:]
         tensor = f['tensor'][:] if 'tensor' in f.keys() else None
+        bc = f['bc'][:] if 'bc' in f.keys() else None
         print(f"Loaded {filepath}")
         print(f"  Fields shape: {fields.shape}")
         print(f"  Tensor shape: {tensor.shape if tensor is not None else 'None'}")
-    return fields, tensor
+        print(f"  BC shape: {bc.shape if bc is not None else 'None'}")
+    return fields, tensor, bc
 
 
 def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
-                         output_path, samples_per_system=10922):
+                         output_path, samples_per_system=10922, require_bc=False):
     """
     Create a mixed dataset from three PDE systems.
     
@@ -78,18 +80,30 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
     
     # Load datasets
     print("\nLoading Poisson dataset...")
-    poisson_fields, poisson_tensor = load_dataset_info(poisson_path)
+    poisson_fields, poisson_tensor, poisson_bc = load_dataset_info(poisson_path)
     
     print("\nLoading Advection-Diffusion dataset...")
-    advdiff_fields, advdiff_tensor = load_dataset_info(advdiff_path)
+    advdiff_fields, advdiff_tensor, advdiff_bc = load_dataset_info(advdiff_path)
     
     print("\nLoading Helmholtz dataset...")
-    helmholtz_fields, helmholtz_tensor = load_dataset_info(helmholtz_path)
+    helmholtz_fields, helmholtz_tensor, helmholtz_bc = load_dataset_info(helmholtz_path)
     
     # Verify consistent spatial dimensions
     nx, ny = poisson_fields.shape[2], poisson_fields.shape[3]
     assert advdiff_fields.shape[2:] == (nx, ny), "Spatial dimensions must match"
     assert helmholtz_fields.shape[2:] == (nx, ny), "Spatial dimensions must match"
+
+    if require_bc:
+        if poisson_bc is None or advdiff_bc is None or helmholtz_bc is None:
+            raise ValueError(
+                "BC-aware mode requires 'bc' dataset in all inputs (poisson, advdiff, helmholtz)."
+            )
+        expected_bc_shape = (2, nx, ny)
+        for name, bc_arr in [('poisson', poisson_bc), ('advdiff', advdiff_bc), ('helmholtz', helmholtz_bc)]:
+            if bc_arr.shape[1:] != expected_bc_shape:
+                raise ValueError(
+                    f"{name} bc shape must be (N, 2, {nx}, {ny}), got {bc_arr.shape}"
+                )
     
     # Determine total samples
     n_samples_per_system = min(
@@ -119,6 +133,7 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
     mixed_fields = np.zeros((total_samples, 2, nx, ny), dtype=np.float32)
     mixed_tensor = np.zeros((total_samples, 6), dtype=np.float32)
     mixed_labels = np.zeros(total_samples, dtype=np.int32)  # 0=Poisson, 1=AdvDiff, 2=Helmholtz
+    mixed_bc = np.zeros((total_samples, 2, nx, ny), dtype=np.float32) if require_bc else None
     
     print("\nProcessing datasets...")
     
@@ -134,6 +149,8 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         # Tensor: diffusion coefficients, zero-pad for advection and wavenumber
         mixed_tensor[idx, :3] = poisson_tensor[i, :3]  # k11, k12, k22
         mixed_tensor[idx, 3:6] = 0  # no advection, no wavenumber
+        if require_bc:
+            mixed_bc[idx] = poisson_bc[i]
         # Label
         mixed_labels[idx] = 0
     print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
@@ -150,6 +167,8 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         # Tensor: diffusion coefficients + advection velocities, zero-pad wavenumber
         mixed_tensor[idx, :5] = advdiff_tensor[i, :5]  # k11, k12, k22, vx, vy
         mixed_tensor[idx, 5] = 0  # no wavenumber
+        if require_bc:
+            mixed_bc[idx] = advdiff_bc[i]
         # Label
         mixed_labels[idx] = 1
     print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
@@ -172,6 +191,8 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         mixed_tensor[idx, 3] = 0                        # vx = 0 (no advection)
         mixed_tensor[idx, 4] = 0                        # vy = 0 (no advection)
         mixed_tensor[idx, 5] = helmholtz_tensor[i, 1]  # omega (wavenumber in dedicated channel)
+        if require_bc:
+            mixed_bc[idx] = helmholtz_bc[i]
         # Label
         mixed_labels[idx] = 2
     print(f"    Completed: {n_samples_per_system}/{n_samples_per_system}")
@@ -182,6 +203,8 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
     mixed_fields = mixed_fields[shuffle_idx]
     mixed_tensor = mixed_tensor[shuffle_idx]
     mixed_labels = mixed_labels[shuffle_idx]
+    if require_bc:
+        mixed_bc = mixed_bc[shuffle_idx]
     
     # Save mixed dataset
     print(f"\nSaving mixed dataset to {output_path}...")
@@ -189,6 +212,8 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         f.create_dataset('fields', data=mixed_fields, dtype=np.float32)
         f.create_dataset('tensor', data=mixed_tensor, dtype=np.float32)
         f.create_dataset('labels', data=mixed_labels, dtype=np.int32)
+        if require_bc:
+            f.create_dataset('bc', data=mixed_bc, dtype=np.float32)
         
         # Add metadata
         f.attrs['description'] = 'Mixed dataset: Poisson + Advection-Diffusion + Helmholtz'
@@ -198,6 +223,7 @@ def create_mixed_dataset(poisson_path, advdiff_path, helmholtz_path,
         f.attrs['total_samples'] = total_samples
         f.attrs['nx'] = nx
         f.attrs['ny'] = ny
+        f.attrs['has_bc'] = bool(require_bc)
     
     print("\n✓ Mixed dataset created successfully!")
     print(f"  Output: {output_path}")
@@ -340,6 +366,11 @@ def main():
         default=10922,
         help='Number of samples to use from each system (default: 10922 for ~33k total)'
     )
+    parser.add_argument(
+        '--require_bc',
+        action='store_true',
+        help='Require bc in all system datasets and propagate it to mixed output'
+    )
     
     args = parser.parse_args()
     
@@ -348,7 +379,8 @@ def main():
         args.advdiff_path,
         args.helmholtz_path,
         args.output_path,
-        args.samples_per_system
+        args.samples_per_system,
+        args.require_bc,
     )
 
 

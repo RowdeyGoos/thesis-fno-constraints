@@ -162,12 +162,15 @@ class Inferencer():
         #self.model.train() # need gradients
         test_start = time.time()
 
-        logs_buff = torch.zeros((5), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((8), dtype=torch.float32, device=self.device)
         self.logs['test_err'] = logs_buff[0].view(-1)
         self.logs['test_loss'] = logs_buff[1].view(-1)
         self.logs['test_zero_mode_constraint_loss'] = logs_buff[2].view(-1)
         self.logs['test_pde_residual_norm'] = logs_buff[3].view(-1)
         self.logs['test_zero_mode_violation'] = logs_buff[4].view(-1)
+        self.logs['test_bc_violation_raw'] = logs_buff[5].view(-1)
+        self.logs['test_bc_violation_final'] = logs_buff[6].view(-1)
+        self.logs['test_err_interior'] = logs_buff[7].view(-1)
 
         num_examples = 3
         idx = [np.random.randint(0, len(self.test_data_loader)) for _ in range(num_examples)] # index of batch
@@ -181,24 +184,31 @@ class Inferencer():
             for i, (inputs, targets) in enumerate(self.test_data_loader):
                 if not self.params.pack_data:
                     inputs, targets = inputs.to(self.device), targets.to(self.device)
-                u = self.model(inputs)
-                loss_data = self.loss_func.data(inputs, u, targets)
-                loss_pde = self.loss_func.pde(inputs, u, targets)
-                loss_bc = self.loss_func.bc(inputs, u, targets)
-                loss_zero = self.loss_func.zero_mode_constraint(inputs, u, targets)
+                u_raw = self.model(inputs)
+                u_final = self.loss_func.project_bc(inputs, u_raw)
+                loss_data = self.loss_func.data(inputs, u_final, targets)
+                loss_pde = self.loss_func.pde(inputs, u_final, targets)
+                loss_bc = self.loss_func.bc(inputs, u_raw, targets)
+                loss_zero = self.loss_func.zero_mode_constraint(inputs, u_final, targets)
                 loss = loss_data + loss_bc + loss_pde + loss_zero
+                self.loss_func.update_bc_metrics(inputs, u_raw, u_final)
                 pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
-                zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
+                zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u_final)
+                bc_violation_raw = self.loss_func.get_last_bc_violation_raw()
+                bc_violation_final = self.loss_func.get_last_bc_violation_final()
 
-                self.logs['test_err'] += l2_err(u.detach(), targets.detach()) # computes rel l2 err of each image and averages across batches
+                self.logs['test_err'] += l2_err(u_final.detach(), targets.detach()) # computes rel l2 err of each image and averages across batches
                 self.logs['test_loss'] += loss.detach()
                 self.logs['test_zero_mode_constraint_loss'] += loss_zero.detach()
                 self.logs['test_pde_residual_norm'] += pde_residual_norm.detach()
                 self.logs['test_zero_mode_violation'] += zero_mode_violation.detach()
+                self.logs['test_bc_violation_raw'] += bc_violation_raw.detach()
+                self.logs['test_bc_violation_final'] += bc_violation_final.detach()
+                self.logs['test_err_interior'] += self.loss_func.interior_relative_l2(inputs, u_final, targets).detach()
                 if i in idx: 
                     source = inputs[img_idx[ii],0].detach().cpu().numpy() 
                     soln = targets[img_idx[ii],0].detach().cpu().numpy()
-                    pred = u[img_idx[ii],0].detach().cpu().numpy()
+                    pred = u_final[img_idx[ii],0].detach().cpu().numpy()
                     fields.extend([source, soln, pred])
                     ii += 1
 
@@ -207,13 +217,24 @@ class Inferencer():
         self.logs['test_zero_mode_constraint_loss'] /= len(self.test_data_loader)
         self.logs['test_pde_residual_norm'] /= len(self.test_data_loader)
         self.logs['test_zero_mode_violation'] /= len(self.test_data_loader)
+        self.logs['test_bc_violation_raw'] /= len(self.test_data_loader)
+        self.logs['test_bc_violation_final'] /= len(self.test_data_loader)
+        self.logs['test_err_interior'] /= len(self.test_data_loader)
 
         if dist.is_initialized():
-            for key in ['test_loss', 'test_err', 'test_zero_mode_constraint_loss', 'test_pde_residual_norm', 'test_zero_mode_violation']:
+            for key in [
+                'test_loss', 'test_err', 'test_zero_mode_constraint_loss',
+                'test_pde_residual_norm', 'test_zero_mode_violation',
+                'test_bc_violation_raw', 'test_bc_violation_final', 'test_err_interior'
+            ]:
                 dist.all_reduce(self.logs[key].detach())
                 self.logs[key] = float(self.logs[key]/dist.get_world_size())
         else:
-            for key in ['test_loss', 'test_err', 'test_zero_mode_constraint_loss', 'test_pde_residual_norm', 'test_zero_mode_violation']:
+            for key in [
+                'test_loss', 'test_err', 'test_zero_mode_constraint_loss',
+                'test_pde_residual_norm', 'test_zero_mode_violation',
+                'test_bc_violation_raw', 'test_bc_violation_final', 'test_err_interior'
+            ]:
                 self.logs[key] = float(self.logs[key])
 
         if self.log_to_screen:
@@ -226,20 +247,57 @@ class Inferencer():
 
         return test_time, fields
 
+    def _normalize_state_dict_keys(self, state_dict):
+        model_state = self.model.state_dict()
+        model_has_module = any(k.startswith('module.') for k in model_state.keys())
+        ckpt_has_module = any(k.startswith('module.') for k in state_dict.keys())
+
+        if model_has_module == ckpt_has_module:
+            return OrderedDict(state_dict.items())
+
+        if ckpt_has_module and not model_has_module:
+            return OrderedDict((k[7:], v) if k.startswith('module.') else (k, v) for k, v in state_dict.items())
+
+        return OrderedDict((f'module.{k}', v) if not k.startswith('module.') else (k, v) for k, v in state_dict.items())
+
+    def _adapt_fc0_input_channels(self, state_dict):
+        adapted = OrderedDict(state_dict.items())
+        model_state = self.model.state_dict()
+        for key, target_tensor in model_state.items():
+            if not key.endswith('fc0.weight'):
+                continue
+            if key not in adapted:
+                continue
+
+            source_tensor = adapted[key]
+            if source_tensor.shape == target_tensor.shape:
+                continue
+
+            if source_tensor.ndim != 2 or target_tensor.ndim != 2:
+                continue
+            if source_tensor.shape[0] != target_tensor.shape[0]:
+                continue
+
+            if source_tensor.shape[1] < target_tensor.shape[1]:
+                expanded = torch.zeros_like(target_tensor)
+                expanded[:, :source_tensor.shape[1]] = source_tensor
+                adapted[key] = expanded
+            else:
+                adapted[key] = source_tensor[:, :target_tensor.shape[1]]
+        return adapted
+
+    def _load_model_state_with_migration(self, raw_state_dict):
+        normalized = self._normalize_state_dict_keys(raw_state_dict)
+        migrated = self._adapt_fc0_input_channels(normalized)
+        self.model.load_state_dict(migrated, strict=True)
+
     def restore_checkpoint(self, checkpoint_path):
         if torch.cuda.is_available():
             map_location = 'cuda:{}'.format(self.local_rank)
         else:
             map_location = torch.device('cpu')
         checkpoint = torch.load(checkpoint_path, map_location=map_location)
-        try:
-            self.model.load_state_dict(checkpoint['model_state'])
-        except:
-            new_state_dict = OrderedDict()
-            for key, val in checkpoint['model_state'].items():
-                name = key[7:]
-                new_state_dict[name] = val 
-            self.model.load_state_dict(new_state_dict)
+        self._load_model_state_with_migration(checkpoint['model_state'])
 
 
     def save_logs(self, tag=""):

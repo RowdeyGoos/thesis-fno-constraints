@@ -23,3 +23,4 @@ previously spread across the repository root.
 - `MIXED_CONFIG_REFERENCE.md`
 - `MIXED_DATASET_EXPLANATION.md`
 - `MODEL_PARAMETERS.md`
+- `BC_CONDITIONED_IMPLEMENTATION_GUIDE.md`
