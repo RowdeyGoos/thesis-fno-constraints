@@ -27,11 +27,11 @@ This document explains how the boundary-conditioned (BC) pipeline is implemented
 ```mermaid
 flowchart LR
   subgraph G1[BC Data Generation]
-    P[gen_data_poisson_bc.py]
-    A[gen_data_advdiff_bc.py]
-    H[gen_data_helmholtz_bc.py]
-    B[bc_sampling.py<br/>sample g,m]
-    F[fd_bc_utils.py<br/>solve_dirichlet_fd]
+    P["gen_data_poisson_bc.py"]
+    A["gen_data_advdiff_bc.py"]
+    H["gen_data_helmholtz_bc.py"]
+    B["bc_sampling.py: sample g and m"]
+    F["fd_bc_utils.py: solve_dirichlet_fd"]
     P --> B
     A --> B
     H --> B
@@ -41,39 +41,41 @@ flowchart LR
   end
 
   subgraph G2[Mixed Assembly]
-    M[create_mixed_dataset.py<br/>--require_bc]
-    D1[(Poisson BC h5)]
-    D2[(AdvDiff BC h5)]
-    D3[(Helmholtz BC h5)]
+    M["create_mixed_dataset.py --require_bc"]
+    D1["Poisson BC h5"]
+    D2["AdvDiff BC h5"]
+    D3["Helmholtz BC h5"]
     D1 --> M
     D2 --> M
     D3 --> M
-    MM[(Mixed BC h5<br/>fields,tensor,labels,bc)]
+    MM["Mixed BC h5: fields, tensor, labels, bc"]
     M --> MM
   end
 
   subgraph G3[Training and Eval]
-    L[data_utils.py<br/>optional BC channels]
-    T[trainer.py]
-    I[inferencer.py]
-    O[loss_utils.py]
-    R[u_raw = model(x)]
-    Pj[u_final = project_bc(u_raw,g,m)]
-    MM --> L --> T
-    MM --> L --> I
+    L["data_utils.py: optional BC channels"]
+    T["trainer.py"]
+    I["inferencer.py"]
+    O["loss_utils.py"]
+    R["u_raw: model output"]
+    Pj["u_final: BC projection"]
+    MM --> L
+    L --> T
+    L --> I
     T --> O
     I --> O
-    O --> R --> Pj
+    O --> R
+    R --> Pj
   end
 
   subgraph G4[Constraint Logic]
-    C1[mode=off]
-    C2[mode=soft]
-    C3[mode=hard]
-    C4[mode=hard+soft]
-    S1[data loss on u_final]
-    S2[BC soft loss on u_raw]
-    S3[bc_violation_raw/final]
+    C1["mode off"]
+    C2["mode soft"]
+    C3["mode hard"]
+    C4["mode hard and soft"]
+    S1["data loss on u_final"]
+    S2["BC soft loss on u_raw"]
+    S3["bc_violation_raw and bc_violation_final"]
     C1 --> S1
     C2 --> S1
     C2 --> S2
