@@ -146,24 +146,42 @@ def _generate_split_to_hdf5(path, n_samples, xg, yg, params, rng, chunk_samples,
                 attempts = 0
                 last_interior_max = float("nan")
                 last_boundary_max = float("nan")
+                reject_nonfinite = 0
+                reject_bounded = 0
                 while True:
                     attempts += 1
                     u, source, ten, bc_pair = _sample_helmholtz(xg=xg, yg=yg, vf=vf, params=params, rng=rng)
                     finite = np.all(np.isfinite(u)) and np.all(np.isfinite(source))
-                    # Enforce amplitude bound on interior only; Dirichlet boundaries
-                    # can naturally exceed this threshold due sampled boundary traces.
-                    last_interior_max = _interior_max_abs(u)
-                    last_boundary_max = float(np.max(np.abs(bc_pair[0])))
-                    bounded = last_interior_max <= params.max_abs_solution
+                    if finite:
+                        # Enforce amplitude bound on interior only; Dirichlet boundaries
+                        # can naturally exceed this threshold due sampled boundary traces.
+                        last_interior_max = _interior_max_abs(u)
+                        last_boundary_max = float(np.max(np.abs(bc_pair[0])))
+                        if params.max_abs_solution > 0:
+                            bounded = last_interior_max <= params.max_abs_solution
+                        else:
+                            bounded = True
+                    else:
+                        bounded = False
+                        reject_nonfinite += 1
+
                     if finite and bounded:
                         break
+                    if finite and not bounded:
+                        reject_bounded += 1
                     if attempts >= params.max_sample_attempts:
+                        limit_info = (
+                            f"max_abs_solution={params.max_abs_solution:.3f}"
+                            if params.max_abs_solution > 0
+                            else "max_abs_solution=disabled"
+                        )
                         raise RuntimeError(
                             "Failed to produce valid Helmholtz BC sample after "
                             f"{params.max_sample_attempts} attempts "
                             f"(last interior max={last_interior_max:.3f}, "
                             f"last boundary max={last_boundary_max:.3f}, "
-                            f"max_abs_solution={params.max_abs_solution:.3f})"
+                            f"{limit_info}, rejects: nonfinite={reject_nonfinite}, "
+                            f"bounded={reject_bounded})"
                         )
 
                 fields_ds[sim, 0] = source
@@ -203,7 +221,12 @@ if __name__ == '__main__':
     parser.add_argument("--bc_modes", default=5, type=int)
     parser.add_argument("--bc_amplitude", default=1.0, type=float)
     parser.add_argument("--bc_width", default=1, type=int)
-    parser.add_argument("--max_abs_solution", default=2.0, type=float)
+    parser.add_argument(
+        "--max_abs_solution",
+        default=0.0,
+        type=float,
+        help="interior |u| threshold; set <=0 to disable amplitude rejection",
+    )
     parser.add_argument("--max_sample_attempts", default=100, type=int, help="max retries for one accepted sample")
     parser.add_argument("--h5_chunk_samples", default=64, type=int, help="samples per HDF5 chunk/write flush")
     parser.add_argument("--progress_every", default=1000, type=int, help="print progress every N samples (<=0 disables)")

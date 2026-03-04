@@ -27,12 +27,14 @@ bc_amplitude=1.0
 bc_width=1
 h5_chunk_samples=64
 progress_every=1000
-helmholtz_max_abs_solution=2.0
 helmholtz_max_sample_attempts=100
+# For BC Helmholtz, interior amplitudes can naturally exceed 2 due boundary forcing.
+# Set <=0 to disable amplitude rejection; only non-finite solves are retried.
+helmholtz_max_abs_solution=0.0
 
 poisson_seed=0
-advdiff_seed=1
-helmholtz_seed=2
+advdiff_seed=0
+helmholtz_seed=0
 
 mkdir -p "$poisson_datapath" "$advdiff_datapath" "$helmholtz_datapath"
 
