@@ -26,6 +26,7 @@ def _write_hdf5(path, fields, tensor, bc):
         for key in ['fields', 'tensor', 'bc']:
             if key in f:
                 del f[key]
+        # Stored tensor layout: [diffusion_scale, omega]
         f.create_dataset('fields', fields.shape, dtype='<f4', data=fields)
         f.create_dataset('tensor', tensor.shape, dtype='<f4', data=tensor)
         f.create_dataset('bc', bc.shape, dtype='<f4', data=bc)
@@ -58,6 +59,7 @@ def _sample_helmholtz(xg, yg, vf, params, rng):
         amplitude=params.bc_amplitude,
     )
 
+    # Helmholtz track uses isotropic diffusion and sampled omega.
     k11 = params.diff_coef_scale
     k12 = 0.0
     k22 = params.diff_coef_scale
@@ -93,6 +95,7 @@ def _generate_split(n_samples, xg, yg, params, rng):
                 attempts += 1
                 u, source, ten, bc_pair = _sample_helmholtz(xg=xg, yg=yg, vf=vf, params=params, rng=rng)
                 finite = np.all(np.isfinite(u)) and np.all(np.isfinite(source))
+                # Guard against rare unstable draws with very large amplitudes.
                 bounded = np.max(np.abs(u)) <= params.max_abs_solution
                 if finite and bounded:
                     break

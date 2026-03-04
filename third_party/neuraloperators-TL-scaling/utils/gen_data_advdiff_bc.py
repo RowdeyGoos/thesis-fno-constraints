@@ -33,6 +33,7 @@ def _write_hdf5(path, fields, tensor, bc):
         for key in ['fields', 'tensor', 'bc']:
             if key in f:
                 del f[key]
+        # Stored tensor layout: [k11, k12, k22, vx, vy]
         f.create_dataset('fields', fields.shape, dtype='<f4', data=fields)
         f.create_dataset('tensor', tensor.shape, dtype='<f4', data=tensor)
         f.create_dataset('bc', bc.shape, dtype='<f4', data=bc)
@@ -43,8 +44,10 @@ def _sample_advdiff(xg, yg, vf, params, rng):
     vel = sample_velocity_vector(rng=rng, magnitude=1.0)
 
     adr = float(params.adr1 + rng.random() * (params.adr2 - params.adr1))
+    # Reuse legacy ADR->lambda mapping so BC datasets stay distribution-compatible.
     lam = float(params.lambdas[_closest_idx(params.ad_means, adr)])
 
+    # Keep scaling semantics aligned with the periodic AdvDiff generator.
     k11 = float(K[0, 0]) * params.diff_coef_scale * (1.0 - lam)
     k12 = float(K[0, 1]) * params.diff_coef_scale * (1.0 - lam)
     k22 = float(K[1, 1]) * params.diff_coef_scale * (1.0 - lam)
@@ -109,6 +112,7 @@ def _generate_split(n_samples, xg, yg, params, rng):
                 u, source, ten, bc_pair = _sample_advdiff(xg=xg, yg=yg, vf=vf, params=params, rng=rng)
                 if np.all(np.isfinite(u)) and np.all(np.isfinite(source)):
                     break
+                # Retry on non-finite solves (defensive; should be uncommon).
                 if attempts >= 5:
                     raise RuntimeError("Failed to produce finite AdvDiff BC sample after 5 attempts")
 

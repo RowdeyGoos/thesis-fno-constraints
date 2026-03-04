@@ -27,6 +27,9 @@ def _write_hdf5(path, fields, tensor, bc):
         for key in ['fields', 'tensor', 'bc']:
             if key in f:
                 del f[key]
+        # Stored channel convention:
+        #   fields[:,0] = source, fields[:,1] = solution
+        #   bc[:,0] = g (Dirichlet values), bc[:,1] = m (boundary mask)
         f.create_dataset('fields', fields.shape, dtype='<f4', data=fields)
         f.create_dataset('tensor', tensor.shape, dtype='<f4', data=tensor)
         f.create_dataset('bc', bc.shape, dtype='<f4', data=bc)
@@ -34,6 +37,7 @@ def _write_hdf5(path, fields, tensor, bc):
 
 def _sample_poisson(xg, yg, vf, params, rng):
     K = sample_diffusion_tensor(rng=rng, e1=params.e1, e2=params.e2)
+    # Keep diffusion scaling consistent with legacy periodic generators.
     k11 = float(K[0, 0]) * params.diff_coef_scale
     k12 = float(K[0, 1]) * params.diff_coef_scale
     k22 = float(K[1, 1]) * params.diff_coef_scale
@@ -93,6 +97,7 @@ def _generate_split(n_samples, xg, yg, params, rng):
                 u, source, ten, bc_pair = _sample_poisson(xg=xg, yg=yg, vf=vf, params=params, rng=rng)
                 if np.all(np.isfinite(u)) and np.all(np.isfinite(source)):
                     break
+                # Rarely needed; guards against pathological random draws.
                 if attempts >= 5:
                     raise RuntimeError("Failed to produce finite Poisson BC sample after 5 attempts")
 

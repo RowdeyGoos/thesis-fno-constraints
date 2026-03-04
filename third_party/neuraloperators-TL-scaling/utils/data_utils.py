@@ -149,12 +149,15 @@ class PDESolns(Dataset):
             X = X.astype('float32')
 
         if self.use_bc_channels and self.bc is not None:
+            # BC convention is [g, m] where g is boundary value map and m is boundary mask.
             bc = self.bc[local_idx].astype('float32')
             X = np.concatenate([X, bc], axis=0).astype('float32')
 
         if self.scales is not None:
             f_norm = np.linalg.norm(X[0]) * self.measure
             f_scaling = f_norm / self.scales[0]
+            # Keep existing normalization semantics: global source-based scaling first.
+            # Tensor channels then receive an additional channel-wise scaling step below.
             X = X / f_scaling # ensures that 10f and 10k for example, have the same input
             # scale the tensors
             tensor_start = self.in_channels
@@ -167,4 +170,3 @@ class PDESolns(Dataset):
         X = self.transform(X)
         y = self.transform(self.data[local_idx,self.in_channels:])
         return X, y
-

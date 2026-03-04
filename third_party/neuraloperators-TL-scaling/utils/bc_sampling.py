@@ -16,6 +16,7 @@ def boundary_mask(nx: int, ny: int, width: int = 1, dtype=np.float32) -> np.ndar
         raise ValueError("width too large for grid dimensions")
 
     m = np.zeros((nx, ny), dtype=dtype)
+    # We treat axis-0 as x-index and axis-1 as y-index throughout this codebase.
     m[:width, :] = 1
     m[-width:, :] = 1
     m[:, :width] = 1
@@ -28,6 +29,7 @@ def _smooth_trace(n: int, rng: np.random.Generator, n_modes: int, amplitude: flo
     t = np.linspace(0.0, 1.0, n, endpoint=False, dtype=np.float64)
     trace = np.zeros((n,), dtype=np.float64)
     for mode in range(1, n_modes + 1):
+        # 1/mode scaling biases samples toward low frequencies, producing smooth traces.
         a = rng.normal(0.0, amplitude / mode)
         b = rng.normal(0.0, amplitude / mode)
         trace += a * np.sin(2.0 * np.pi * mode * t) + b * np.cos(2.0 * np.pi * mode * t)
@@ -49,6 +51,7 @@ def sample_boundary_value_map(
     """
     g = np.zeros((nx, ny), dtype=np.float32)
 
+    # Independent traces per side allow diverse BC realizations.
     top = _smooth_trace(ny, rng=rng, n_modes=n_modes, amplitude=amplitude)
     bottom = _smooth_trace(ny, rng=rng, n_modes=n_modes, amplitude=amplitude)
     left = _smooth_trace(nx, rng=rng, n_modes=n_modes, amplitude=amplitude)
@@ -83,6 +86,7 @@ def sample_bc_pair(
     """
     m = boundary_mask(nx=nx, ny=ny, width=width, dtype=np.float32)
     g = sample_boundary_value_map(nx=nx, ny=ny, rng=rng, n_modes=n_modes, amplitude=amplitude)
+    # Explicitly zero out the interior, so g is strictly boundary-only.
     g = g * m
     return g.astype(np.float32), m.astype(np.float32)
 
@@ -108,6 +112,9 @@ def sample_bc_batch(
             n_modes=n_modes,
             amplitude=amplitude,
         )
+        # Channel convention used by loaders/loss code:
+        #   bc[:, 0] -> Dirichlet values g
+        #   bc[:, 1] -> boundary mask m
         bc[idx, 0] = g
         bc[idx, 1] = m
     return bc

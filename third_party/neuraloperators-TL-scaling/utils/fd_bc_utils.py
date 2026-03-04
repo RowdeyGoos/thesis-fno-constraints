@@ -33,6 +33,7 @@ def rbf_source(
         r = (x - px) ** 2 + (y - py) ** 2
         source += float(weights[idx]) * np.exp(-r / (2.0 * sigma ** 2))
 
+    # Normalize per sample so amplitude statistics stay stable across random draws.
     max_abs = float(np.max(np.abs(source)))
     if max_abs > 0:
         source /= max_abs
@@ -106,6 +107,9 @@ def solve_dirichlet_fd(
     Solve
       k11*u_xx + 2*k12*u_xy + k22*u_yy - vx*u_x - vy*u_y + omega*u + source = 0
     on a rectangular grid with Dirichlet boundary values from g.
+
+    Sign convention is chosen to match existing generator equations:
+      diffusion - advection + helmholtz + source = 0
     """
     nx, ny = source.shape
     if g.shape != (nx, ny):
@@ -116,6 +120,8 @@ def solve_dirichlet_fd(
     dx = lx / float(nx - 1)
     dy = ly / float(ny - 1)
 
+    # 9-point stencil coefficients for:
+    # k11*u_xx + 2*k12*u_xy + k22*u_yy - vx*u_x - vy*u_y + omega*u
     c_center = (-2.0 * k11 / (dx * dx)) + (-2.0 * k22 / (dy * dy)) + omega
     c_e = (k11 / (dx * dx)) - (vx / (2.0 * dx))
     c_w = (k11 / (dx * dx)) + (vx / (2.0 * dx))
@@ -157,6 +163,7 @@ def solve_dirichlet_fd(
                     col = _interior_idx(ni, nj, ny)
                     A[row, col] += coef
                 else:
+                    # Move known boundary terms to the right-hand side.
                     rhs -= coef * float(g[ni, nj])
             b[row] = rhs
 
@@ -164,6 +171,7 @@ def solve_dirichlet_fd(
     if np.any(~np.isfinite(u_int)):
         raise RuntimeError("Finite-difference solve produced non-finite values")
 
+    # Enforce boundary exactly by construction, solve only for interior nodes.
     u = np.array(g, dtype=np.float32, copy=True)
     for i in range(1, nx - 1):
         for j in range(1, ny - 1):
