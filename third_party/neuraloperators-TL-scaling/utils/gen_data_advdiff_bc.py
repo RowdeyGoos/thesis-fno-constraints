@@ -34,6 +34,19 @@ def _chunk_shape(n_samples, chunk_samples, *tail_shape):
     return (max(1, min(int(chunk_samples), int(n_samples))), *tail_shape)
 
 
+def _report_progress(split_name, done, total, start_time):
+    elapsed = max(time.time() - start_time, 1.0e-9)
+    rate = done / elapsed
+    remaining = max(total - done, 0)
+    eta = (remaining / rate) if rate > 0 else float("inf")
+    pct = (100.0 * done / max(total, 1))
+    print(
+        f"[{split_name}] {done}/{total} ({pct:5.1f}%) | "
+        f"{rate:7.2f} samples/s | elapsed {elapsed:8.1f}s | eta {eta:8.1f}s",
+        flush=True,
+    )
+
+
 def _create_hdf5_datasets(path, n_samples, nx, ny, tensor_dim, chunk_samples):
     f = h5py.File(path, "w")
     field_chunks = _chunk_shape(n_samples, chunk_samples, 2, nx, ny)
@@ -118,7 +131,7 @@ def _sample_advdiff(xg, yg, vf, params, rng):
     return u.astype(np.float32), source.astype(np.float32), tensor, bc
 
 
-def _generate_split_to_hdf5(path, n_samples, xg, yg, params, rng, chunk_samples):
+def _generate_split_to_hdf5(path, n_samples, xg, yg, params, rng, chunk_samples, split_name, progress_every):
     nx, ny = xg.shape
     h5_file, fields_ds, tensor_ds, bc_ds = _create_hdf5_datasets(
         path=path,
@@ -130,6 +143,10 @@ def _generate_split_to_hdf5(path, n_samples, xg, yg, params, rng, chunk_samples)
     )
 
     try:
+        split_start = time.time()
+        last_report = 0
+        if progress_every > 0:
+            print(f"[{split_name}] starting generation ({n_samples} samples)", flush=True)
         vfs = [0.2, 0.4, 0.6, 0.8]
         num_vfs = len(vfs)
         sim = 0
@@ -154,6 +171,11 @@ def _generate_split_to_hdf5(path, n_samples, xg, yg, params, rng, chunk_samples)
 
                 if chunk_samples > 0 and (sim % chunk_samples == 0):
                     h5_file.flush()
+                if progress_every > 0 and ((sim - last_report) >= progress_every or sim == n_samples):
+                    _report_progress(split_name=split_name, done=sim, total=n_samples, start_time=split_start)
+                    last_report = sim
+        if progress_every > 0 and last_report != n_samples:
+            _report_progress(split_name=split_name, done=n_samples, total=n_samples, start_time=split_start)
     finally:
         h5_file.close()
 
@@ -182,6 +204,7 @@ if __name__ == '__main__':
     parser.add_argument("--bc_amplitude", default=1.0, type=float)
     parser.add_argument("--bc_width", default=1, type=int)
     parser.add_argument("--h5_chunk_samples", default=64, type=int, help="samples per HDF5 chunk/write flush")
+    parser.add_argument("--progress_every", default=1000, type=int, help="print progress every N samples (<=0 disables)")
     args = parser.parse_args()
 
     if args.h5_chunk_samples <= 0:
@@ -234,6 +257,8 @@ if __name__ == '__main__':
         params=params,
         rng=rng,
         chunk_samples=args.h5_chunk_samples,
+        split_name="train",
+        progress_every=args.progress_every,
     )
     _generate_split_to_hdf5(
         path=val_path,
@@ -243,6 +268,8 @@ if __name__ == '__main__':
         params=params,
         rng=rng,
         chunk_samples=args.h5_chunk_samples,
+        split_name="val",
+        progress_every=args.progress_every,
     )
     _generate_split_to_hdf5(
         path=test_path,
@@ -252,5 +279,7 @@ if __name__ == '__main__':
         params=params,
         rng=rng,
         chunk_samples=args.h5_chunk_samples,
+        split_name="test",
+        progress_every=args.progress_every,
     )
     print(f"Generated BC AdvDiff datasets in {args.datapath} (elapsed {time.time() - t0:.2f}s)")
