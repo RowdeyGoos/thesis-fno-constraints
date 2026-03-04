@@ -40,6 +40,12 @@ def _report_progress(split_name, done, total, start_time):
     )
 
 
+def _interior_max_abs(u):
+    if u.shape[0] <= 2 or u.shape[1] <= 2:
+        return float(np.max(np.abs(u)))
+    return float(np.max(np.abs(u[1:-1, 1:-1])))
+
+
 def _create_hdf5_datasets(path, n_samples, nx, ny, tensor_dim, chunk_samples):
     f = h5py.File(path, "w")
     field_chunks = _chunk_shape(n_samples, chunk_samples, 2, nx, ny)
@@ -138,16 +144,27 @@ def _generate_split_to_hdf5(path, n_samples, xg, yg, params, rng, chunk_samples,
             n_local = _num_ex(n_samples, idx, num_vfs)
             for _ in range(n_local):
                 attempts = 0
+                last_interior_max = float("nan")
+                last_boundary_max = float("nan")
                 while True:
                     attempts += 1
                     u, source, ten, bc_pair = _sample_helmholtz(xg=xg, yg=yg, vf=vf, params=params, rng=rng)
                     finite = np.all(np.isfinite(u)) and np.all(np.isfinite(source))
-                    # Guard against rare unstable draws with very large amplitudes.
-                    bounded = np.max(np.abs(u)) <= params.max_abs_solution
+                    # Enforce amplitude bound on interior only; Dirichlet boundaries
+                    # can naturally exceed this threshold due sampled boundary traces.
+                    last_interior_max = _interior_max_abs(u)
+                    last_boundary_max = float(np.max(np.abs(bc_pair[0])))
+                    bounded = last_interior_max <= params.max_abs_solution
                     if finite and bounded:
                         break
-                    if attempts >= 10:
-                        raise RuntimeError("Failed to produce valid Helmholtz BC sample after 10 attempts")
+                    if attempts >= params.max_sample_attempts:
+                        raise RuntimeError(
+                            "Failed to produce valid Helmholtz BC sample after "
+                            f"{params.max_sample_attempts} attempts "
+                            f"(last interior max={last_interior_max:.3f}, "
+                            f"last boundary max={last_boundary_max:.3f}, "
+                            f"max_abs_solution={params.max_abs_solution:.3f})"
+                        )
 
                 fields_ds[sim, 0] = source
                 fields_ds[sim, 1] = u
@@ -187,12 +204,15 @@ if __name__ == '__main__':
     parser.add_argument("--bc_amplitude", default=1.0, type=float)
     parser.add_argument("--bc_width", default=1, type=int)
     parser.add_argument("--max_abs_solution", default=2.0, type=float)
+    parser.add_argument("--max_sample_attempts", default=100, type=int, help="max retries for one accepted sample")
     parser.add_argument("--h5_chunk_samples", default=64, type=int, help="samples per HDF5 chunk/write flush")
     parser.add_argument("--progress_every", default=1000, type=int, help="print progress every N samples (<=0 disables)")
     args = parser.parse_args()
 
     if args.h5_chunk_samples <= 0:
         raise ValueError("--h5_chunk_samples must be >= 1")
+    if args.max_sample_attempts <= 0:
+        raise ValueError("--max_sample_attempts must be >= 1")
 
     rng = np.random.default_rng(args.seed)
 
@@ -215,6 +235,7 @@ if __name__ == '__main__':
         "bc_amplitude": args.bc_amplitude,
         "bc_width": args.bc_width,
         "max_abs_solution": args.max_abs_solution,
+        "max_sample_attempts": args.max_sample_attempts,
     }
     params = SimpleNamespace(**params)
 
