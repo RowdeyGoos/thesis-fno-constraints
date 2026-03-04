@@ -28,15 +28,38 @@ def _closest_idx(arr, val):
     return int(np.argmin(np.abs(arr - val)))
 
 
-def _write_hdf5(path, fields, tensor, bc):
-    with h5py.File(path, "a") as f:
-        for key in ['fields', 'tensor', 'bc']:
-            if key in f:
-                del f[key]
-        # Stored tensor layout: [k11, k12, k22, vx, vy]
-        f.create_dataset('fields', fields.shape, dtype='<f4', data=fields)
-        f.create_dataset('tensor', tensor.shape, dtype='<f4', data=tensor)
-        f.create_dataset('bc', bc.shape, dtype='<f4', data=bc)
+def _chunk_shape(n_samples, chunk_samples, *tail_shape):
+    if n_samples <= 0:
+        return None
+    return (max(1, min(int(chunk_samples), int(n_samples))), *tail_shape)
+
+
+def _create_hdf5_datasets(path, n_samples, nx, ny, tensor_dim, chunk_samples):
+    f = h5py.File(path, "w")
+    field_chunks = _chunk_shape(n_samples, chunk_samples, 2, nx, ny)
+    tensor_chunks = _chunk_shape(n_samples, chunk_samples, tensor_dim)
+    bc_chunks = _chunk_shape(n_samples, chunk_samples, 2, nx, ny)
+
+    # Stored tensor layout: [k11, k12, k22, vx, vy]
+    fields_ds = f.create_dataset(
+        "fields",
+        shape=(n_samples, 2, nx, ny),
+        dtype="<f4",
+        chunks=field_chunks,
+    )
+    tensor_ds = f.create_dataset(
+        "tensor",
+        shape=(n_samples, tensor_dim),
+        dtype="<f4",
+        chunks=tensor_chunks,
+    )
+    bc_ds = f.create_dataset(
+        "bc",
+        shape=(n_samples, 2, nx, ny),
+        dtype="<f4",
+        chunks=bc_chunks,
+    )
+    return f, fields_ds, tensor_ds, bc_ds
 
 
 def _sample_advdiff(xg, yg, vf, params, rng):
@@ -95,33 +118,44 @@ def _sample_advdiff(xg, yg, vf, params, rng):
     return u.astype(np.float32), source.astype(np.float32), tensor, bc
 
 
-def _generate_split(n_samples, xg, yg, params, rng):
-    fields = np.zeros((n_samples, 2, xg.shape[0], yg.shape[1]), dtype=np.float32)
-    tensor = np.zeros((n_samples, 5), dtype=np.float32)
-    bc = np.zeros((n_samples, 2, xg.shape[0], yg.shape[1]), dtype=np.float32)
+def _generate_split_to_hdf5(path, n_samples, xg, yg, params, rng, chunk_samples):
+    nx, ny = xg.shape
+    h5_file, fields_ds, tensor_ds, bc_ds = _create_hdf5_datasets(
+        path=path,
+        n_samples=n_samples,
+        nx=nx,
+        ny=ny,
+        tensor_dim=5,
+        chunk_samples=chunk_samples,
+    )
 
-    vfs = [0.2, 0.4, 0.6, 0.8]
-    num_vfs = len(vfs)
-    sim = 0
-    for idx, vf in enumerate(vfs):
-        n_local = _num_ex(n_samples, idx, num_vfs)
-        for _ in range(n_local):
-            attempts = 0
-            while True:
-                attempts += 1
-                u, source, ten, bc_pair = _sample_advdiff(xg=xg, yg=yg, vf=vf, params=params, rng=rng)
-                if np.all(np.isfinite(u)) and np.all(np.isfinite(source)):
-                    break
-                # Retry on non-finite solves (defensive; should be uncommon).
-                if attempts >= 5:
-                    raise RuntimeError("Failed to produce finite AdvDiff BC sample after 5 attempts")
+    try:
+        vfs = [0.2, 0.4, 0.6, 0.8]
+        num_vfs = len(vfs)
+        sim = 0
+        for idx, vf in enumerate(vfs):
+            n_local = _num_ex(n_samples, idx, num_vfs)
+            for _ in range(n_local):
+                attempts = 0
+                while True:
+                    attempts += 1
+                    u, source, ten, bc_pair = _sample_advdiff(xg=xg, yg=yg, vf=vf, params=params, rng=rng)
+                    if np.all(np.isfinite(u)) and np.all(np.isfinite(source)):
+                        break
+                    # Retry on non-finite solves (defensive; should be uncommon).
+                    if attempts >= 5:
+                        raise RuntimeError("Failed to produce finite AdvDiff BC sample after 5 attempts")
 
-            fields[sim, 0] = source
-            fields[sim, 1] = u
-            tensor[sim] = ten
-            bc[sim] = bc_pair
-            sim += 1
-    return fields, tensor, bc
+                fields_ds[sim, 0] = source
+                fields_ds[sim, 1] = u
+                tensor_ds[sim] = ten
+                bc_ds[sim] = bc_pair
+                sim += 1
+
+                if chunk_samples > 0 and (sim % chunk_samples == 0):
+                    h5_file.flush()
+    finally:
+        h5_file.close()
 
 
 def _fmt(x):
@@ -147,7 +181,11 @@ if __name__ == '__main__':
     parser.add_argument("--bc_modes", default=5, type=int)
     parser.add_argument("--bc_amplitude", default=1.0, type=float)
     parser.add_argument("--bc_width", default=1, type=int)
+    parser.add_argument("--h5_chunk_samples", default=64, type=int, help="samples per HDF5 chunk/write flush")
     args = parser.parse_args()
+
+    if args.h5_chunk_samples <= 0:
+        raise ValueError("--h5_chunk_samples must be >= 1")
 
     rng = np.random.default_rng(args.seed)
 
@@ -183,27 +221,36 @@ if __name__ == '__main__':
     params = SimpleNamespace(**params)
 
     t0 = time.time()
-    train_fields, train_tensor, train_bc = _generate_split(args.ntrain, xg, yg, params, rng)
-    val_fields, val_tensor, val_bc = _generate_split(args.nval, xg, yg, params, rng)
-    test_fields, test_tensor, test_bc = _generate_split(args.ntest, xg, yg, params, rng)
-
     os.makedirs(args.datapath, exist_ok=True)
-    _write_hdf5(
-        os.path.join(args.datapath, f"_train_adr{_fmt(args.adr1)}_{_fmt(args.adr2)}_32k_bc.h5"),
-        train_fields,
-        train_tensor,
-        train_bc,
+    train_path = os.path.join(args.datapath, f"_train_adr{_fmt(args.adr1)}_{_fmt(args.adr2)}_32k_bc.h5")
+    val_path = os.path.join(args.datapath, f"_val_adr{_fmt(args.adr1)}_{_fmt(args.adr2)}_4k_bc.h5")
+    test_path = os.path.join(args.datapath, f"_test_adr{_fmt(args.adr1)}_{_fmt(args.adr2)}_4k_bc.h5")
+
+    _generate_split_to_hdf5(
+        path=train_path,
+        n_samples=args.ntrain,
+        xg=xg,
+        yg=yg,
+        params=params,
+        rng=rng,
+        chunk_samples=args.h5_chunk_samples,
     )
-    _write_hdf5(
-        os.path.join(args.datapath, f"_val_adr{_fmt(args.adr1)}_{_fmt(args.adr2)}_4k_bc.h5"),
-        val_fields,
-        val_tensor,
-        val_bc,
+    _generate_split_to_hdf5(
+        path=val_path,
+        n_samples=args.nval,
+        xg=xg,
+        yg=yg,
+        params=params,
+        rng=rng,
+        chunk_samples=args.h5_chunk_samples,
     )
-    _write_hdf5(
-        os.path.join(args.datapath, f"_test_adr{_fmt(args.adr1)}_{_fmt(args.adr2)}_4k_bc.h5"),
-        test_fields,
-        test_tensor,
-        test_bc,
+    _generate_split_to_hdf5(
+        path=test_path,
+        n_samples=args.ntest,
+        xg=xg,
+        yg=yg,
+        params=params,
+        rng=rng,
+        chunk_samples=args.h5_chunk_samples,
     )
     print(f"Generated BC AdvDiff datasets in {args.datapath} (elapsed {time.time() - t0:.2f}s)")
