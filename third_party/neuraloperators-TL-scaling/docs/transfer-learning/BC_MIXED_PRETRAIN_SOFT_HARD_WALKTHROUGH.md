@@ -1,244 +1,292 @@
-# BC Mixed Pretraining Walkthrough (Soft and Hard BC Constraints)
+# BC Constraints Experiment Walkthrough
 
-This walkthrough is a command-first runbook for:
+This document is an execution checklist for running BC-conditioned mixed pretraining end-to-end.
 
-1. generating BC-enabled datasets for Poisson, AdvDiff, and Helmholtz,
-2. building BC-enabled mixed train/val/test datasets, and
-3. running mixed pretraining experiments with `soft` and `hard` boundary constraints.
+It answers:
 
-The target training configs are in `config/operators_mixed_bc.yaml`:
+1. What to run
+2. In which order
+3. What to check in outputs before moving on
 
-- `mixed-bc-scale-all-soft`
-- `mixed-bc-scale-all-hard`
+Use this together with:
 
-## 1) Prerequisites
+- `docs/transfer-learning/BC_CONDITIONED_IMPLEMENTATION_GUIDE.md`
+- `config/operators_mixed_bc.yaml`
+
+---
+
+## 1) Target comparisons
+
+You should evaluate these questions in order:
+
+1. BC enforcement mode with fixed hyperparameters: `off` vs `soft` vs `hard` vs `hard+soft`
+2. Soft-mode hyperparameters: tune `constraint_bc_weight` (and optionally warmup/loss norm)
+3. Final BC winner based on interior error vs boundary violation tradeoff
+
+---
+
+## 2) One-time preflight
 
 Run from:
 
 ```bash
-cd /mnt/c/Users/rowde/Documents/GitHub/thesis-fno-constraints-boundary/third_party/neuraloperators-TL-scaling
+cd third_party/neuraloperators-TL-scaling
 ```
 
-Confirm key packages:
+Quick checks:
 
 ```bash
-python3 - <<'PY'
-import importlib.util
-required = ["torch", "numpy", "h5py", "scipy", "ruamel.yaml"]
-missing = [m for m in required if importlib.util.find_spec(m) is None]
-print("missing:", missing)
-PY
+ls containers/neuraloperators.sif
+ls config/operators_mixed_bc.yaml
+ls config/sweep_constraints_pretrain_bc_soft.yaml
+ls run_gen_data_bc.sh run_build_mixed_bc.sh
 ```
 
-## 2) Set paths and sizes
+---
 
-The config expects these mixed files:
+## 3) Stage 0: Smoke test (recommended)
+
+Use this first to catch config/runtime issues before full generation and long pretraining runs.
+
+Local smoke:
+
+```bash
+MODES="off soft hard hard+soft" bash scripts/utils/run_local_smoke_train_eval_bc_constraints.sh
+```
+
+SLURM smoke:
+
+```bash
+sbatch scripts/slurm/smoke/submit_smoke_train_eval_bc_constraints.sh
+```
+
+Pass criteria:
+
+- Job exits successfully.
+- Train log contains BC metrics: `bc_violation_raw`, `bc_violation_final`, `val_err_interior`
+- Eval log contains BC metrics: `test_bc_violation_raw`, `test_bc_violation_final`, `test_err_interior`
+- In hard modes, final BC violation is near zero.
+
+---
+
+## 4) Stage 1: Generate BC datasets per PDE system
+
+Recommended (single command):
+
+```bash
+bash run_gen_data_bc.sh
+```
+
+This generates:
+
+- Poisson BC datasets in `data_root/poisson`
+- AdvDiff BC datasets in `data_root/advdiff`
+- Helmholtz BC datasets in `data_root/helmholtz`
+
+Important knobs in `run_gen_data_bc.sh`:
+
+- split sizes: `ntrain`, `nval`, `ntest`
+- grid/source controls: `n`, `ng`
+- BC controls: `bc_modes`, `bc_amplitude`, `bc_width`
+- I/O/performance: `h5_chunk_samples`, `progress_every`
+
+Pass criteria:
+
+- Expected files exist for each system:
+  - train: `*_32k_bc.h5`
+  - val/test: `*_4k_bc.h5`
+- No generator runtime failures.
+
+Optional sanity checks:
+
+```bash
+python3 scripts/utils/check_bc_dataset_sanity.py --input data/poisson --glob "*_bc.h5"
+python3 scripts/utils/check_bc_dataset_sanity.py --input data/advdiff --glob "*_bc.h5"
+python3 scripts/utils/check_bc_dataset_sanity.py --input data/helmholtz --glob "*_bc.h5"
+```
+
+---
+
+## 5) Stage 2: Build mixed BC train/val/test datasets
+
+Recommended (single command):
+
+```bash
+bash run_build_mixed_bc.sh
+```
+
+This builds:
 
 - `data/mixed/_train_mixed_32k_bc.h5`
 - `data/mixed/_val_mixed_4k_bc.h5`
 - `data/mixed/_test_mixed_4k_bc.h5`
 - `data/mixed/_train_mixed_32k_bc_scales.npy`
 
-Use these shell variables:
+Pass criteria:
+
+- All 4 files above exist.
+- Mixed dataset sanity check passes if enabled in `run_build_mixed_bc.sh`.
+
+---
+
+## 6) Stage 3: Fixed-mode BC pretraining comparison
+
+Run all four BC modes.
+
+Recommended (single command):
 
 ```bash
-export DATA_ROOT="data"
-export POISSON_DIR="${DATA_ROOT}/poisson_bc"
-export ADVDIFF_DIR="${DATA_ROOT}/advdiff_bc"
-export HELMHOLTZ_DIR="${DATA_ROOT}/helmholtz_bc"
-export MIXED_DIR="${DATA_ROOT}/mixed"
-
-mkdir -p "${POISSON_DIR}" "${ADVDIFF_DIR}" "${HELMHOLTZ_DIR}" "${MIXED_DIR}"
-
-# Base per-system split sizes
-export NTRAIN_SYS=32768
-export NVAL_SYS=4096
-export NTEST_SYS=4096
-export N=128
-export NG=144
+bash scripts/utils/submit_bc_constraints_all_modes.sh
 ```
 
-## 3) Generate BC datasets for each PDE system
+This submits:
 
-### 3.1 Poisson BC
+- `mixed-bc-scale-all-off`
+- `mixed-bc-scale-all-soft`
+- `mixed-bc-scale-all-hard`
+- `mixed-bc-scale-all-hard-soft`
+
+Soft-vs-hard only:
 
 ```bash
-python3 utils/gen_data_poisson_bc.py \
-  --ntrain "${NTRAIN_SYS}" --nval "${NVAL_SYS}" --ntest "${NTEST_SYS}" \
-  --n "${N}" --ng "${NG}" --sparse \
-  --datapath "${POISSON_DIR}" \
-  --e1 1.0 --e2 5.0 \
-  --diff_coef_scale 0.01
+bash scripts/utils/submit_bc_constraints_soft_hard_compare.sh
 ```
 
-### 3.2 AdvDiff BC
+Single-run template:
 
 ```bash
-python3 utils/gen_data_advdiff_bc.py \
-  --ntrain "${NTRAIN_SYS}" --nval "${NVAL_SYS}" --ntest "${NTEST_SYS}" \
-  --n "${N}" --ng "${NG}" --sparse \
-  --datapath "${ADVDIFF_DIR}" \
-  --adr1 0.2 --adr2 1.0 \
-  --e1 1.0 --e2 5.0 \
-  --adv_coef_scale 1.0 --diff_coef_scale 0.01
+sbatch --export=ALL,CONFIG_NAME=<CONFIG_NAME>,RUN_NAME=<RUN_NAME> \
+  scripts/slurm/pretrain/submit_pretrain_mixed_bc.sh
 ```
 
-### 3.3 Helmholtz BC
-
-```bash
-python3 utils/gen_data_helmholtz_bc.py \
-  --ntrain "${NTRAIN_SYS}" --nval "${NVAL_SYS}" --ntest "${NTEST_SYS}" \
-  --n "${N}" --ng "${NG}" --sparse \
-  --datapath "${HELMHOLTZ_DIR}" \
-  --o1 1 --o2 10 \
-  --diff_coef_scale 0.01
-```
-
-## 4) Optional BC sanity checks on system datasets
-
-```bash
-python3 scripts/utils/check_bc_dataset_sanity.py --input "${POISSON_DIR}" --glob "*.h5"
-python3 scripts/utils/check_bc_dataset_sanity.py --input "${ADVDIFF_DIR}" --glob "*.h5"
-python3 scripts/utils/check_bc_dataset_sanity.py --input "${HELMHOLTZ_DIR}" --glob "*.h5"
-```
-
-## 5) Build BC mixed train/val/test datasets
-
-Use `--require_bc` so mixed creation enforces `bc` in each input dataset.
-
-```bash
-# Expected generated names from the BC generators
-export P_TRAIN="${POISSON_DIR}/_train_k1p0_5p0_32k_bc.h5"
-export P_VAL="${POISSON_DIR}/_val_k1p0_5p0_4k_bc.h5"
-export P_TEST="${POISSON_DIR}/_test_k1p0_5p0_4k_bc.h5"
-
-export A_TRAIN="${ADVDIFF_DIR}/_train_adr0p2_1p0_32k_bc.h5"
-export A_VAL="${ADVDIFF_DIR}/_val_adr0p2_1p0_4k_bc.h5"
-export A_TEST="${ADVDIFF_DIR}/_test_adr0p2_1p0_4k_bc.h5"
-
-export H_TRAIN="${HELMHOLTZ_DIR}/_train_o1_10_32k_bc.h5"
-export H_VAL="${HELMHOLTZ_DIR}/_val_o1_10_4k_bc.h5"
-export H_TEST="${HELMHOLTZ_DIR}/_test_o1_10_4k_bc.h5"
-```
-
-```bash
-# 32k-ish mixed train: 10922 x 3 = 32766
-python3 utils/create_mixed_dataset.py \
-  --poisson_path "${P_TRAIN}" \
-  --advdiff_path "${A_TRAIN}" \
-  --helmholtz_path "${H_TRAIN}" \
-  --output_path "${MIXED_DIR}/_train_mixed_32k_bc.h5" \
-  --samples_per_system 10922 \
-  --require_bc
-
-# 4k-ish mixed val: 1365 x 3 = 4095
-python3 utils/create_mixed_dataset.py \
-  --poisson_path "${P_VAL}" \
-  --advdiff_path "${A_VAL}" \
-  --helmholtz_path "${H_VAL}" \
-  --output_path "${MIXED_DIR}/_val_mixed_4k_bc.h5" \
-  --samples_per_system 1365 \
-  --require_bc
-
-# 4k-ish mixed test: 1365 x 3 = 4095
-python3 utils/create_mixed_dataset.py \
-  --poisson_path "${P_TEST}" \
-  --advdiff_path "${A_TEST}" \
-  --helmholtz_path "${H_TEST}" \
-  --output_path "${MIXED_DIR}/_test_mixed_4k_bc.h5" \
-  --samples_per_system 1365 \
-  --require_bc
-```
-
-Notes:
-
-- `create_mixed_dataset.py` automatically computes and saves scales:
-  - `data/mixed/_train_mixed_32k_bc_scales.npy` (used by config)
-
-## 6) Optional sanity check on mixed datasets
-
-```bash
-python3 scripts/utils/check_bc_dataset_sanity.py --input "${MIXED_DIR}" --glob "*_mixed_*_bc.h5"
-```
-
-## 7) Run mixed pretraining experiments (soft and hard)
-
-## 7.1 Soft BC run
-
-```bash
-python3 train.py \
-  --yaml_config config/operators_mixed_bc.yaml \
-  --config mixed-bc-scale-all-soft \
-  --run_num pretrain-mixed-bc-soft-0 \
-  --root_dir experiments
-```
-
-## 7.2 Hard BC run
-
-```bash
-python3 train.py \
-  --yaml_config config/operators_mixed_bc.yaml \
-  --config mixed-bc-scale-all-hard \
-  --run_num pretrain-mixed-bc-hard-0 \
-  --root_dir experiments
-```
-
-## 8) Evaluate both runs
-
-```bash
-python3 eval.py \
-  --yaml_config config/operators_mixed_bc.yaml \
-  --config mixed-bc-scale-all-soft \
-  --run_num eval-mixed-bc-soft-0 \
-  --root_dir experiments \
-  --weights experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-0/checkpoints/ckpt_best.tar
-
-python3 eval.py \
-  --yaml_config config/operators_mixed_bc.yaml \
-  --config mixed-bc-scale-all-hard \
-  --run_num eval-mixed-bc-hard-0 \
-  --root_dir experiments \
-  --weights experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-0/checkpoints/ckpt_best.tar
-```
-
-## 9) Compare key metrics
-
-Training logs:
-
-- `experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-0/logs_best.txt`
-- `experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-0/logs_best.txt`
-
-Eval logs:
-
-- `experiments/expts/mixed-bc-scale-all-soft/eval-mixed-bc-soft-0/logs_best.txt`
-- `experiments/expts/mixed-bc-scale-all-hard/eval-mixed-bc-hard-0/logs_best.txt`
-
-Useful keys to compare:
+What to compare:
 
 - `val_err`, `val_err_interior`
 - `val_bc_violation_raw`, `val_bc_violation_final`
-- `test_err`, `test_err_interior`
-- `test_bc_violation_raw`, `test_bc_violation_final`
+- same metrics on test (`test_*`)
 
 Expected behavior:
 
-- hard mode should drive `*_bc_violation_final` close to zero
-- soft mode should reduce boundary violations versus BC-off baseline without exact projection
+- `hard`: very low `*_bc_violation_final`
+- `soft`: lower raw boundary violation than `off`, but not exactly zero final violation
+- `hard+soft`: hard boundary match with additional raw regularization
 
-## 10) Quick smoke alternative (small local test)
+Decision output of Stage 3:
 
-For a fast sanity pass before full-scale runs:
+- `BC_MODE_WINNER_FIXED = off | soft | hard | hard+soft`
+
+---
+
+## 7) Stage 4: Soft-mode BC hyperparameter sweep
+
+Run BC soft sweep:
 
 ```bash
-MODES="soft hard" bash scripts/utils/run_local_smoke_train_eval_bc_constraints.sh
+bash scripts/utils/submit_bc_constraints_stage_soft.sh
 ```
 
-This runs tiny datasets and one-epoch train/eval checks for selected modes.
+Equivalent:
 
-## 11) SLURM note
+```bash
+bash scripts/utils/submit_bc_constraints_sweep.sh config/sweep_constraints_pretrain_bc_soft.yaml
+```
 
-`scripts/slurm/pretrain/submit_pretrain_mixed.sh` currently has a legacy mixed-dataset existence check (`data/mixed/_train_mixed_32k.h5`).  
-For BC runs, either:
+Default sweep targets:
 
-1. run `train.py` directly in your SLURM job command, or
-2. adapt that script’s dataset check for `_train_mixed_32k_bc.h5` before using it for BC configs.
+- `constraint_bc_weight`
+- `constraint_bc_warmup_fraction`
+- `constraint_bc_loss_norm`
+
+Fixed during sweep:
+
+- `constraint_bc_enforcement=soft`
+- PDE residual constraints off
+- zero-mode constraints off
+
+Rank candidates:
+
+```bash
+python scripts/utils/select_constraints_candidate.py \
+  --sweep_root experiments/sweeps/<SWEEP_ID> \
+  --top_k 5 \
+  --output_json results/constraints/<SWEEP_ID>_ranking.json
+```
+
+What to look for:
+
+- Primary: lower `val_err`
+- Secondary: lower `val_err_interior`
+- Constraint quality: reduced `val_bc_violation_raw` and `val_bc_violation_final`
+- Stability: no NaN/divergence in top runs
+
+Decision output of Stage 4:
+
+- `BC_SOFT_WINNER = <best config from sweep>`
+
+---
+
+## 8) Stage 5: Final BC model selection and eval
+
+Run final pretraining jobs for:
+
+1. `BC_MODE_WINNER_FIXED` from Stage 3
+2. `BC_SOFT_WINNER` from Stage 4 (if soft sweep was run)
+
+Then run eval:
+
+```bash
+python3 eval.py \
+  --yaml_config config/operators_mixed_bc.yaml \
+  --config <CONFIG_NAME> \
+  --run_num <EVAL_RUN_NAME> \
+  --root_dir experiments \
+  --weights <CHECKPOINT_PATH>
+```
+
+Primary decision signal:
+
+- Best interior error without unacceptable boundary violations.
+
+Recommended rule:
+
+1. Minimize `test_err_interior`
+2. If close, prefer lower `test_bc_violation_final`
+3. If still close, prefer simpler enforcement (`hard` over `hard+soft`, fixed mode over heavily tuned mode)
+
+---
+
+## 9) Useful BC SLURM entry points
+
+- Pretrain single BC config:
+  - `sbatch scripts/slurm/pretrain/submit_pretrain_mixed_bc.sh`
+- BC smoke:
+  - `sbatch scripts/slurm/smoke/submit_smoke_train_eval_bc_constraints.sh`
+- Submit all BC modes:
+  - `bash scripts/utils/submit_bc_constraints_all_modes.sh`
+- Submit BC soft sweep:
+  - `bash scripts/utils/submit_bc_constraints_stage_soft.sh`
+
+---
+
+## 10) Tracking template (copy into your notes)
+
+```text
+Stage 1 datasets generated: yes/no
+Stage 2 mixed BC datasets built: yes/no
+Stage 3 fixed-mode winner:
+Stage 4 soft-sweep winner:
+Final selected config:
+Final pretrain job ID:
+Final checkpoint path:
+
+val_err:
+val_err_interior:
+val_bc_violation_raw:
+val_bc_violation_final:
+test_err:
+test_err_interior:
+test_bc_violation_raw:
+test_bc_violation_final:
+
+Overall recommendation:
+```
