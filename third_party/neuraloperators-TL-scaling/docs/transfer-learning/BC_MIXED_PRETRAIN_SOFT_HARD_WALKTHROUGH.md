@@ -131,12 +131,13 @@ Pass criteria:
 
 ## 6) Stage 3: Fixed-mode BC pretraining comparison
 
-Run all four BC modes.
-
-Recommended (single command):
+Run the four BC modes with separate submit scripts:
 
 ```bash
-bash scripts/utils/submit_bc_constraints_all_modes.sh
+bash scripts/utils/submit_bc_constraints_mode_off.sh
+bash scripts/utils/submit_bc_constraints_mode_soft.sh
+bash scripts/utils/submit_bc_constraints_mode_hard.sh
+bash scripts/utils/submit_bc_constraints_mode_hard_soft.sh
 ```
 
 This submits:
@@ -261,8 +262,14 @@ Recommended rule:
   - `sbatch scripts/slurm/pretrain/submit_pretrain_mixed_bc.sh`
 - BC smoke:
   - `sbatch scripts/slurm/smoke/submit_smoke_train_eval_bc_constraints.sh`
-- Submit all BC modes:
-  - `bash scripts/utils/submit_bc_constraints_all_modes.sh`
+- Submit BC mode `off`:
+  - `bash scripts/utils/submit_bc_constraints_mode_off.sh`
+- Submit BC mode `soft`:
+  - `bash scripts/utils/submit_bc_constraints_mode_soft.sh`
+- Submit BC mode `hard`:
+  - `bash scripts/utils/submit_bc_constraints_mode_hard.sh`
+- Submit BC mode `hard+soft`:
+  - `bash scripts/utils/submit_bc_constraints_mode_hard_soft.sh`
 - Submit BC soft sweep:
   - `bash scripts/utils/submit_bc_constraints_stage_soft.sh`
 
