@@ -56,8 +56,8 @@ CONFIG_NAME="${CONFIG_NAME:-mixed-bc-scale-all-soft}"
 RUN_NAME="${RUN_NAME:-pretrain-mixed-bc}"
 ROOT_DIR="${ROOT_DIR:-experiments}"
 
-MIXED_TRAIN="${MIXED_TRAIN:-data/mixed/_train_mixed_32k_bc.h5}"
-MIXED_SCALES="${MIXED_SCALES:-data/mixed/_train_mixed_32k_bc_scales.npy}"
+MIXED_TRAIN="${MIXED_TRAIN:-data/bc/mixed/_train_mixed_32k_bc.h5}"
+MIXED_SCALES="${MIXED_SCALES:-data/bc/mixed/_train_mixed_32k_bc_scales.npy}"
 
 if [ ! -f "$MIXED_TRAIN" ]; then
     echo "Error: mixed BC training dataset not found at: $MIXED_TRAIN"
