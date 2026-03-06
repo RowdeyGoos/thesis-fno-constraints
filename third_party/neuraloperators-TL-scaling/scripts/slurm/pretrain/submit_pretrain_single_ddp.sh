@@ -8,9 +8,9 @@
 #SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2          # 🔴 One task per GPU
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:2             # 🔴 2 GPUs on the node
-#SBATCH --mem=32G
+#SBATCH --mem=8G
 
 echo "=========================================="
 echo "Starting neuraloperators-TL-scaling DDP (Container, Slurm-managed)"

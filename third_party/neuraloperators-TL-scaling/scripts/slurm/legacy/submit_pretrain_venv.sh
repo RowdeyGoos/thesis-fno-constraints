@@ -6,9 +6,9 @@
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
 #SBATCH --gpus=1
-#SBATCH --mem=32G
+#SBATCH --mem=8G
 
 # SLURM job using virtual environment (for development/debugging)
 # Submit from project root: sbatch scripts/slurm/legacy/submit_pretrain_venv.sh

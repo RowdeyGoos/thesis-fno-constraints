@@ -7,9 +7,9 @@
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2          # One task per GPU for DDP
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:2             # 2 A40 GPUs per array task
-#SBATCH --mem=32G
+#SBATCH --mem=8G
 #SBATCH --array=0-2
 
 # Array job for pretraining all three PDE systems using Apptainer container with DDP

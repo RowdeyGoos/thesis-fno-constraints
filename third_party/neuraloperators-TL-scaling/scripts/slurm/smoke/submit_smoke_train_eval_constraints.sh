@@ -8,9 +8,9 @@
 #SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=24G
+#SBATCH --mem=8G
 
 echo "=========================================="
 echo "Smoke Train+Eval (constraints) starting"

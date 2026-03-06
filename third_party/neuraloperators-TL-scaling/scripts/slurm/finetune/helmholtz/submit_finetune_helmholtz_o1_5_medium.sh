@@ -8,9 +8,9 @@
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=6
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=16G
+#SBATCH --mem=8G
 #SBATCH --array=0-3
 
 # Transfer Learning: Helmholtz o∈[1,5] - Medium Sample Sizes (4k, 8k samples)

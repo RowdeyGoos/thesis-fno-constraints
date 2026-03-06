@@ -7,9 +7,9 @@
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=32G
+#SBATCH --mem=8G
 #SBATCH --array=0-9
 
 # Transfer Learning Array Job: Fine-tuning vs From-Scratch Comparison

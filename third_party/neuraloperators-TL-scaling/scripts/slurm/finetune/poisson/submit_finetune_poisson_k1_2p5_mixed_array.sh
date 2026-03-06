@@ -7,9 +7,9 @@
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=16G
+#SBATCH --mem=8G
 #SBATCH --array=0-4
 
 # Mixed Dataset Fine-Tuning Array Job

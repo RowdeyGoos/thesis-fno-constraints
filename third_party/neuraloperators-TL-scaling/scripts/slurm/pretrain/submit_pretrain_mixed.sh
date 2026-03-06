@@ -8,9 +8,9 @@
 #SBATCH --partition=insy,general
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=6
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=16G
+#SBATCH --mem=8G
 
 # Mixed Dataset Pretraining Job
 # This script trains on a mixed dataset combining Poisson, Advection-Diffusion, and Helmholtz
