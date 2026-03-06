@@ -80,10 +80,10 @@ mixed-bc-pretrain-base: &mixed_bc_pretrain_base
 # Base BC mixed dataset paths
 mixed-bc-scale-all: &mixed_bc_scale_all
   <<: *mixed_bc_pretrain_base
-  train_path:  'data/mixed/_train_mixed_32k_bc.h5'
-  val_path:    'data/mixed/_val_mixed_4k_bc.h5'
-  test_path:   'data/mixed/_test_mixed_4k_bc.h5'
-  scales_path: 'data/mixed/_train_mixed_32k_bc_scales.npy'
+  train_path:  'data/bc/mixed/_train_mixed_32k_bc.h5'
+  val_path:    'data/bc/mixed/_val_mixed_4k_bc.h5'
+  test_path:   'data/bc/mixed/_test_mixed_4k_bc.h5'
+  scales_path: 'data/bc/mixed/_train_mixed_32k_bc_scales.npy'
 
   # Phase 1 default: BC constraints on/off ablations, PDE residual disabled
   constraint_pde_enable: !!bool False
