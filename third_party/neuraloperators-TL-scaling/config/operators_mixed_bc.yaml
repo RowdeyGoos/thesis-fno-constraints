@@ -1,0 +1,118 @@
+default: &DEFAULT
+  num_data_workers: 6
+  model: 'fno'
+  depth: 5
+  in_dim: 2
+  out_dim: 1
+  dropout: 0
+  Lx: !!float 1.0
+  Ly: !!float 1.0
+  nx: 128
+  ny: 128
+  loss_style: 'mean'
+  loss_func: 'mse'
+  checkpoint_selection_metric: 'val_loss'
+  optimizer: 'adam'
+  scheduler: 'none'
+  lr: !!float 1.0
+  max_epochs: 500
+  max_cosine_lr_epochs: 500
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_screen: !!bool True
+  save_checkpoint: !!bool True
+  seed: 0
+  plot_figs: !!bool True
+  pack_data: !!bool False
+  entity: 'rowdey_goos-tu-delft'
+  project: 'neuraloperators'
+  log_to_wandb: !!bool True
+  distill: !!bool False
+  subsample: 1
+
+  # Constraint defaults
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+
+  constraint_pde_enable: !!bool False
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.1
+  constraint_pde_eps: 1.0e-8
+  constraint_pde_relative_norm: !!bool True
+  constraint_pde_method: 'penalty'
+  constraint_pde_discretization: 'spectral'   # phase-2: switch to fd for BC datasets
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+  constraint_diffusion_tensor_order: 'k11_k12_k22'
+
+  # BC channel/layout defaults
+  use_bc_channels: !!bool True
+  bc_value_channel_idx: 7
+  bc_mask_channel_idx: 8
+  constraint_bc_enforcement: 'off'
+  constraint_bc_weight: 0.1
+  constraint_bc_warmup_fraction: 0.0
+  constraint_bc_eps: 1.0e-8
+  constraint_bc_loss_norm: 'l2'
+
+# BC-conditioned mixed pretraining base
+mixed-bc-pretrain-base: &mixed_bc_pretrain_base
+  <<: *DEFAULT
+  system: 'mixed'
+  model: 'fno'
+  layers: [64, 64, 64, 64, 64]
+  modes1: [65, 65, 65, 65]
+  modes2: [65, 65, 65, 65]
+  fc_dim: 128
+  in_dim: 9
+  out_dim: 1
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  optimizer: 'adam'
+  lr: 1E-3
+
+# Base BC mixed dataset paths
+mixed-bc-scale-all: &mixed_bc_scale_all
+  <<: *mixed_bc_pretrain_base
+  train_path:  'data/mixed/_train_mixed_32k_bc.h5'
+  val_path:    'data/mixed/_val_mixed_4k_bc.h5'
+  test_path:   'data/mixed/_test_mixed_4k_bc.h5'
+  scales_path: 'data/mixed/_train_mixed_32k_bc_scales.npy'
+
+  # Phase 1 default: BC constraints on/off ablations, PDE residual disabled
+  constraint_pde_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'
+  constraint_bc_enforcement: 'off'
+
+# BC enforcement variants
+mixed-bc-scale-all-off:
+  <<: *mixed_bc_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_bc_enforcement: 'off'
+  constraint_bc_weight: 0.0
+
+mixed-bc-scale-all-soft:
+  <<: *mixed_bc_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_bc_enforcement: 'soft'
+  constraint_bc_weight: 0.1
+  constraint_bc_warmup_fraction: 0.0
+
+mixed-bc-scale-all-hard:
+  <<: *mixed_bc_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_bc_enforcement: 'hard'
+  constraint_bc_weight: 0.0
+
+mixed-bc-scale-all-hard-soft:
+  <<: *mixed_bc_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_bc_enforcement: 'hard+soft'
+  constraint_bc_weight: 0.1
+  constraint_bc_warmup_fraction: 0.0

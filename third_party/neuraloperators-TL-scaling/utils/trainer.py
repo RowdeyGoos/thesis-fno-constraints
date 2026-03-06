@@ -286,12 +286,17 @@ class Trainer():
                         self.logs['zero_mode_constraint_loss']
                     )
                 )
-                logging.info('Constraint metrics: tr_zero_loss={} tr_pde_res={} tr_zero_mode={} val_zero_loss={} val_pde_res={} val_zero_mode={} pde_al_lambda={}'.format(
+                logging.info('Constraint metrics: tr_zero_loss={} tr_pde_res={} tr_zero_mode={} tr_bc_raw={} tr_bc_final={} val_zero_loss={} val_pde_res={} val_zero_mode={} val_bc_raw={} val_bc_final={} pde_al_lambda={}'.format(
                     self.logs['zero_mode_constraint_loss'],
                     self.logs['pde_residual_norm'], self.logs['zero_mode_violation'],
+                    self.logs['bc_violation_raw'], self.logs['bc_violation_final'],
                     self.logs['val_zero_mode_constraint_loss'],
                     self.logs['val_pde_residual_norm'], self.logs['val_zero_mode_violation'],
+                    self.logs['val_bc_violation_raw'], self.logs['val_bc_violation_final'],
                     self.logs['pde_al_lambda']
+                ))
+                logging.info('Validation errors: full={} interior={}'.format(
+                    self.logs['val_err'], self.logs['val_err_interior']
                 ))
                 logging.info(
                     'Checkpoint selection metric: {} (best={})'.format(
@@ -325,7 +330,7 @@ class Trainer():
         self.model.train()
 
         # buffers for logs
-        logs_buff = torch.zeros((10), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((12), dtype=torch.float32, device=self.device)
         self.logs['train_loss'] = logs_buff[0].view(-1)
         self.logs['data_loss'] = logs_buff[1].view(-1)
         self.logs['bc_loss'] = logs_buff[2].view(-1)
@@ -336,31 +341,36 @@ class Trainer():
         self.logs['grad'] = logs_buff[7].view(-1)
         self.logs['tr_err'] = logs_buff[8].view(-1)
         self.logs['pde_al_lambda'] = logs_buff[9].view(-1)
+        self.logs['bc_violation_raw'] = logs_buff[10].view(-1)
+        self.logs['bc_violation_final'] = logs_buff[11].view(-1)
 
 
         for i, (inputs, targets) in enumerate(self.train_data_loader):
             self.iters += 1
-            data_start = time.time()
             if not self.params.pack_data: # send to gpu if not already packed in the dataloader
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
             tr_start = time.time()
 
             self.model.zero_grad()
-            u = self.model(inputs)
+            u_raw = self.model(inputs)
+            u_final = self.loss_func.project_bc(inputs, u_raw)
 
-            loss_data = self.loss_func.data(inputs, u, targets)
-            loss_pde = self.loss_func.pde(inputs, u, targets)
-            loss_bc = self.loss_func.bc(inputs, u, targets)
-            loss_zero = self.loss_func.zero_mode_constraint(inputs, u, targets)
+            loss_data = self.loss_func.data(inputs, u_final, targets)
+            loss_pde = self.loss_func.pde(inputs, u_final, targets)
+            loss_bc = self.loss_func.bc(inputs, u_raw, targets)
+            loss_zero = self.loss_func.zero_mode_constraint(inputs, u_final, targets)
             loss = loss_data + loss_bc + loss_pde + loss_zero
 
             loss.backward()
             self.optimizer.step()
 
+            self.loss_func.update_bc_metrics(inputs, u_raw, u_final)
             pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
-            zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
+            zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u_final)
+            bc_violation_raw = self.loss_func.get_last_bc_violation_raw()
+            bc_violation_final = self.loss_func.get_last_bc_violation_final()
             grad_norm = compute_grad_norm(self.model.parameters())
-            tr_err = l2_err(u.detach(), targets.detach())
+            tr_err = l2_err(u_final.detach(), targets.detach())
     
             # add all the minibatch losses
             self.logs['train_loss'] += loss.detach()
@@ -370,6 +380,8 @@ class Trainer():
             self.logs['zero_mode_constraint_loss'] += loss_zero.detach()
             self.logs['pde_residual_norm'] += pde_residual_norm.detach()
             self.logs['zero_mode_violation'] += zero_mode_violation.detach()
+            self.logs['bc_violation_raw'] += bc_violation_raw.detach()
+            self.logs['bc_violation_final'] += bc_violation_final.detach()
             self.logs['grad'] += grad_norm
             self.logs['tr_err'] += tr_err
             self.logs['pde_al_lambda'] += torch.tensor(
@@ -385,6 +397,8 @@ class Trainer():
         self.logs['zero_mode_constraint_loss'] /= len(self.train_data_loader)
         self.logs['pde_residual_norm'] /= len(self.train_data_loader)
         self.logs['zero_mode_violation'] /= len(self.train_data_loader)
+        self.logs['bc_violation_raw'] /= len(self.train_data_loader)
+        self.logs['bc_violation_final'] /= len(self.train_data_loader)
         self.logs['grad'] /= len(self.train_data_loader)
         self.logs['tr_err'] /= len(self.train_data_loader)
         self.logs['pde_al_lambda'] /= len(self.train_data_loader)
@@ -392,6 +406,7 @@ class Trainer():
         logs_to_reduce = [
             'train_loss', 'data_loss', 'bc_loss', 'pde_loss',
             'zero_mode_constraint_loss', 'pde_residual_norm', 'zero_mode_violation',
+            'bc_violation_raw', 'bc_violation_final',
             'grad', 'tr_err', 'pde_al_lambda'
         ]
 
@@ -408,35 +423,45 @@ class Trainer():
         #self.model.train() # need gradients
         val_start = time.time()
 
-        logs_buff = torch.zeros((5), dtype=torch.float32, device=self.device)
+        logs_buff = torch.zeros((8), dtype=torch.float32, device=self.device)
         self.logs['val_err'] = logs_buff[0].view(-1)
         self.logs['val_loss'] = logs_buff[1].view(-1)
         self.logs['val_zero_mode_constraint_loss'] = logs_buff[2].view(-1)
         self.logs['val_pde_residual_norm'] = logs_buff[3].view(-1)
         self.logs['val_zero_mode_violation'] = logs_buff[4].view(-1)
+        self.logs['val_bc_violation_raw'] = logs_buff[5].view(-1)
+        self.logs['val_bc_violation_final'] = logs_buff[6].view(-1)
+        self.logs['val_err_interior'] = logs_buff[7].view(-1)
         idx = np.random.randint(0, len(self.val_data_loader))
         img_idx = np.random.randint(0, self.params.local_valid_batch_size)
         with torch.no_grad():
             for i, (inputs, targets) in enumerate(self.val_data_loader):
                 if not self.params.pack_data:
                     inputs, targets = inputs.to(self.device), targets.to(self.device)
-                u = self.model(inputs)
-                loss_data = self.loss_func.data(inputs, u, targets)
-                loss_pde = self.loss_func.pde(inputs, u, targets)
-                loss_bc = self.loss_func.bc(inputs, u, targets)
-                loss_zero = self.loss_func.zero_mode_constraint(inputs, u, targets)
+                u_raw = self.model(inputs)
+                u_final = self.loss_func.project_bc(inputs, u_raw)
+                loss_data = self.loss_func.data(inputs, u_final, targets)
+                loss_pde = self.loss_func.pde(inputs, u_final, targets)
+                loss_bc = self.loss_func.bc(inputs, u_raw, targets)
+                loss_zero = self.loss_func.zero_mode_constraint(inputs, u_final, targets)
                 loss = loss_data + loss_bc + loss_pde + loss_zero
+                self.loss_func.update_bc_metrics(inputs, u_raw, u_final)
                 pde_residual_norm = self.loss_func.get_last_pde_residual_norm()
-                zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u)
-                self.logs['val_err'] += l2_err(u.detach(), targets.detach())
+                zero_mode_violation = self.loss_func.zero_mode_violation(inputs, u_final)
+                bc_violation_raw = self.loss_func.get_last_bc_violation_raw()
+                bc_violation_final = self.loss_func.get_last_bc_violation_final()
+                self.logs['val_err'] += l2_err(u_final.detach(), targets.detach())
                 self.logs['val_loss'] += loss.detach()
                 self.logs['val_zero_mode_constraint_loss'] += loss_zero.detach()
                 self.logs['val_pde_residual_norm'] += pde_residual_norm.detach()
                 self.logs['val_zero_mode_violation'] += zero_mode_violation.detach()
+                self.logs['val_bc_violation_raw'] += bc_violation_raw.detach()
+                self.logs['val_bc_violation_final'] += bc_violation_final.detach()
+                self.logs['val_err_interior'] += self.loss_func.interior_relative_l2(inputs, u_final, targets).detach()
                 if i == idx: 
                     source = inputs[img_idx,0].detach().cpu().numpy() 
                     soln = targets[img_idx,0].detach().cpu().numpy()
-                    pred = u[img_idx,0].detach().cpu().numpy()
+                    pred = u_final[img_idx,0].detach().cpu().numpy()
                     pde_residual = self.loss_func.get_last_pde_residual_map()
                     if pde_residual is None:
                         pde_res = 0*pred
@@ -451,8 +476,15 @@ class Trainer():
         self.logs['val_zero_mode_constraint_loss'] /= len(self.val_data_loader)
         self.logs['val_pde_residual_norm'] /= len(self.val_data_loader)
         self.logs['val_zero_mode_violation'] /= len(self.val_data_loader)
+        self.logs['val_bc_violation_raw'] /= len(self.val_data_loader)
+        self.logs['val_bc_violation_final'] /= len(self.val_data_loader)
+        self.logs['val_err_interior'] /= len(self.val_data_loader)
         if dist.is_initialized():
-            for key in ['val_loss', 'val_err', 'val_zero_mode_constraint_loss', 'val_pde_residual_norm', 'val_zero_mode_violation']:
+            for key in [
+                'val_loss', 'val_err', 'val_zero_mode_constraint_loss', 'val_pde_residual_norm',
+                'val_zero_mode_violation', 'val_bc_violation_raw', 'val_bc_violation_final',
+                'val_err_interior'
+            ]:
                 dist.all_reduce(self.logs[key].detach())
                 self.logs[key] = float(self.logs[key]/dist.get_world_size())
 
@@ -467,20 +499,59 @@ class Trainer():
         if is_best:
             torch.save({'iters': self.iters, 'epoch': self.epoch, 'model_state': model.state_dict(), 'optimizer_state_dict': self.optimizer.state_dict(), 'scheduler_state_dict': (self.scheduler.state_dict() if  self.scheduler is not None else None)}, checkpoint_path.replace('.tar', '_best.tar'))
 
+    def _normalize_state_dict_keys(self, state_dict):
+        model_state = self.model.state_dict()
+        model_has_module = any(k.startswith('module.') for k in model_state.keys())
+        ckpt_has_module = any(k.startswith('module.') for k in state_dict.keys())
+
+        if model_has_module == ckpt_has_module:
+            return OrderedDict(state_dict.items())
+
+        if ckpt_has_module and not model_has_module:
+            return OrderedDict((k[7:], v) if k.startswith('module.') else (k, v) for k, v in state_dict.items())
+
+        return OrderedDict((f'module.{k}', v) if not k.startswith('module.') else (k, v) for k, v in state_dict.items())
+
+    def _adapt_fc0_input_channels(self, state_dict):
+        adapted = OrderedDict(state_dict.items())
+        model_state = self.model.state_dict()
+        for key, target_tensor in model_state.items():
+            if not key.endswith('fc0.weight'):
+                continue
+            if key not in adapted:
+                continue
+
+            source_tensor = adapted[key]
+            if source_tensor.shape == target_tensor.shape:
+                continue
+
+            if source_tensor.ndim != 2 or target_tensor.ndim != 2:
+                continue
+            if source_tensor.shape[0] != target_tensor.shape[0]:
+                continue
+
+            # Safe migration path for mixed pretraining checkpoints:
+            # old in_dim=7 -> new in_dim=9 (BC channels appended).
+            if source_tensor.shape[1] < target_tensor.shape[1]:
+                expanded = torch.zeros_like(target_tensor)
+                expanded[:, :source_tensor.shape[1]] = source_tensor
+                adapted[key] = expanded
+            else:
+                adapted[key] = source_tensor[:, :target_tensor.shape[1]]
+        return adapted
+
+    def _load_model_state_with_migration(self, raw_state_dict):
+        normalized = self._normalize_state_dict_keys(raw_state_dict)
+        migrated = self._adapt_fc0_input_channels(normalized)
+        self.model.load_state_dict(migrated, strict=True)
+
     def restore_checkpoint(self, checkpoint_path):
         if torch.cuda.is_available():
             map_location = 'cuda:{}'.format(self.local_rank)
         else:
             map_location = torch.device('cpu')
         checkpoint = torch.load(checkpoint_path, map_location=map_location) 
-        try:
-            self.model.load_state_dict(checkpoint['model_state'])
-        except:
-            new_state_dict = OrderedDict()
-            for key, val in checkpoint['model_state'].items():
-                name = key[7:]
-                new_state_dict[name] = val 
-            self.model.load_state_dict(new_state_dict)
+        self._load_model_state_with_migration(checkpoint['model_state'])
 
         self.iters = checkpoint['iters']
         self.startEpoch = checkpoint['epoch'] + 1
@@ -494,14 +565,7 @@ class Trainer():
         else:
             map_location = torch.device('cpu')
         checkpoint = torch.load(checkpoint_path, map_location=map_location) 
-        try:
-            self.model.load_state_dict(checkpoint['model_state'])
-        except:
-            new_state_dict = OrderedDict()
-            for key, val in checkpoint['model_state'].items():
-                name = key[7:]
-                new_state_dict[name] = val 
-            self.model.load_state_dict(new_state_dict)
+        self._load_model_state_with_migration(checkpoint['model_state'])
  
     def switch_off_grad(self, model):
         for param in model.parameters():

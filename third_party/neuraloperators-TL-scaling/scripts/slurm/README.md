@@ -19,6 +19,7 @@ This directory is organized by workflow stage.
 - `sbatch scripts/slurm/pretrain/submit_pretrain_single_ddp.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_single_gpu.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh`
+- `sbatch scripts/slurm/pretrain/submit_pretrain_mixed_bc.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh`
 
 ### Fine-Tuning
@@ -34,6 +35,7 @@ See `scripts/slurm/finetune/README.md`.
 ### Smoke test
 
 - `sbatch scripts/slurm/smoke/submit_smoke_train_eval_constraints.sh`
+- `sbatch scripts/slurm/smoke/submit_smoke_train_eval_bc_constraints.sh`
 
 ### Legacy
 

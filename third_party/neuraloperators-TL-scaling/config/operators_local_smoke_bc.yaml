@@ -1,0 +1,109 @@
+default: &DEFAULT
+  # Use single-process loading for local smoke tests, especially on Windows where
+  # h5py dataset handles are not pickleable with multiprocessing DataLoader workers.
+  num_data_workers: 0
+  # model
+  model: 'fno'
+  depth: 5
+  in_dim: 9
+  out_dim: 1
+  dropout: 0
+  # data/domain
+  Lx: !!float 1.0
+  Ly: !!float 1.0
+  nx: 32
+  ny: 32
+  # optimization
+  loss_style: 'mean'
+  loss_func: 'mse'
+  checkpoint_selection_metric: 'val_loss'
+  optimizer: 'adam'
+  scheduler: 'none'
+  lr: !!float 1.0
+  max_epochs: 1
+  max_cosine_lr_epochs: 1
+  batch_size: 8
+  valid_batch_size: 8
+  # misc
+  log_to_screen: !!bool True
+  save_checkpoint: !!bool True
+  seed: 0
+  plot_figs: !!bool False
+  pack_data: !!bool False
+  # Weights & Biases
+  entity: 'local'
+  project: 'neuraloperators-local-smoke-bc'
+  log_to_wandb: !!bool False
+  distill: !!bool False
+  subsample: 1
+  # zero-mode defaults
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  # pde defaults (phase-1 off for BC smoke)
+  constraint_pde_enable: !!bool False
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.0
+  constraint_pde_eps: 1.0e-8
+  constraint_pde_relative_norm: !!bool True
+  constraint_pde_method: 'penalty'
+  constraint_pde_discretization: 'spectral'
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+  constraint_diffusion_tensor_order: 'k11_k12_k22'
+  # BC defaults
+  use_bc_channels: !!bool True
+  bc_value_channel_idx: 7
+  bc_mask_channel_idx: 8
+  constraint_bc_enforcement: 'off'
+  constraint_bc_weight: 0.1
+  constraint_bc_warmup_fraction: 0.0
+  constraint_bc_eps: 1.0e-8
+  constraint_bc_loss_norm: 'l2'
+
+mixed-bc-local-smoke-base: &mixed_bc_local_smoke_base
+  <<: *DEFAULT
+  system: 'mixed'
+  model: 'fno'
+  layers: [16, 16, 16, 16, 16]
+  modes1: [9, 9, 9, 9]
+  modes2: [9, 9, 9, 9]
+  fc_dim: 32
+  in_dim: 9
+  out_dim: 1
+  mode_cut: 8
+  embed_cut: 16
+  fc_cut: 2
+  optimizer: 'adam'
+  lr: 5.0e-4
+  max_epochs: 1
+  batch_size: 8
+  valid_batch_size: 8
+  train_path:  'data/local_smoke_mixed_bc/_train_mixed_bc_smoke.h5'
+  val_path:    'data/local_smoke_mixed_bc/_val_mixed_bc_smoke.h5'
+  test_path:   'data/local_smoke_mixed_bc/_test_mixed_bc_smoke.h5'
+  scales_path: 'data/local_smoke_mixed_bc/_train_mixed_bc_smoke_scales.npy'
+
+mixed-bc-local-smoke-off:
+  <<: *mixed_bc_local_smoke_base
+  constraint_bc_enforcement: 'off'
+  constraint_bc_weight: 0.0
+
+mixed-bc-local-smoke-soft:
+  <<: *mixed_bc_local_smoke_base
+  constraint_bc_enforcement: 'soft'
+  constraint_bc_weight: 0.1
+
+mixed-bc-local-smoke-hard:
+  <<: *mixed_bc_local_smoke_base
+  constraint_bc_enforcement: 'hard'
+  constraint_bc_weight: 0.0
+
+mixed-bc-local-smoke-hard-soft:
+  <<: *mixed_bc_local_smoke_base
+  constraint_bc_enforcement: 'hard+soft'
+  constraint_bc_weight: 0.1

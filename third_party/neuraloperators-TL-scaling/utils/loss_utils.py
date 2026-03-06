@@ -26,6 +26,24 @@ class LossMSE():
         self.constraint_pde_al_rho = float(getattr(params, 'constraint_pde_al_rho', 1.0))
         self.constraint_pde_al_lambda0 = float(getattr(params, 'constraint_pde_al_lambda0', 0.0))
         self.constraint_pde_al_dual_clip = float(getattr(params, 'constraint_pde_al_dual_clip', 1.0e6))
+        self.constraint_pde_discretization = str(
+            getattr(params, 'constraint_pde_discretization', 'spectral')
+        ).lower()
+        if self.constraint_pde_discretization not in ['spectral', 'fd']:
+            raise ValueError("constraint_pde_discretization must be one of ['spectral', 'fd']")
+
+        # Boundary-condition settings
+        self.use_bc_channels = self._coerce_bool(getattr(params, 'use_bc_channels', False))
+        in_dim = int(getattr(self.params, 'in_dim', 1))
+        self.bc_value_channel_idx = int(getattr(params, 'bc_value_channel_idx', max(0, in_dim - 2)))
+        self.bc_mask_channel_idx = int(getattr(params, 'bc_mask_channel_idx', max(0, in_dim - 1)))
+        self.constraint_bc_enforcement = self._resolve_bc_enforcement()
+        self.constraint_bc_weight = float(getattr(params, 'constraint_bc_weight', 0.0))
+        self.constraint_bc_warmup_fraction = float(getattr(params, 'constraint_bc_warmup_fraction', 0.0))
+        self.constraint_bc_eps = float(getattr(params, 'constraint_bc_eps', 1.0e-8))
+        self.constraint_bc_loss_norm = str(getattr(params, 'constraint_bc_loss_norm', 'l2')).lower()
+        if self.constraint_bc_loss_norm not in ['l2', 'l1']:
+            raise ValueError("constraint_bc_loss_norm must be one of ['l2', 'l1']")
 
         # Zero-mode settings (hard/soft use same masking semantics)
         self.constraint_zero_mode_enforcement = self._resolve_zero_mode_enforcement()
@@ -52,6 +70,9 @@ class LossMSE():
         self._last_pde_constraint = torch.tensor(0.0, device=self.device, dtype=torch.float32)
         self._last_pde_residual_map = None
         self._last_zero_mode_constraint_loss = torch.tensor(0.0, device=self.device, dtype=torch.float32)
+        self._last_bc_constraint_loss = torch.tensor(0.0, device=self.device, dtype=torch.float32)
+        self._last_bc_violation_raw = torch.tensor(0.0, device=self.device, dtype=torch.float32)
+        self._last_bc_violation_final = torch.tensor(0.0, device=self.device, dtype=torch.float32)
 
     @staticmethod
     def _coerce_bool(val):
@@ -60,6 +81,23 @@ class LossMSE():
         if isinstance(val, str):
             return val.strip().lower() in ['1', 'true', 'yes', 'y', 'on']
         return bool(val)
+
+    def _resolve_bc_enforcement(self):
+        enforcement = getattr(self.params, 'constraint_bc_enforcement', None)
+        if enforcement is None:
+            return 'off'
+
+        if isinstance(enforcement, bool):
+            return 'hard' if enforcement else 'off'
+
+        enforcement = str(enforcement).strip().lower()
+        if enforcement in ['true', 'false']:
+            return 'hard' if enforcement == 'true' else 'off'
+
+        valid = ['off', 'soft', 'hard', 'hard+soft']
+        if enforcement not in valid:
+            raise ValueError("constraint_bc_enforcement must be one of ['off', 'soft', 'hard', 'hard+soft']")
+        return enforcement
 
     def _resolve_zero_mode_enforcement(self):
         enforcement = getattr(self.params, 'constraint_zero_mode_enforcement', None)
@@ -85,7 +123,8 @@ class LossMSE():
         except Exception:
             return None
 
-        n_tensor_channels = max(0, int(getattr(self.params, 'in_dim', 1)) - 1)
+        in_dim = int(getattr(self.params, 'in_dim', 1))
+        n_tensor_channels = max(0, in_dim - 1 - (2 if self.use_bc_channels else 0))
         if n_tensor_channels == 0:
             return None
 
@@ -202,6 +241,16 @@ class LossMSE():
             return coeff
         return coeff * self._coeff_scales[coeff_idx].to(coeff.dtype)
 
+    def _extract_bc(self, inputs):
+        if not self.use_bc_channels:
+            return None, None
+        if self.bc_value_channel_idx >= inputs.shape[1] or self.bc_mask_channel_idx >= inputs.shape[1]:
+            return None, None
+        g = self._get_channel(inputs, self.bc_value_channel_idx)
+        m = self._get_channel(inputs, self.bc_mask_channel_idx)
+        m = torch.clamp(m, min=0.0, max=1.0)
+        return g, m
+
     def _current_pde_weight(self):
         warmup_epochs = int(self.constraint_pde_warmup_fraction * self.max_epochs)
         if warmup_epochs <= 0:
@@ -215,6 +264,13 @@ class LossMSE():
             return self.constraint_zero_mode_weight
         warmup_scale = min(1.0, float(self.epoch + 1) / float(warmup_epochs))
         return self.constraint_zero_mode_weight * warmup_scale
+
+    def _current_bc_weight(self):
+        warmup_epochs = int(self.constraint_bc_warmup_fraction * self.max_epochs)
+        if warmup_epochs <= 0:
+            return self.constraint_bc_weight
+        warmup_scale = min(1.0, float(self.epoch + 1) / float(max(1, warmup_epochs)))
+        return self.constraint_bc_weight * warmup_scale
 
     def set_phase(self, phase):
         self.phase = phase
@@ -293,7 +349,73 @@ class LossMSE():
         self._last_zero_mode_constraint_loss = loss.detach()
         return loss
 
-    def _compute_residual(self, inputs, pred):
+    def project_bc(self, inputs, pred):
+        if self.constraint_bc_enforcement not in ['hard', 'hard+soft']:
+            return pred
+        g, m = self._extract_bc(inputs)
+        if g is None or m is None:
+            return pred
+
+        projected = pred.clone()
+        projected[:, 0] = pred[:, 0] * (1.0 - m) + g * m
+        return projected
+
+    def _bc_raw_loss(self, inputs, pred):
+        g, m = self._extract_bc(inputs)
+        if g is None or m is None:
+            return torch.zeros((), dtype=pred.dtype, device=pred.device)
+
+        residual = (pred[:, 0] - g) * m
+        denom = torch.mean(m) + self.constraint_bc_eps
+        if self.constraint_bc_loss_norm == 'l1':
+            return torch.mean(torch.abs(residual)) / denom
+        return torch.mean(residual**2) / denom
+
+    def bc_violation(self, inputs, pred):
+        g, m = self._extract_bc(inputs)
+        if g is None or m is None:
+            return torch.zeros((), dtype=pred.dtype, device=pred.device)
+
+        residual = (pred[:, 0] - g) * m
+        denom = torch.mean(m) + self.constraint_bc_eps
+        if self.constraint_bc_loss_norm == 'l1':
+            return torch.mean(torch.abs(residual)) / denom
+        return torch.sqrt(torch.mean(residual**2) / denom)
+
+    def interior_relative_l2(self, inputs, pred, targets):
+        g, m = self._extract_bc(inputs)
+        if g is None or m is None:
+            diff = pred - targets
+            target_masked = targets
+        else:
+            interior = (1.0 - m).unsqueeze(1)
+            diff = (pred - targets) * interior
+            target_masked = targets * interior
+
+        diff_norm = torch.sqrt(torch.sum(diff**2, dim=(-2, -1)))
+        target_norm = torch.sqrt(torch.sum(target_masked**2, dim=(-2, -1)) + self.constraint_bc_eps)
+        rel = diff_norm / target_norm
+        return torch.mean(rel)
+
+    def bc(self, inputs, pred, targets):
+        zero = torch.zeros((), dtype=pred.dtype, device=pred.device)
+        self._last_bc_constraint_loss = zero.detach()
+
+        if self.constraint_bc_enforcement not in ['soft', 'hard+soft']:
+            return zero
+        if self.constraint_bc_weight <= 0:
+            return zero
+
+        raw_loss = self._bc_raw_loss(inputs, pred)
+        loss = self._current_bc_weight() * raw_loss
+        self._last_bc_constraint_loss = loss.detach()
+        return loss
+
+    def update_bc_metrics(self, inputs, pred_raw, pred_final):
+        self._last_bc_violation_raw = self.bc_violation(inputs, pred_raw).detach()
+        self._last_bc_violation_final = self.bc_violation(inputs, pred_final).detach()
+
+    def _compute_residual_spectral(self, inputs, pred):
         source = self._get_channel(inputs, self._layout['source_idx'])
         u = pred[:, 0]
 
@@ -336,6 +458,16 @@ class LossMSE():
 
         return residual, source
 
+    def _compute_residual_fd(self, inputs, pred):
+        # Phase-2 scaffold: non-periodic FD residual path will be implemented here.
+        # For Phase 1 we keep spectral behavior to preserve compatibility.
+        return self._compute_residual_spectral(inputs, pred)
+
+    def _compute_residual(self, inputs, pred):
+        if self.constraint_pde_discretization == 'fd':
+            return self._compute_residual_fd(inputs, pred)
+        return self._compute_residual_spectral(inputs, pred)
+
     def _pde_metric(self, residual, source):
         res_norm = torch.sqrt(torch.sum(residual**2, dim=(-2, -1)))
         src_norm = torch.sqrt(torch.sum(source**2, dim=(-2, -1)))
@@ -348,10 +480,6 @@ class LossMSE():
         constraint_value = torch.mean(metric)
         residual_norm = constraint_value
         return raw_loss, constraint_value, residual_norm
-
-    def bc(self, inputs, pred, targets):
-        # currently no BC
-        return torch.tensor(0.).to(self.params.device, dtype=torch.float32)
 
     def pde(self, inputs, pred, targets):
         residual, source = self._compute_residual(inputs, pred)
@@ -387,3 +515,12 @@ class LossMSE():
 
     def get_last_zero_mode_constraint_loss(self):
         return self._last_zero_mode_constraint_loss
+
+    def get_last_bc_constraint_loss(self):
+        return self._last_bc_constraint_loss
+
+    def get_last_bc_violation_raw(self):
+        return self._last_bc_violation_raw
+
+    def get_last_bc_violation_final(self):
+        return self._last_bc_violation_final
