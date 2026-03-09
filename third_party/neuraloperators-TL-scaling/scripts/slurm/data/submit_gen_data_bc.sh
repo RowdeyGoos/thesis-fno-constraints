@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=bc-data-all
+#SBATCH --output=slurm-%x-%j.out
+#SBATCH --error=slurm-%x-%j.err
+#SBATCH --mail-type=END
+#SBATCH --time=11:00:00
+#SBATCH --partition=insy,general
+#SBATCH --qos=medium
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+cd "$PROJECT_DIR"
+
+DATASET="${DATASET:-all}"
+DATA_ROOT="${DATA_ROOT:-/path/to/data/bc}"
+
+echo "=========================================="
+echo "BC data generation starting"
+echo "Job ID:      ${SLURM_JOB_ID:-local}"
+echo "Node list:   ${SLURM_NODELIST:-local}"
+echo "Project dir: ${PROJECT_DIR}"
+echo "Dataset:     ${DATASET}"
+echo "Data root:   ${DATA_ROOT}"
+echo "=========================================="
+
+if ! command -v apptainer >/dev/null 2>&1 && ! command -v singularity >/dev/null 2>&1; then
+    if ! command -v module >/dev/null 2>&1; then
+        if [ -f /etc/profile.d/modules.sh ]; then
+            # shellcheck disable=SC1091
+            . /etc/profile.d/modules.sh
+        elif [ -f /usr/share/Modules/init/bash ]; then
+            # shellcheck disable=SC1091
+            . /usr/share/Modules/init/bash
+        fi
+    fi
+
+    if command -v module >/dev/null 2>&1; then
+        if module load apptainer 2>/dev/null; then
+            :
+        elif module load singularity 2>/dev/null; then
+            :
+        fi
+    fi
+fi
+
+if command -v apptainer >/dev/null 2>&1; then
+    CONTAINER_BIN="apptainer"
+elif command -v singularity >/dev/null 2>&1; then
+    CONTAINER_BIN="singularity"
+else
+    CONTAINER_BIN=""
+fi
+
+if [ -n "$CONTAINER_BIN" ]; then
+    CONTAINER_PATH="${CONTAINER_PATH:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/containers/neuraloperators.sif}"
+
+    if [ ! -f "$CONTAINER_PATH" ]; then
+        echo "Error: container not found at $CONTAINER_PATH"
+        echo "Set CONTAINER_PATH=/path/to/neuraloperators.sif and resubmit."
+        exit 1
+    fi
+
+    export PYTHONUNBUFFERED=1
+    export DATASET DATA_ROOT
+
+    echo "Container runtime: ${CONTAINER_BIN}"
+    echo "Container image:   ${CONTAINER_PATH}"
+    "${CONTAINER_BIN}" exec --bind "${PROJECT_DIR}:/workspace" "$CONTAINER_PATH" \
+        bash -lc 'cd /workspace && bash run_gen_data_bc.sh'
+else
+    echo "No apptainer/singularity runtime found; using host Python."
+    export PYTHONUNBUFFERED=1
+    export DATASET DATA_ROOT
+    bash run_gen_data_bc.sh
+fi
+
+echo "=========================================="
+echo "BC data generation completed successfully."
+echo "=========================================="

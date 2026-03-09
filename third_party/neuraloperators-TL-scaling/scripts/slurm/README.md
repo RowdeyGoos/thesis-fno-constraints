@@ -4,6 +4,7 @@ This directory is organized by workflow stage.
 
 ## Layout
 
+- `scripts/slurm/data/` - BC dataset generation jobs
 - `scripts/slurm/pretrain/` - pretraining jobs (single, array, mixed)
 - `scripts/slurm/finetune/` - downstream fine-tuning and transfer learning jobs
 - `scripts/slurm/eval/` - batch evaluation and plotting jobs
@@ -11,6 +12,13 @@ This directory is organized by workflow stage.
 - `scripts/slurm/legacy/` - legacy/venv-based submission scripts
 
 ## Primary Entry Points
+
+### Data Generation
+
+- `sbatch --export=ALL,DATA_ROOT=/path/to/data/bc scripts/slurm/data/submit_gen_data_bc.sh`
+- `sbatch --export=ALL,DATA_ROOT=/path/to/data/bc scripts/slurm/data/submit_gen_data_bc_poisson.sh`
+- `sbatch --export=ALL,DATA_ROOT=/path/to/data/bc scripts/slurm/data/submit_gen_data_bc_advdiff.sh`
+- `sbatch --export=ALL,DATA_ROOT=/path/to/data/bc scripts/slurm/data/submit_gen_data_bc_helmholtz.sh`
 
 ### Pretraining
 
