@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=bc-data-all
-#SBATCH --output=slurm-%x-%j.out
-#SBATCH --error=slurm-%x-%j.err
+#SBATCH --output=experiments/%x-%j.out
+#SBATCH --error=experiments/%x-%j.err
 #SBATCH --mail-type=END
 #SBATCH --time=11:00:00
 #SBATCH --partition=insy,general
@@ -13,8 +13,19 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+if [ -n "${SLURM_SUBMIT_DIR:-}" ]; then
+    PROJECT_DIR="${SLURM_SUBMIT_DIR}"
+else
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+fi
+
+if [ ! -f "${PROJECT_DIR}/run_gen_data_bc.sh" ]; then
+    echo "Error: expected project root with run_gen_data_bc.sh, got: ${PROJECT_DIR}"
+    echo "Submit from third_party/neuraloperators-TL-scaling or set SLURM_SUBMIT_DIR accordingly."
+    exit 1
+fi
+
 cd "$PROJECT_DIR"
 
 DATASET="${DATASET:-all}"
