@@ -28,6 +28,8 @@ This directory is organized by workflow stage.
 - `sbatch scripts/slurm/pretrain/submit_pretrain_single_gpu.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_mixed_bc.sh`
+- `sbatch scripts/slurm/pretrain/submit_pretrain_mixed_constraints_locked_array.sh`
+- `sbatch scripts/slurm/pretrain/submit_pretrain_mixed_bc_soft_locked.sh`
 - `sbatch scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh`
 
 ### Fine-Tuning
