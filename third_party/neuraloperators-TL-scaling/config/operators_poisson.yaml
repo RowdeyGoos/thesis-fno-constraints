@@ -291,6 +291,19 @@ poisson-k1_2.5-zeroshot-mixed:
   batch_size: 128
   valid_batch_size: 128
 
+# Zero-shot mixed eval variant for zero-hard checkpoints.
+# Keeps the hard zero-mode projection active at inference so evaluation matches
+# the forward map used during zero-hard pretraining.
+poisson-k1_2.5-zeroshot-mixed-zero-hard:
+  <<: *poisson_k1_2p5_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+  constraint_zero_mode_enable: !!bool True
+  constraint_zero_mode_enforcement: 'hard'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+
 # Zero-shot scratch baseline (random initialization, no downstream training)
 poisson-k1_2.5-scratch-zeroshot:
   <<: *poisson_k1_2p5_base

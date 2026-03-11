@@ -33,6 +33,8 @@ Notes:
       ad-adr0p2_0p4-zeroshot-mixed
       helm-o1_5-zeroshot-mixed
   - It is intended for standard mixed checkpoints with 7 input channels.
+  - For mixed-scale-all-constraints-zero-hard-only, Poisson/AdvDiff use dedicated
+    zero-shot configs that keep hard zero-mode projection enabled at inference.
   - BC-conditioned mixed checkpoints (mixed-bc-*) are not directly supported by the current
     downstream zero-shot configs, which expect 7-channel mixed inputs rather than 9-channel BC inputs.
 EOF
@@ -222,16 +224,31 @@ for spec in "${SPECS[@]}"; do
 
   for dataset_info in "${DATASETS[@]}"; do
     IFS='|' read -r dataset yaml_config downstream_config <<< "$dataset_info"
+    selected_downstream_config="$downstream_config"
+
+    # Zero-hard checkpoints were trained with the hard projection active in the
+    # forward pass for Poisson/AdvDiff. Use matching downstream configs so
+    # zero-shot evaluation preserves that model behavior.
+    if [[ "$config_name" == "mixed-scale-all-constraints-zero-hard-only" ]]; then
+      case "$dataset" in
+        poisson)
+          selected_downstream_config="poisson-k1_2.5-zeroshot-mixed-zero-hard"
+          ;;
+        advdiff)
+          selected_downstream_config="ad-adr0p2_0p4-zeroshot-mixed-zero-hard"
+          ;;
+      esac
+    fi
 
     run_name="$(sanitize_id "zeroshot-${dataset}-${label}-${RUN_STAMP}")"
-    log_path="${ROOT_DIR}/expts/${downstream_config}/${run_name}/logs_best.txt"
+    log_path="${ROOT_DIR}/expts/${selected_downstream_config}/${run_name}/logs_best.txt"
 
     echo ""
-    echo "Running ${dataset} zero-shot with config ${downstream_config}"
+    echo "Running ${dataset} zero-shot with config ${selected_downstream_config}"
 
     if "$PYTHON_BIN" eval.py \
       --yaml_config "$yaml_config" \
-      --config "$downstream_config" \
+      --config "$selected_downstream_config" \
       --run_num "$run_name" \
       --root_dir "$ROOT_DIR" \
       --weights "$checkpoint_path"; then
@@ -246,13 +263,13 @@ for spec in "${SPECS[@]}"; do
         test_loss="$(metric_from_log "$log_path" "test_loss" 2>/dev/null || printf '%s' '-')"
         test_zero_mode_violation="$(metric_from_log "$log_path" "test_zero_mode_violation" 2>/dev/null || printf '%s' '-')"
         test_pde_residual_norm="$(metric_from_log "$log_path" "test_pde_residual_norm" 2>/dev/null || printf '%s' '-')"
-        append_summary_row "$label" "$config_name" "$run_prefix" "$job_id" "$run_index" "$dataset" "$downstream_config" "$checkpoint_path" "$log_path" "ok" "$test_err" "$test_loss" "$test_zero_mode_violation" "$test_pde_residual_norm"
+        append_summary_row "$label" "$config_name" "$run_prefix" "$job_id" "$run_index" "$dataset" "$selected_downstream_config" "$checkpoint_path" "$log_path" "ok" "$test_err" "$test_loss" "$test_zero_mode_violation" "$test_pde_residual_norm"
       else
-        append_summary_row "$label" "$config_name" "$run_prefix" "$job_id" "$run_index" "$dataset" "$downstream_config" "$checkpoint_path" "$log_path" "missing_log" "-" "-" "-" "-"
+        append_summary_row "$label" "$config_name" "$run_prefix" "$job_id" "$run_index" "$dataset" "$selected_downstream_config" "$checkpoint_path" "$log_path" "missing_log" "-" "-" "-" "-"
       fi
     else
       echo "Evaluation failed for ${dataset} / ${config_name}"
-      append_summary_row "$label" "$config_name" "$run_prefix" "$job_id" "$run_index" "$dataset" "$downstream_config" "$checkpoint_path" "$log_path" "eval_failed" "-" "-" "-" "-"
+      append_summary_row "$label" "$config_name" "$run_prefix" "$job_id" "$run_index" "$dataset" "$selected_downstream_config" "$checkpoint_path" "$log_path" "eval_failed" "-" "-" "-" "-"
     fi
   done
 done
