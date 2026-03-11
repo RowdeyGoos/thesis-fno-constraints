@@ -41,6 +41,8 @@ See `scripts/slurm/finetune/README.md`.
 - `sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh`
 - `sbatch scripts/slurm/eval/submit_eval_advdiff_transfer.sh`
 - `sbatch scripts/slurm/eval/submit_eval_helmholtz_transfer.sh`
+- `sbatch scripts/slurm/eval/submit_eval_mixed_zeroshot_bundle.sh mixed-scale-all:pretrain-mixed:<JOBID>`
+- `sbatch scripts/slurm/eval/submit_eval_mixed_bc_bundle.sh mixed-bc-scale-all-soft:pretrain-mixed-bc-soft:<JOBID>`
 
 ### Smoke test
 
