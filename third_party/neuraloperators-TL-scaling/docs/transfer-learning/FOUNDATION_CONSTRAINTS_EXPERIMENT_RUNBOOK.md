@@ -53,6 +53,12 @@ Use `scripts/slurm/pretrain/submit_pretrain_constraints_sweep.sh`.
 Recommended helper scripts:
 
 ```bash
+# Optional sanity sweep to validate W&B/SLURM sweep logging:
+bash scripts/utils/submit_constraints_sanity_sweep.sh
+
+# Optional zero-mode-only comparison (hard single run + soft sweep, PDE off):
+bash scripts/utils/submit_constraints_zero_mode_only_compare.sh
+
 # One sweep (create + wait for SWEEP_ID + submit agents)
 bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_hard.yaml
 

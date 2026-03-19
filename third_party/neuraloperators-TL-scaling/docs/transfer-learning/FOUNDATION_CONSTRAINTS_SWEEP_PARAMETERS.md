@@ -31,12 +31,70 @@ Common fixed training/runtime params in every sweep:
 - `constraint_zero_mode_mode: gauge_aware`
 - `constraint_zero_mode_omega_tol: 1.0e-8`
 
+### What each parameter does
+
+This section explains each sweep key in plain language.
+
+Sweep metadata keys:
+
+- `name`: W&B sweep name shown in the dashboard.
+- `entity`: W&B account or team that owns the sweep.
+- `project`: W&B project where runs are stored.
+- `program`: training entrypoint that W&B agent executes (`train.py`).
+- `method`: search strategy (`bayes` here).
+- `metric.name`: optimization target tracked by W&B (`best_val_err`).
+- `metric.goal`: whether the target should be minimized or maximized.
+- `run_cap`: maximum number of trials the sweep is allowed to launch.
+- `parameters`: dictionary of values/ranges that define the search space.
+
+General training/control parameters:
+
+- `max_epochs`: number of training epochs per trial.
+- `checkpoint_selection_metric`: metric used for choosing `ckpt_best.tar`.
+- `plot_figs`: enables/disables figure generation during training.
+- `save_checkpoint`: enables checkpoint and `logs_best.txt` writing.
+- `log_to_wandb`: enables W&B scalar logging.
+
+Zero-mode parameters:
+
+- `constraint_zero_mode_enable`: legacy boolean switch (kept for compatibility).
+- `constraint_zero_mode_enforcement`:
+  - `off`: no zero-mode constraint.
+  - `hard`: enforce zero mean by projection in model forward.
+  - `soft`: enforce zero mean via extra loss penalty.
+- `constraint_zero_mode_mode`:
+  - `all`: apply zero-mode constraint to all samples.
+  - `gauge_aware`: apply only where `|omega| <= constraint_zero_mode_omega_tol`.
+- `constraint_zero_mode_omega_tol`: tolerance used by gauge-aware masking.
+- `constraint_zero_mode_weight`: coefficient of soft zero-mode penalty.
+- `constraint_zero_mode_warmup_fraction`: linear warmup fraction for soft zero-mode weight.
+
+PDE constraint parameters:
+
+- `constraint_pde_enable`: enables PDE residual loss term.
+- `constraint_pde_method`:
+  - `penalty`: weighted residual penalty.
+  - `augmented_lagrangian`: penalty + dual variable update.
+- `constraint_pde_weight`: base coefficient for PDE residual term.
+- `constraint_pde_warmup_fraction`: linear warmup fraction for PDE weight.
+- `constraint_pde_relative_norm`: uses residual normalization by source norm.
+- `constraint_pde_al_rho`: AL quadratic penalty / dual step scale.
+- `constraint_pde_al_lambda0`: initial AL dual variable value.
+- `constraint_pde_al_dual_clip`: upper clip on AL dual variable magnitude.
+
+Distribution/value specifiers in sweep YAML:
+
+- `value`: fixed constant for all trials.
+- `values`: discrete candidate set sampled by the sweep.
+- `distribution: log_uniform_values`: sample in log-space between `min` and `max`.
+
 ---
 
 ## 2) Sweep matrix by experiment stage
 
 | Stage | Sweep file | PDE method | Zero-mode mode | Swept parameters |
 |---|---|---|---|---|
+| Optional Z (zero-only) | `config/sweep_constraints_pretrain_zero_soft_only.yaml` | `off` | `soft` | `constraint_zero_mode_weight`, `constraint_zero_mode_warmup_fraction` |
 | A (PDE-only control) | `config/sweep_constraints_pretrain_penalty_pde_only.yaml` | `penalty` | `off` | `constraint_pde_weight`, `constraint_pde_warmup_fraction` |
 | A (PDE-only control) | `config/sweep_constraints_pretrain_al_pde_only.yaml` | `augmented_lagrangian` | `off` | `constraint_pde_weight`, `constraint_pde_warmup_fraction`, `constraint_pde_al_rho` |
 | B (hard zero-mode) | `config/sweep_constraints_pretrain_penalty_hard.yaml` | `penalty` | `hard` | `constraint_pde_weight`, `constraint_pde_warmup_fraction` |
@@ -80,6 +138,9 @@ Used only when `constraint_zero_mode_enforcement: soft`:
 - `constraint_zero_mode_warmup_fraction`
   - categorical values: `[0.0, 0.1]`
 
+In the optional zero-only sweep (`sweep_constraints_pretrain_zero_soft_only.yaml`),
+these are the only tuned constraint parameters; PDE is fully disabled.
+
 ---
 
 ## 4) Fixed constraint settings by zero-mode regime
@@ -119,4 +180,3 @@ Because `method: bayes`, these are not full Cartesian grids; this is the number 
 - AL + soft: 5D
 
 With `run_cap: 12`, each sweep evaluates up to 12 Bayesian trials in its respective search space.
-

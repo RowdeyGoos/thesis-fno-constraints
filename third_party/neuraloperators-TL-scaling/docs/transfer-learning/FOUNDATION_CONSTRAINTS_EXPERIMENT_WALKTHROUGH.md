@@ -61,11 +61,49 @@ Use this to catch config/runtime issues before long sweeps.
 sbatch scripts/slurm/smoke/submit_smoke_train_eval_constraints.sh
 ```
 
+Optional W&B sweep plumbing sanity check (recommended if sweep dashboards look empty):
+
+```bash
+bash scripts/utils/submit_constraints_sanity_sweep.sh
+```
+
 Pass criteria:
 
 - Job exits successfully.
 - Train log contains: `pde_residual_norm`, `pde_al_lambda`, `zero_mode_constraint_loss`
 - Eval log contains: `test_pde_residual_norm`, `test_zero_mode_violation`, `test_zero_mode_constraint_loss`
+- Sanity sweep creates trial logs under `experiments_sanity_sweep/sweeps/<SWEEP_ID>/.../logs_best.txt`
+
+---
+
+## 3.5) Optional: Zero-mode-only direct comparison (no PDE)
+
+Use this if you want to compare hard vs soft zero-mode in isolation before
+introducing PDE residual constraints.
+
+```bash
+bash scripts/utils/submit_constraints_zero_mode_only_compare.sh
+```
+
+This submits:
+
+- one hard zero-mode pretraining run (`mixed-scale-all-constraints-zero-hard-only`)
+- one soft zero-mode sweep (`config/sweep_constraints_pretrain_zero_soft_only.yaml`)
+
+Ranking command for the soft sweep:
+
+```bash
+python scripts/utils/select_constraints_candidate.py \
+  --sweep_root experiments/sweeps/<SOFT_SWEEP_ID> \
+  --top_k 5 \
+  --output_json results/constraints/<SOFT_SWEEP_ID>_ranking.json
+```
+
+What to look for:
+
+- Primary: compare `val_err` of hard single run vs best soft sweep run.
+- Constraint behavior: hard should have lower `val_zero_mode_violation` than soft.
+- If soft improves `val_err` with acceptable violation, keep soft candidate for later stages.
 
 ---
 
