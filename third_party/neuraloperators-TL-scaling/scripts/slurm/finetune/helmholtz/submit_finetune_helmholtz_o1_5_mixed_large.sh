@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-1
+#SBATCH --array=0-5
 
 # Mixed Dataset Fine-Tuning (Helmholtz): Large Sample Sizes (16k, 32k samples)
 # Usage:
@@ -53,6 +53,8 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
+source scripts/slurm/finetune/seed_grid.sh
+
 CONFIG_FILE="config/operators_helmholtz.yaml"
 
 declare -a configs=(
@@ -60,11 +62,12 @@ declare -a configs=(
     "helm-o1_5-finetune-mixed-32k:finetune-mixed-32k"
 )
 
-IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SLURM_ARRAY_TASK_ID]}"
+IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"
 echo "Run name: $RUN_NAME"
+echo "Seed: $SEED_VALUE"
 echo ""
 
 CHECKPOINT_LINE=$(grep -A 20 "^$CONFIG_NAME:" "$CONFIG_FILE" | grep "weights:" | head -n 1)
@@ -85,8 +88,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
-    --run_num=${RUN_NAME}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
-    --root_dir=/workspace/experiments"
+    --run_num=${RUN_NAME}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --root_dir=/workspace/experiments \
+    ${SEED_TRAIN_ARGS}"
 
 echo "Running mixed fine-tuning (Task $SLURM_ARRAY_TASK_ID)..."
 echo "Command: $CMD"

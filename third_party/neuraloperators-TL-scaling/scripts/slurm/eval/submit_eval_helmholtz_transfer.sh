@@ -78,6 +78,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          helm-o1_5-finetune-mixed-32k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_helmholtz_o1_5/mixed \
+                --aggregate_runs \
+                --run_pattern "*-seed*" \
                 --device cuda:0'
 
 echo ""
@@ -100,6 +102,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          helm-o1_5-finetune-32k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_helmholtz_o1_5/helmholtz \
+                --aggregate_runs \
+                --run_pattern "*-seed*" \
                 --device cuda:0'
 
 echo ""
@@ -122,6 +126,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          helm-o1_5-scratch-32k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_helmholtz_o1_5/scratch \
+                --aggregate_runs \
+                --run_pattern "*-seed*" \
                 --device cuda:0'
 
 echo ""

@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0
+#SBATCH --array=0-2
 
 # Mixed Dataset Fine-Tuning: Medium Sample Sizes (4k, 8k samples)
 # This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
@@ -64,6 +64,8 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
+source scripts/slurm/finetune/seed_grid.sh
+
 
 # Configuration file
 CONFIG_FILE="config/operators_poisson.yaml"
@@ -75,11 +77,12 @@ declare -a configs=(
 )
 
 # Get current task configuration
-IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SLURM_ARRAY_TASK_ID]}"
+IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"
 echo "Run name: $RUN_NAME"
+echo "Seed: $SEED_VALUE"
 echo ""
 
 # Verify checkpoint path is set
@@ -104,8 +107,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
-    --run_num=${RUN_NAME}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
-    --root_dir=/workspace/experiments"
+    --run_num=${RUN_NAME}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --root_dir=/workspace/experiments \
+    ${SEED_TRAIN_ARGS}"
 
 echo "Running mixed fine-tuning (Task $SLURM_ARRAY_TASK_ID)..."
 echo "Command: $CMD"

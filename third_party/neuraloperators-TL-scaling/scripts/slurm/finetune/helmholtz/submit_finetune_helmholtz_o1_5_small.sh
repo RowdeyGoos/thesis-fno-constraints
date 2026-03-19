@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-7
+#SBATCH --array=0-23
 
 # Transfer Learning: Helmholtz o∈[1,5] - Small Sample Sizes (16, 64, 256, 1k samples)
 # This script runs 8 experiments:
@@ -59,11 +59,13 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
+source scripts/slurm/finetune/seed_grid.sh
+
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
 # Replace JOBID with your actual helm-scale-o1_10 pretraining job ID
 PRETRAIN_CHECKPOINT="experiments/expts/helm-scale-o1_10/pretrain-helmholtz-o1_10-12147812-2/checkpoints/ckpt_best.tar"
 
-if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
+if [ $SEED_EXPERIMENT_IDX -lt 4 ]; then
     if [ ! -f "$PRETRAIN_CHECKPOINT" ]; then
         echo "WARNING: Pre-trained checkpoint not found at: $PRETRAIN_CHECKPOINT"
         echo "Please update PRETRAIN_CHECKPOINT variable in this script with the correct path"
@@ -84,13 +86,14 @@ experiments=(
     "helm-o1_5-scratch-1k:scratch-1k-samples"
 )
 
-IFS=':' read -r config_name exp_desc <<< "${experiments[$SLURM_ARRAY_TASK_ID]}"
+IFS=':' read -r config_name exp_desc <<< "${experiments[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $config_name"
 echo "Experiment: $exp_desc"
+echo "Seed: $SEED_VALUE"
 echo ""
 
-if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
+if [ $SEED_EXPERIMENT_IDX -lt 4 ]; then
     exp_type="finetune"
     echo "Type: Fine-tuning with o1_10 pre-trained weights"
 else
@@ -105,8 +108,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/config/operators_helmholtz.yaml \
     --config=$config_name \
-    --run_num=transfer-${exp_desc}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
-    --root_dir=/workspace/experiments"
+    --run_num=transfer-${exp_desc}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --root_dir=/workspace/experiments \
+    ${SEED_TRAIN_ARGS}"
 
 echo "Running training..."
 echo "Command: $CMD"

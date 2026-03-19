@@ -31,10 +31,11 @@ def get_data_loader(params, location, distributed, train=True, pack=False):
     else:
         batch_size = params.local_valid_batch_size
     if not pack:
+        shuffle = bool(train and sampler is None and _coerce_bool(getattr(params, 'train_shuffle', False)))
         dataloader = DataLoader(dataset,
                                 batch_size=int(batch_size),
                                 num_workers=params.num_data_workers,
-                                shuffle=False,#(sampler is None),
+                                shuffle=shuffle,
                                 sampler=sampler,
                                 drop_last=True,
                                 pin_memory=torch.cuda.is_available())
@@ -60,6 +61,8 @@ class PDESolns(Dataset):
         self.params = params
         self.location = location
         self.train = train
+        self.random_train_subset = False
+        self.sample_indices = None
         if hasattr(self.params, "subsample") and (self.train):
             self.subsample = self.params.subsample
         else:
@@ -82,7 +85,8 @@ class PDESolns(Dataset):
         self.file = self.location
         with h5py.File(self.file, 'r') as _f:
             logging.info("Getting file stats from {}".format(self.file))
-            self.n_samples = _f['fields'].shape[0]
+            full_n_samples = _f['fields'].shape[0]
+            self.n_samples = full_n_samples
             self.img_shape_x = _f['fields'].shape[2]
             self.img_shape_y = _f['fields'].shape[3]
             self.in_channels = _f['fields'].shape[1]-1
@@ -102,8 +106,23 @@ class PDESolns(Dataset):
                         )
                     )
                 self.bc_channels = 2
-        self.n_samples /= self.subsample
-        self.n_samples = int(self.n_samples)
+        target_n_samples = int(full_n_samples / self.subsample)
+        if self.train and self.subsample > 1 and _coerce_bool(getattr(self.params, 'random_train_subset', False)):
+            subset_seed = getattr(self.params, 'subset_seed', None)
+            if subset_seed is None:
+                subset_seed = getattr(self.params, 'seed', 0)
+            rng = np.random.default_rng(subset_seed)
+            self.sample_indices = np.sort(rng.choice(full_n_samples, size=target_n_samples, replace=False))
+            self.n_samples = len(self.sample_indices)
+            self.random_train_subset = True
+            logging.info(
+                "Using seeded random train subset: %d / %d samples (seed=%s)",
+                self.n_samples,
+                full_n_samples,
+                str(subset_seed),
+            )
+        else:
+            self.n_samples = target_n_samples
         if self.use_bc_channels and not self.has_bc:
             logging.warning(
                 "use_bc_channels=true but dataset {} has no 'bc' key; continuing without BC channels.".format(
@@ -137,7 +156,10 @@ class PDESolns(Dataset):
         return h5py.File(path, 'r')
 
     def __getitem__(self, idx):
-        local_idx = int(idx*self.subsample)
+        if self.sample_indices is not None:
+            local_idx = int(self.sample_indices[idx])
+        else:
+            local_idx = int(idx*self.subsample)
         X = (self.data[local_idx,0:self.in_channels])
         if self.tensor is not None: # append coefficient tensor to channels
             tensor = []

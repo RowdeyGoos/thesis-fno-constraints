@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-9
+#SBATCH --array=0-29
 
 # Transfer Learning Array Job: Fine-tuning vs From-Scratch Comparison
 # This script runs 10 experiments:
@@ -65,13 +65,14 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
+source scripts/slurm/finetune/seed_grid.sh
 
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
 # Replace JOBID with your actual pretraining job ID
 PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12100803-0/checkpoints/ckpt_best.tar"
 
 # Verify checkpoint exists for fine-tuning tasks
-if [ $SLURM_ARRAY_TASK_ID -lt 5 ]; then
+if [ $SEED_EXPERIMENT_IDX -lt 5 ]; then
     if [ ! -f "$PRETRAIN_CHECKPOINT" ]; then
         echo "WARNING: Pre-trained checkpoint not found at: $PRETRAIN_CHECKPOINT"
         echo "Please update PRETRAIN_CHECKPOINT variable in this script with the correct path"
@@ -97,14 +98,15 @@ experiments=(
 )
 
 # Get experiment for this task
-IFS=':' read -r config_name exp_desc <<< "${experiments[$SLURM_ARRAY_TASK_ID]}"
+IFS=':' read -r config_name exp_desc <<< "${experiments[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $config_name"
 echo "Experiment: $exp_desc"
+echo "Seed: $SEED_VALUE"
 echo ""
 
 # Determine if this is fine-tuning or from-scratch
-if [ $SLURM_ARRAY_TASK_ID -lt 5 ]; then
+if [ $SEED_EXPERIMENT_IDX -lt 5 ]; then
     exp_type="finetune"
     echo "Type: Fine-tuning with pre-trained weights"
 else
@@ -122,8 +124,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/config/operators_poisson.yaml \
     --config=$config_name \
-    --run_num=transfer-${exp_desc}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
-    --root_dir=/workspace/experiments"
+    --run_num=transfer-${exp_desc}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --root_dir=/workspace/experiments \
+    ${SEED_TRAIN_ARGS}"
 
 echo "Running training..."
 echo "Command: $CMD"

@@ -78,6 +78,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          ad-adr0p2_0p4-finetune-mixed-32k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_advdiff_adr0.2_0.4/mixed \
+                --aggregate_runs \
+                --run_pattern "*-seed*" \
                 --device cuda:0'
 
 echo ""
@@ -100,6 +102,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          ad-adr0p2_0p4-finetune-32k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_advdiff_adr0.2_0.4/advdiff \
+                --aggregate_runs \
+                --run_pattern "*-seed*" \
                 --device cuda:0'
 
 echo ""
@@ -122,6 +126,8 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                          ad-adr0p2_0p4-scratch-32k \
                 --experiment_dir experiments \
                 --output_dir results/transfer_learning_advdiff_adr0.2_0.4/scratch \
+                --aggregate_runs \
+                --run_pattern "*-seed*" \
                 --device cuda:0'
 
 echo ""

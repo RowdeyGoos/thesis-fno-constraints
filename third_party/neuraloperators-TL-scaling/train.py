@@ -18,8 +18,33 @@ if __name__ == '__main__':
     parser.add_argument("--root_dir", default='./', type=str, help='root dir to store results')
     parser.add_argument("--run_num", default='0', type=str, help='sub run config')
     parser.add_argument("--sweep_id", default=None, type=str, help='sweep config from ./configs/sweeps.yaml')
+    parser.add_argument("--seed", default=None, type=int, help='override YAML seed for this run')
+    parser.add_argument(
+        "--train_shuffle",
+        action='store_true',
+        help='opt-in shuffle for training dataloader; leaves legacy behavior unchanged unless set'
+    )
+    parser.add_argument(
+        "--random_train_subset",
+        action='store_true',
+        help='opt-in seeded random subset selection for train data when subsample > 1'
+    )
+    parser.add_argument(
+        "--subset_seed",
+        default=None,
+        type=int,
+        help='seed for random train subset selection; defaults to --seed / config seed'
+    )
     args = parser.parse_args()
     params = YParams(os.path.abspath(args.yaml_config), args.config)
+    if args.seed is not None:
+        params['seed'] = args.seed
+    if args.train_shuffle:
+        params['train_shuffle'] = True
+    if args.random_train_subset:
+        params['random_train_subset'] = True
+    if args.subset_seed is not None:
+        params['subset_seed'] = args.subset_seed
     trainer = Trainer(params, args)
 
     if args.sweep_id and trainer.world_rank==0:

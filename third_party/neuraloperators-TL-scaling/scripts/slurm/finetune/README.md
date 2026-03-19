@@ -2,6 +2,14 @@
 
 This folder contains transfer-learning / downstream fine-tuning scripts by PDE family.
 
+Default downstream protocol:
+
+- Every downstream training config is launched for seeds `0`, `1`, and `2`
+- Seeded runs are launcher-driven; the YAML config names do not change
+- Seeded run directories include `seed0`, `seed1`, or `seed2` in `run_num`
+- Pretraining and zero-shot evaluation behavior are unchanged
+- Downstream training scripts pass `--seed`, `--train_shuffle`, `--random_train_subset`, and `--subset_seed`
+
 ## Poisson
 
 ### Array Jobs

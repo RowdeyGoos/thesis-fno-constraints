@@ -262,9 +262,9 @@ def _config_exists(yaml_config: str, config_name: str) -> bool:
         return False
 
 
-def find_checkpoint(experiment_dir: str, config_name: str, run_pattern: str = "*") -> Optional[str]:
+def find_checkpoints(experiment_dir: str, config_name: str, run_pattern: str = "*") -> List[str]:
     """
-    Find checkpoint file for a given experiment.
+    Find checkpoint files for a given experiment.
     
     Args:
         experiment_dir: Base experiments directory
@@ -272,38 +272,85 @@ def find_checkpoint(experiment_dir: str, config_name: str, run_pattern: str = "*
         run_pattern: Pattern to match run directories (e.g., "*", "finetune-16-*")
     
     Returns:
-        Path to checkpoint file or None if not found
+        Sorted list of checkpoint paths
     """
     config_dir = Path(experiment_dir) / 'expts' / config_name
     
     if not config_dir.exists():
         logging.warning(f"Config directory not found: {config_dir}")
-        return None
+        return []
     
     # Find run directories matching pattern
     run_dirs = sorted(config_dir.glob(run_pattern))
     
     if not run_dirs:
         logging.warning(f"No run directories found in {config_dir} matching {run_pattern}")
+        return []
+
+    checkpoints = []
+    for run_dir in run_dirs:
+        ckpt_dir = run_dir / 'checkpoints'
+        if not ckpt_dir.exists():
+            logging.warning(f"Checkpoint directory not found: {ckpt_dir}")
+            continue
+        for ckpt_name in ['ckpt_best.tar', 'ckpt.tar']:
+            ckpt_path = ckpt_dir / ckpt_name
+            if ckpt_path.exists():
+                checkpoints.append(str(ckpt_path))
+                break
+        else:
+            logging.warning(f"No checkpoint found in {ckpt_dir}")
+
+    return checkpoints
+
+
+def find_checkpoint(experiment_dir: str, config_name: str, run_pattern: str = "*") -> Optional[str]:
+    """Return the latest matching checkpoint for backward-compatible single-run evaluation."""
+    checkpoints = find_checkpoints(experiment_dir, config_name, run_pattern)
+    if not checkpoints:
         return None
-    
-    # Use the most recent run (or first if sorted differently)
-    run_dir = run_dirs[-1]
-    
-    # Look for checkpoint
-    ckpt_dir = run_dir / 'checkpoints'
-    if not ckpt_dir.exists():
-        logging.warning(f"Checkpoint directory not found: {ckpt_dir}")
-        return None
-    
-    # Try best checkpoint first, then latest
-    for ckpt_name in ['ckpt_best.tar', 'ckpt.tar']:
-        ckpt_path = ckpt_dir / ckpt_name
-        if ckpt_path.exists():
-            return str(ckpt_path)
-    
-    logging.warning(f"No checkpoint found in {ckpt_dir}")
-    return None
+    return checkpoints[-1]
+
+
+def aggregate_metrics(metrics_list: List[Dict[str, float]]) -> Dict[str, float]:
+    """Aggregate repeated-run metrics for mean/std and quartile reporting."""
+    if not metrics_list:
+        return {
+            'test_error': np.nan,
+            'test_loss': np.nan,
+            'test_zero_mode_constraint_loss': np.nan,
+            'test_pde_residual_norm': np.nan,
+            'test_zero_mode_violation': np.nan,
+            'n_trials': 0,
+        }
+
+    aggregated = {}
+    metric_names = [
+        'test_error',
+        'test_loss',
+        'test_zero_mode_constraint_loss',
+        'test_pde_residual_norm',
+        'test_zero_mode_violation',
+    ]
+
+    for metric_name in metric_names:
+        values = np.array([m[metric_name] for m in metrics_list], dtype=float)
+        finite_values = values[np.isfinite(values)]
+        if finite_values.size == 0:
+            aggregated[metric_name] = np.nan
+            aggregated[f'{metric_name}_std'] = np.nan
+            aggregated[f'{metric_name}_q1'] = np.nan
+            aggregated[f'{metric_name}_q3'] = np.nan
+            continue
+
+        aggregated[metric_name] = float(np.mean(finite_values))
+        aggregated[f'{metric_name}_std'] = float(np.std(finite_values))
+        aggregated[f'{metric_name}_q1'] = float(np.quantile(finite_values, 0.25))
+        aggregated[f'{metric_name}_q3'] = float(np.quantile(finite_values, 0.75))
+
+    aggregated['n_trials'] = len(metrics_list)
+    aggregated['trial_metrics'] = metrics_list
+    return aggregated
 
 
 def get_checkpoint_from_config(yaml_config: str, config_name: str) -> Optional[str]:
@@ -480,13 +527,19 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         
         sample_sizes = sorted(results[model_type].keys())
         errors = [results[model_type][size]['test_error'] for size in sample_sizes]
+        lower_quartiles = [results[model_type][size].get('test_error_q1', np.nan) for size in sample_sizes]
+        upper_quartiles = [results[model_type][size].get('test_error_q3', np.nan) for size in sample_sizes]
         
         # Filter out NaN values
-        valid_points = [(s, e) for s, e in zip(sample_sizes, errors) if not np.isnan(e)]
+        valid_points = [
+            (s, e, q1, q3)
+            for s, e, q1, q3 in zip(sample_sizes, errors, lower_quartiles, upper_quartiles)
+            if not np.isnan(e)
+        ]
         if not valid_points:
             continue
         
-        sample_sizes_valid, errors_valid = zip(*valid_points)
+        sample_sizes_valid, errors_valid, q1_valid, q3_valid = zip(*valid_points)
         
         # Plot with appropriate style
         facecolors = 'none' if model_type == 'scratch' else colors[model_type]
@@ -503,6 +556,16 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
                 linestyle=linestyles[model_type],
                 linewidth=2,
                 label=labels[model_type])
+
+        if any(not np.isnan(v) for v in q1_valid) and any(not np.isnan(v) for v in q3_valid):
+            ax.fill_between(
+                x_vals,
+                q1_valid,
+                q3_valid,
+                color=colors[model_type],
+                alpha=0.15,
+                linewidth=0,
+            )
     
     # Formatting
     ax.set_xlabel('Number of downstream examples', fontsize=14, fontweight='bold')
@@ -748,8 +811,12 @@ def print_results_table(results: Dict[str, Dict[int, Dict[str, float]]]):
         for size in sample_sizes:
             if size in results[model_type]:
                 error = results[model_type][size]['test_error']
+                std = results[model_type][size].get('test_error_std', np.nan)
+                n_trials = int(results[model_type][size].get('n_trials', 1))
                 if np.isnan(error):
                     row += f"{'N/A':>8} | "
+                elif n_trials > 1 and np.isfinite(std):
+                    row += f"{error:.4f}±{std:.2g} | "
                 else:
                     row += f"{error:>8.6f} | "
             else:
@@ -820,6 +887,19 @@ def main():
         '--skip_evaluation',
         action='store_true',
         help='Skip evaluation and only regenerate plots from existing results'
+    )
+
+    parser.add_argument(
+        '--aggregate_runs',
+        action='store_true',
+        help='Evaluate all matching downstream runs per config and aggregate mean/std/quartiles'
+    )
+
+    parser.add_argument(
+        '--run_pattern',
+        type=str,
+        default='*',
+        help='Glob for downstream run directories, e.g. "*-seed*" when aggregating multi-seed runs'
     )
     
     args = parser.parse_args()
@@ -901,20 +981,43 @@ def main():
                     if checkpoint is None:
                         logging.warning(f"Skipping {config_name}: zero-shot weights not found in config")
                         continue
+                metrics = evaluate_model(
+                    args.yaml_config,
+                    config_name,
+                    checkpoint,
+                    args.device
+                )
             else:
-                checkpoint = find_checkpoint(args.experiment_dir, config_name)
-                if checkpoint is None:
-                    logging.warning(f"Skipping {config_name}: checkpoint not found")
-                    continue
-            
-            # Evaluate
-            metrics = evaluate_model(
-                args.yaml_config,
-                config_name,
-                checkpoint,
-                args.device
-            )
-            
+                if args.aggregate_runs:
+                    checkpoints = find_checkpoints(args.experiment_dir, config_name, args.run_pattern)
+                    if not checkpoints:
+                        logging.warning(f"Skipping {config_name}: checkpoints not found")
+                        continue
+
+                    trial_metrics = []
+                    for checkpoint in checkpoints:
+                        trial_metrics.append(
+                            evaluate_model(
+                                args.yaml_config,
+                                config_name,
+                                checkpoint,
+                                args.device
+                            )
+                        )
+                    metrics = aggregate_metrics(trial_metrics)
+                else:
+                    checkpoint = find_checkpoint(args.experiment_dir, config_name, args.run_pattern)
+                    if checkpoint is None:
+                        logging.warning(f"Skipping {config_name}: checkpoint not found")
+                        continue
+
+                    metrics = evaluate_model(
+                        args.yaml_config,
+                        config_name,
+                        checkpoint,
+                        args.device
+                    )
+
             results[model_type][sample_size] = metrics
         
         # Convert defaultdict to regular dict for JSON serialization
