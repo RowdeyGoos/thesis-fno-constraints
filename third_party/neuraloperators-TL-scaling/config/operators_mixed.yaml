@@ -175,7 +175,7 @@ mixed-scale-all-constraints-penalty-pde-only:
   constraint_zero_mode_omega_tol: 1.0e-8
   constraint_pde_enable: !!bool True
   constraint_pde_method: 'penalty'
-  constraint_pde_weight: 0.043447674931477
+  constraint_pde_weight: 0.04
   constraint_pde_warmup_fraction: 0.0
 
 mixed-scale-all-constraints-al-pde-only-conservative:
@@ -189,7 +189,7 @@ mixed-scale-all-constraints-al-pde-only-conservative:
   constraint_zero_mode_omega_tol: 1.0e-8
   constraint_pde_enable: !!bool True
   constraint_pde_method: 'augmented_lagrangian'
-  constraint_pde_weight: 0.001679676483927881
+  constraint_pde_weight: 0.002
   constraint_pde_warmup_fraction: 0.1
   constraint_pde_al_rho: 0.5
   constraint_pde_al_lambda0: 0.0
@@ -217,7 +217,7 @@ mixed-scale-all-constraints-zero-soft-only:
   constraint_zero_mode_enforcement: 'soft'
   constraint_zero_mode_mode: 'gauge_aware'
   constraint_zero_mode_omega_tol: 1.0e-8
-  constraint_zero_mode_weight: 0.004370246447552988
+  constraint_zero_mode_weight: 0.004
   constraint_zero_mode_warmup_fraction: 0.0
   constraint_pde_enable: !!bool False
   constraint_pde_method: 'penalty'

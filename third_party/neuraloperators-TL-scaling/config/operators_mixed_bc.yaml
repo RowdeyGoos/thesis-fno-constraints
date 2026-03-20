@@ -101,7 +101,7 @@ mixed-bc-scale-all-soft:
   <<: *mixed_bc_scale_all
   checkpoint_selection_metric: 'val_err'
   constraint_bc_enforcement: 'soft'
-  constraint_bc_weight: 0.01001308971596495
+  constraint_bc_weight: 0.01
   constraint_bc_warmup_fraction: 0.1
   constraint_bc_loss_norm: 'l2'
 
