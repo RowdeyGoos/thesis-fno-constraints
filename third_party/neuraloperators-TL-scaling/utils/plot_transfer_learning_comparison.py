@@ -31,9 +31,9 @@ def load_results(filepath):
         return json.load(f)
 
 
-def extract_errors_by_size(results):
-    """Extract test errors organized by sample size"""
-    errors = {}
+def extract_metrics_by_size(results):
+    """Extract test metrics organized by sample size."""
+    metrics_by_size = {}
     
     # Handle different result structures
     if isinstance(results, dict):
@@ -45,13 +45,25 @@ def extract_errors_by_size(results):
                     if isinstance(metrics, dict):
                         # Look for test_error (new format) or test_err (old format)
                         if 'test_error' in metrics:
-                            errors[size_int] = metrics['test_error']
+                            metrics_by_size[size_int] = {
+                                'test_error': metrics['test_error'],
+                                'test_error_q1': metrics.get('test_error_q1'),
+                                'test_error_q3': metrics.get('test_error_q3'),
+                            }
                         elif 'test_err' in metrics:
-                            errors[size_int] = metrics['test_err']
+                            metrics_by_size[size_int] = {
+                                'test_error': metrics['test_err'],
+                                'test_error_q1': metrics.get('test_err_q1'),
+                                'test_error_q3': metrics.get('test_err_q3'),
+                            }
                     elif isinstance(metrics, (int, float)):
-                        errors[size_int] = metrics
+                        metrics_by_size[size_int] = {
+                            'test_error': metrics,
+                            'test_error_q1': None,
+                            'test_error_q3': None,
+                        }
     
-    return errors
+    return metrics_by_size
 
 
 def _format_sample_tick(size):
@@ -80,7 +92,7 @@ def _sample_to_plot_x(size, min_positive_size):
     return float(np.log2(min_positive_size) - 1.5)
 
 
-def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, title="Transfer Learning Comparison"):
+def plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, output_path, title="Transfer Learning Comparison"):
     """Generate comparison plot"""
     
     # Set style
@@ -90,9 +102,9 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     
     # Combine all sample sizes
     all_sizes = sorted(set(
-        list(mixed_errors.keys()) + 
-        list(k1_5_errors.keys()) + 
-        list(scratch_errors.keys())
+        list(mixed_metrics.keys()) + 
+        list(k1_5_metrics.keys()) + 
+        list(scratch_metrics.keys())
     ))
     
     if not all_sizes:
@@ -117,10 +129,12 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
         'scratch': 'Trained from Scratch'
     }
     
-    for errors_dict, key in [(mixed_errors, 'mixed'), (k1_5_errors, 'k1_5'), (scratch_errors, 'scratch')]:
-        if errors_dict:
-            sizes = sorted(errors_dict.keys())
-            errors = [errors_dict[s] for s in sizes]
+    for metrics_dict, key in [(mixed_metrics, 'mixed'), (k1_5_metrics, 'k1_5'), (scratch_metrics, 'scratch')]:
+        if metrics_dict:
+            sizes = sorted(metrics_dict.keys())
+            errors = [metrics_dict[s]['test_error'] for s in sizes]
+            q1 = [metrics_dict[s].get('test_error_q1') for s in sizes]
+            q3 = [metrics_dict[s].get('test_error_q3') for s in sizes]
             x_vals = [x_map[s] for s in sizes]
             
             ax.plot(x_vals, errors,
@@ -131,6 +145,18 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
                    label=labels[key],
                    color=colors[key],
                    alpha=0.9)
+
+            if any(v is not None for v in q1) and any(v is not None for v in q3):
+                q1_plot = [err if val is None else val for err, val in zip(errors, q1)]
+                q3_plot = [err if val is None else val for err, val in zip(errors, q3)]
+                ax.fill_between(
+                    x_vals,
+                    q1_plot,
+                    q3_plot,
+                    color=colors[key],
+                    alpha=0.15,
+                    linewidth=0,
+                )
     
     # Formatting
     ax.set_xlabel('Number of Downstream Training Samples', fontsize=14, fontweight='bold')
@@ -165,13 +191,13 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     plt.close()
 
 
-def print_summary_table(mixed_errors, k1_5_errors, scratch_errors):
+def print_summary_table(mixed_metrics, k1_5_metrics, scratch_metrics):
     """Print summary table of results"""
     
     all_sizes = sorted(set(
-        list(mixed_errors.keys()) + 
-        list(k1_5_errors.keys()) + 
-        list(scratch_errors.keys())
+        list(mixed_metrics.keys()) + 
+        list(k1_5_metrics.keys()) + 
+        list(scratch_metrics.keys())
     ))
     
     print("\n" + "="*80)
@@ -181,9 +207,9 @@ def print_summary_table(mixed_errors, k1_5_errors, scratch_errors):
     print("-" * 80)
     
     for size in all_sizes:
-        mixed_str = f"{mixed_errors[size]:.6f}" if size in mixed_errors else "N/A"
-        k1_5_str = f"{k1_5_errors[size]:.6f}" if size in k1_5_errors else "N/A"
-        scratch_str = f"{scratch_errors[size]:.6f}" if size in scratch_errors else "N/A"
+        mixed_str = f"{mixed_metrics[size]['test_error']:.6f}" if size in mixed_metrics else "N/A"
+        k1_5_str = f"{k1_5_metrics[size]['test_error']:.6f}" if size in k1_5_metrics else "N/A"
+        scratch_str = f"{scratch_metrics[size]['test_error']:.6f}" if size in scratch_metrics else "N/A"
         
         print(f"{size:<12} {mixed_str:<18} {k1_5_str:<18} {scratch_str:<18}")
     
@@ -193,18 +219,21 @@ def print_summary_table(mixed_errors, k1_5_errors, scratch_errors):
     print("="*80)
     
     for size in all_sizes:
-        scratch_err = scratch_errors.get(size)
+        scratch_entry = scratch_metrics.get(size)
+        scratch_err = scratch_entry['test_error'] if scratch_entry else None
         if scratch_err:
             print(f"\n{size} samples:")
             
             # Mixed improvement
-            mixed_err = mixed_errors.get(size)
+            mixed_entry = mixed_metrics.get(size)
+            mixed_err = mixed_entry['test_error'] if mixed_entry else None
             if mixed_err:
                 improvement = ((scratch_err - mixed_err) / scratch_err) * 100
                 print(f"  Mixed pretraining:   {improvement:+6.2f}%")
             
             # k1_5 improvement
-            k1_5_err = k1_5_errors.get(size)
+            k1_5_entry = k1_5_metrics.get(size)
+            k1_5_err = k1_5_entry['test_error'] if k1_5_entry else None
             if k1_5_err:
                 improvement = ((scratch_err - k1_5_err) / scratch_err) * 100
                 print(f"  k1_5 pretraining:    {improvement:+6.2f}%")
@@ -267,17 +296,17 @@ def main():
         scratch_data = {}
     
     # Extract errors by sample size
-    mixed_errors = extract_errors_by_size(mixed_data)
-    k1_5_errors = extract_errors_by_size(k1_5_data)
-    scratch_errors = extract_errors_by_size(scratch_data)
+    mixed_metrics = extract_metrics_by_size(mixed_data)
+    k1_5_metrics = extract_metrics_by_size(k1_5_data)
+    scratch_metrics = extract_metrics_by_size(scratch_data)
     
     print("\nExtracted data points:")
-    print(f"  Mixed: {len(mixed_errors)} sizes")
-    print(f"  k1_5: {len(k1_5_errors)} sizes")
-    print(f"  Scratch: {len(scratch_errors)} sizes")
+    print(f"  Mixed: {len(mixed_metrics)} sizes")
+    print(f"  k1_5: {len(k1_5_metrics)} sizes")
+    print(f"  Scratch: {len(scratch_metrics)} sizes")
     
     # Print summary table
-    print_summary_table(mixed_errors, k1_5_errors, scratch_errors)
+    print_summary_table(mixed_metrics, k1_5_metrics, scratch_metrics)
     
     # Create output directory
     output_dir = Path(args.output_dir)
@@ -285,7 +314,7 @@ def main():
     
     # Generate plot
     output_path = output_dir / 'transfer_learning_comparison.png'
-    plot_comparison(mixed_errors, k1_5_errors, scratch_errors, str(output_path), args.title)
+    plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, str(output_path), args.title)
     
     print("\n" + "="*80)
     print("COMPLETE!")
