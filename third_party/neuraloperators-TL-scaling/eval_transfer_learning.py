@@ -313,7 +313,7 @@ def find_checkpoint(experiment_dir: str, config_name: str, run_pattern: str = "*
 
 
 def aggregate_metrics(metrics_list: List[Dict[str, float]]) -> Dict[str, float]:
-    """Aggregate repeated-run metrics for mean/std and quartile reporting."""
+    """Aggregate repeated-run metrics for mean/std and min-max spread reporting."""
     if not metrics_list:
         return {
             'test_error': np.nan,
@@ -339,14 +339,14 @@ def aggregate_metrics(metrics_list: List[Dict[str, float]]) -> Dict[str, float]:
         if finite_values.size == 0:
             aggregated[metric_name] = np.nan
             aggregated[f'{metric_name}_std'] = np.nan
-            aggregated[f'{metric_name}_q1'] = np.nan
-            aggregated[f'{metric_name}_q3'] = np.nan
+            aggregated[f'{metric_name}_min'] = np.nan
+            aggregated[f'{metric_name}_max'] = np.nan
             continue
 
         aggregated[metric_name] = float(np.mean(finite_values))
         aggregated[f'{metric_name}_std'] = float(np.std(finite_values))
-        aggregated[f'{metric_name}_q1'] = float(np.quantile(finite_values, 0.25))
-        aggregated[f'{metric_name}_q3'] = float(np.quantile(finite_values, 0.75))
+        aggregated[f'{metric_name}_min'] = float(np.min(finite_values))
+        aggregated[f'{metric_name}_max'] = float(np.max(finite_values))
 
     aggregated['n_trials'] = len(metrics_list)
     aggregated['trial_metrics'] = metrics_list
@@ -527,19 +527,19 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         
         sample_sizes = sorted(results[model_type].keys())
         errors = [results[model_type][size]['test_error'] for size in sample_sizes]
-        lower_quartiles = [results[model_type][size].get('test_error_q1', np.nan) for size in sample_sizes]
-        upper_quartiles = [results[model_type][size].get('test_error_q3', np.nan) for size in sample_sizes]
+        lower_band = [results[model_type][size].get('test_error_min', np.nan) for size in sample_sizes]
+        upper_band = [results[model_type][size].get('test_error_max', np.nan) for size in sample_sizes]
         
         # Filter out NaN values
         valid_points = [
-            (s, e, q1, q3)
-            for s, e, q1, q3 in zip(sample_sizes, errors, lower_quartiles, upper_quartiles)
+            (s, e, lo, hi)
+            for s, e, lo, hi in zip(sample_sizes, errors, lower_band, upper_band)
             if not np.isnan(e)
         ]
         if not valid_points:
             continue
         
-        sample_sizes_valid, errors_valid, q1_valid, q3_valid = zip(*valid_points)
+        sample_sizes_valid, errors_valid, min_valid, max_valid = zip(*valid_points)
         
         # Plot with appropriate style
         facecolors = 'none' if model_type == 'scratch' else colors[model_type]
@@ -557,11 +557,11 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
                 linewidth=2,
                 label=labels[model_type])
 
-        if any(not np.isnan(v) for v in q1_valid) and any(not np.isnan(v) for v in q3_valid):
+        if any(not np.isnan(v) for v in min_valid) and any(not np.isnan(v) for v in max_valid):
             ax.fill_between(
                 x_vals,
-                q1_valid,
-                q3_valid,
+                min_valid,
+                max_valid,
                 color=colors[model_type],
                 alpha=0.15,
                 linewidth=0,
@@ -892,7 +892,7 @@ def main():
     parser.add_argument(
         '--aggregate_runs',
         action='store_true',
-        help='Evaluate all matching downstream runs per config and aggregate mean/std/quartiles'
+        help='Evaluate all matching downstream runs per config and aggregate mean/std/min-max spread'
     )
 
     parser.add_argument(

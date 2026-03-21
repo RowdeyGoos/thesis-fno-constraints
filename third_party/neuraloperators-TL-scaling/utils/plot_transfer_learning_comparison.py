@@ -47,20 +47,20 @@ def extract_metrics_by_size(results):
                         if 'test_error' in metrics:
                             metrics_by_size[size_int] = {
                                 'test_error': metrics['test_error'],
-                                'test_error_q1': metrics.get('test_error_q1'),
-                                'test_error_q3': metrics.get('test_error_q3'),
+                                'test_error_min': metrics.get('test_error_min'),
+                                'test_error_max': metrics.get('test_error_max'),
                             }
                         elif 'test_err' in metrics:
                             metrics_by_size[size_int] = {
                                 'test_error': metrics['test_err'],
-                                'test_error_q1': metrics.get('test_err_q1'),
-                                'test_error_q3': metrics.get('test_err_q3'),
+                                'test_error_min': metrics.get('test_err_min'),
+                                'test_error_max': metrics.get('test_err_max'),
                             }
                     elif isinstance(metrics, (int, float)):
                         metrics_by_size[size_int] = {
                             'test_error': metrics,
-                            'test_error_q1': None,
-                            'test_error_q3': None,
+                            'test_error_min': None,
+                            'test_error_max': None,
                         }
     
     return metrics_by_size
@@ -133,8 +133,8 @@ def plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, output_path, t
         if metrics_dict:
             sizes = sorted(metrics_dict.keys())
             errors = [metrics_dict[s]['test_error'] for s in sizes]
-            q1 = [metrics_dict[s].get('test_error_q1') for s in sizes]
-            q3 = [metrics_dict[s].get('test_error_q3') for s in sizes]
+            min_band = [metrics_dict[s].get('test_error_min') for s in sizes]
+            max_band = [metrics_dict[s].get('test_error_max') for s in sizes]
             x_vals = [x_map[s] for s in sizes]
             
             ax.plot(x_vals, errors,
@@ -146,13 +146,13 @@ def plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, output_path, t
                    color=colors[key],
                    alpha=0.9)
 
-            if any(v is not None for v in q1) and any(v is not None for v in q3):
-                q1_plot = [err if val is None else val for err, val in zip(errors, q1)]
-                q3_plot = [err if val is None else val for err, val in zip(errors, q3)]
+            if any(v is not None for v in min_band) and any(v is not None for v in max_band):
+                min_plot = [err if val is None else val for err, val in zip(errors, min_band)]
+                max_plot = [err if val is None else val for err, val in zip(errors, max_band)]
                 ax.fill_between(
                     x_vals,
-                    q1_plot,
-                    q3_plot,
+                    min_plot,
+                    max_plot,
                     color=colors[key],
                     alpha=0.15,
                     linewidth=0,
