@@ -11,23 +11,15 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-23
+#SBATCH --array=0-12
 
-# Transfer Learning: AdvDiff adr∈[0.2,0.4] - Small Sample Sizes (16, 64, 256, 1k samples)
-# This script runs 8 experiments:
-#   - 4 fine-tuning experiments (16, 64, 256, 1k samples) with pre-trained weights from adr0.2_1
-#   - 4 from-scratch experiments (16, 64, 256, 1k samples) without pre-training
-# 
-# Time allocation: 30 minutes (sufficient for small sample training)
-#
-# Prerequisites:
-#   1. Pre-trained model checkpoint from ad-scale-adr0p2_1 pretraining
-#   2. Generated data for AdvDiff adr∈[0.2,0.4] domain
-#   3. Computed scales for adr∈[0.2,0.4] data
-#
-# Usage:
-#   Before submitting, update PRETRAIN_CHECKPOINT with your actual pretrain job ID
-#   sbatch scripts/slurm/finetune/advdiff/submit_finetune_advdiff_adr0p2_0p4_small.sh
+# Transfer Learning: AdvDiff adr∈[0.2,0.4] - Failed small-sample reruns only
+# This script reruns the crashed tasks for:
+#   - ad-adr0p2_0p4-finetune-1k (seeds 1, 2)
+#   - ad-adr0p2_0p4-scratch-16 (seeds 0, 2)
+#   - ad-adr0p2_0p4-scratch-64 (seeds 0, 1, 2)
+#   - ad-adr0p2_0p4-scratch-256 (seeds 0, 1, 2)
+#   - ad-adr0p2_0p4-scratch-1k (seeds 0, 1, 2)
 
 echo "=========================================="
 echo "Transfer Learning Experiment (AdvDiff adr∈[0.2,0.4] - Small Samples)"
@@ -68,15 +60,37 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-source scripts/slurm/finetune/seed_grid.sh
-
-
 # -------- UPDATE THIS: Path to pre-trained checkpoint --------
 # Replace JOBID with your actual ad-scale-adr0p2_1 pretraining job ID
 PRETRAIN_CHECKPOINT="experiments/expts/ad-scale-adr0p2_1/pretrain-ad-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar"
 
-# Verify checkpoint exists for fine-tuning tasks
-if [ $SEED_EXPERIMENT_IDX -lt 4 ]; then
+# Format: "config_name:experiment_description:seed:experiment_type"
+failed_tasks=(
+    "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples:1:finetune"
+    "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples:2:finetune"
+    "ad-adr0p2_0p4-scratch-16:scratch-16-samples:0:scratch"
+    "ad-adr0p2_0p4-scratch-16:scratch-16-samples:2:scratch"
+    "ad-adr0p2_0p4-scratch-64:scratch-64-samples:0:scratch"
+    "ad-adr0p2_0p4-scratch-64:scratch-64-samples:1:scratch"
+    "ad-adr0p2_0p4-scratch-64:scratch-64-samples:2:scratch"
+    "ad-adr0p2_0p4-scratch-256:scratch-256-samples:0:scratch"
+    "ad-adr0p2_0p4-scratch-256:scratch-256-samples:1:scratch"
+    "ad-adr0p2_0p4-scratch-256:scratch-256-samples:2:scratch"
+    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples:0:scratch"
+    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples:1:scratch"
+    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples:2:scratch"
+)
+
+if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then
+    echo "Error: SLURM_ARRAY_TASK_ID $SLURM_ARRAY_TASK_ID is out of range (0-$((${#failed_tasks[@]} - 1)))."
+    exit 1
+fi
+
+IFS=':' read -r config_name exp_desc seed_value exp_type <<< "${failed_tasks[$SLURM_ARRAY_TASK_ID]}"
+seed_run_suffix="seed${seed_value}"
+seed_train_args="--seed=${seed_value} --train_shuffle --random_train_subset --subset_seed=${seed_value}"
+
+if [ "$exp_type" = "finetune" ]; then
     if [ ! -f "$PRETRAIN_CHECKPOINT" ]; then
         echo "WARNING: Pre-trained checkpoint not found at: $PRETRAIN_CHECKPOINT"
         echo "Please update PRETRAIN_CHECKPOINT variable in this script with the correct path"
@@ -86,35 +100,14 @@ if [ $SEED_EXPERIMENT_IDX -lt 4 ]; then
     fi
 fi
 
-# Define experiments
-# Format: "config_name:experiment_description"
-experiments=(
-    # Fine-tuning experiments from adr0.2_1 pretrained (tasks 0-3)
-    "ad-adr0p2_0p4-finetune-16:finetune-adr0p2_1-16-samples"
-    "ad-adr0p2_0p4-finetune-64:finetune-adr0p2_1-64-samples"
-    "ad-adr0p2_0p4-finetune-256:finetune-adr0p2_1-256-samples"
-    "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples"
-    # From-scratch experiments (tasks 4-7)
-    "ad-adr0p2_0p4-scratch-16:scratch-16-samples"
-    "ad-adr0p2_0p4-scratch-64:scratch-64-samples"
-    "ad-adr0p2_0p4-scratch-256:scratch-256-samples"
-    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples"
-)
-
-# Get experiment for this task
-IFS=':' read -r config_name exp_desc <<< "${experiments[$SEED_EXPERIMENT_IDX]}"
-
 echo "Configuration: $config_name"
 echo "Experiment: $exp_desc"
-echo "Seed: $SEED_VALUE"
+echo "Seed: $seed_value"
 echo ""
 
-# Determine if this is fine-tuning or from-scratch
-if [ $SEED_EXPERIMENT_IDX -lt 4 ]; then
-    exp_type="finetune"
+if [ "$exp_type" = "finetune" ]; then
     echo "Type: Fine-tuning with adr0.2_1 pre-trained weights"
 else
-    exp_type="scratch"
     echo "Type: Training from scratch"
 fi
 
@@ -128,9 +121,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/config/operators_ad.yaml \
     --config=$config_name \
-    --run_num=transfer-${exp_desc}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --run_num=transfer-${exp_desc}-${seed_run_suffix}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments \
-    ${SEED_TRAIN_ARGS}"
+    ${seed_train_args}"
 
 echo "Running training..."
 echo "Command: $CMD"

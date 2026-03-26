@@ -11,11 +11,13 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-11
+#SBATCH --array=0-3
 
-# Mixed Dataset Fine-Tuning (Helmholtz): Small Sample Sizes (16, 64, 256, 1k samples)
-# Usage:
-#   sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_mixed_small.sh
+# Mixed Dataset Fine-Tuning (Helmholtz): Failed small-sample reruns only
+# This script reruns the crashed tasks for:
+#   - helm-o1_5-finetune-mixed-64 (seed 1)
+#   - helm-o1_5-finetune-mixed-256 (seed 1)
+#   - helm-o1_5-finetune-mixed-1k (seeds 0, 1)
 
 echo "=========================================="
 echo "Mixed Dataset Fine-Tuning (Helmholtz) - Small Samples (Task $SLURM_ARRAY_TASK_ID)"
@@ -53,23 +55,29 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-source scripts/slurm/finetune/seed_grid.sh
-
 CONFIG_FILE="config/operators_helmholtz.yaml"
 
-declare -a configs=(
-    "helm-o1_5-finetune-mixed-16:finetune-mixed-16"
-    "helm-o1_5-finetune-mixed-64:finetune-mixed-64"
-    "helm-o1_5-finetune-mixed-256:finetune-mixed-256"
-    "helm-o1_5-finetune-mixed-1k:finetune-mixed-1k"
+# Format: "config_name:run_name:seed"
+failed_tasks=(
+    "helm-o1_5-finetune-mixed-64:finetune-mixed-64:1"
+    "helm-o1_5-finetune-mixed-256:finetune-mixed-256:1"
+    "helm-o1_5-finetune-mixed-1k:finetune-mixed-1k:0"
+    "helm-o1_5-finetune-mixed-1k:finetune-mixed-1k:1"
 )
 
-IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
+if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then
+    echo "Error: SLURM_ARRAY_TASK_ID $SLURM_ARRAY_TASK_ID is out of range (0-$((${#failed_tasks[@]} - 1)))."
+    exit 1
+fi
+
+IFS=':' read -r CONFIG_NAME RUN_NAME seed_value <<< "${failed_tasks[$SLURM_ARRAY_TASK_ID]}"
+seed_run_suffix="seed${seed_value}"
+seed_train_args="--seed=${seed_value} --train_shuffle --random_train_subset --subset_seed=${seed_value}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"
 echo "Run name: $RUN_NAME"
-echo "Seed: $SEED_VALUE"
+echo "Seed: $seed_value"
 echo ""
 
 CHECKPOINT_LINE=$(grep -A 20 "^$CONFIG_NAME:" "$CONFIG_FILE" | grep "weights:" | head -n 1)
@@ -90,9 +98,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
-    --run_num=${RUN_NAME}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --run_num=${RUN_NAME}-${seed_run_suffix}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments \
-    ${SEED_TRAIN_ARGS}"
+    ${seed_train_args}"
 
 echo "Running mixed fine-tuning (Task $SLURM_ARRAY_TASK_ID)..."
 echo "Command: $CMD"
