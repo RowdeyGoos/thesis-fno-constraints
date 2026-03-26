@@ -11,11 +11,11 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-4
+#SBATCH --array=0-5
 
 # Transfer Learning: Poisson k∈[1,2.5] - Failed small-sample reruns only
 # This script reruns the crashed tasks for:
-#   - poisson-k1_2.5-finetune-1k (seeds 1, 2)
+#   - poisson-k1_2.5-finetune-1k (seeds 0, 1, 2)
 #   - poisson-k1_2.5-scratch-1k (seeds 0, 1, 2)
 
 echo "=========================================="
@@ -27,7 +27,7 @@ echo "=========================================="
 # Guard against running without an array task context.
 if [ -z "${SLURM_ARRAY_TASK_ID:-}" ]; then
     echo "Error: SLURM_ARRAY_TASK_ID is not set."
-    echo "Submit this script with sbatch so the array directive (#SBATCH --array=0-4) is applied."
+    echo "Submit this script with sbatch so the array directive (#SBATCH --array=0-5) is applied."
     exit 1
 fi
 
@@ -70,6 +70,7 @@ PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-
 # Explicit failed task list.
 # Format: "config_name:experiment_description:seed:experiment_type"
 failed_tasks=(
+    "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples:0:finetune"
     "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples:1:finetune"
     "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples:2:finetune"
     "poisson-k1_2.5-scratch-1k:scratch-1k-samples:0:scratch"

@@ -11,20 +11,11 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-2
+#SBATCH --array=0-1
 
-# Mixed Dataset Fine-Tuning: Medium Sample Sizes (4k, 8k samples)
-# This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
-# with medium numbers of downstream examples: 4k, 8k
-#
-# Time allocation: 1 hour (sufficient for medium sample training)
-#
-# Prerequisites:
-#   1. Completed mixed dataset pretraining (submit_mixed_pretrain.sh)
-#   2. Updated checkpoint paths in config/operators_poisson.yaml
-#
-# Usage:
-#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_medium.sh
+# Mixed Dataset Fine-Tuning (Poisson): Failed medium-sample reruns only
+# This script reruns the missing tasks for:
+#   - poisson-k1_2.5-finetune-mixed-4k (seeds 1, 2)
 
 echo "=========================================="
 echo "Mixed Dataset Fine-Tuning - Medium Samples (Task $SLURM_ARRAY_TASK_ID)"
@@ -64,25 +55,28 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-source scripts/slurm/finetune/seed_grid.sh
-
-
 # Configuration file
 CONFIG_FILE="config/operators_poisson.yaml"
 
-# Array of configurations for mixed fine-tuning
-declare -a configs=(
-    # "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k"
-    "poisson-k1_2.5-finetune-mixed-8k:finetune-mixed-8k"
+# Format: "config_name:run_name:seed"
+failed_tasks=(
+    "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k:1"
+    "poisson-k1_2.5-finetune-mixed-4k:finetune-mixed-4k:2"
 )
 
-# Get current task configuration
-IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
+if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then
+    echo "Error: SLURM_ARRAY_TASK_ID $SLURM_ARRAY_TASK_ID is out of range (0-$((${#failed_tasks[@]} - 1)))."
+    exit 1
+fi
+
+IFS=':' read -r CONFIG_NAME RUN_NAME seed_value <<< "${failed_tasks[$SLURM_ARRAY_TASK_ID]}"
+seed_run_suffix="seed${seed_value}"
+seed_train_args="--seed=${seed_value} --train_shuffle --random_train_subset --subset_seed=${seed_value}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"
 echo "Run name: $RUN_NAME"
-echo "Seed: $SEED_VALUE"
+echo "Seed: $seed_value"
 echo ""
 
 # Verify checkpoint path is set
@@ -107,9 +101,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
-    --run_num=${RUN_NAME}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --run_num=${RUN_NAME}-${seed_run_suffix}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments \
-    ${SEED_TRAIN_ARGS}"
+    ${seed_train_args}"
 
 echo "Running mixed fine-tuning (Task $SLURM_ARRAY_TASK_ID)..."
 echo "Command: $CMD"

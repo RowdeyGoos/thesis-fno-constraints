@@ -11,12 +11,14 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-4
+#SBATCH --array=0-9
 
 # Mixed Dataset Fine-Tuning (AdvDiff): Failed small-sample reruns only
 # This script reruns the crashed tasks for:
 #   - ad-adr0p2_0p4-finetune-mixed-16 (seeds 0, 1, 2)
-#   - ad-adr0p2_0p4-finetune-mixed-64 (seeds 0, 1)
+#   - ad-adr0p2_0p4-finetune-mixed-64 (seeds 0, 1, 2)
+#   - ad-adr0p2_0p4-finetune-mixed-256 (seeds 0, 1)
+#   - ad-adr0p2_0p4-finetune-mixed-1k (seeds 1, 2)
 
 echo "=========================================="
 echo "Mixed Dataset Fine-Tuning (AdvDiff) - Small Samples (Task $SLURM_ARRAY_TASK_ID)"
@@ -66,6 +68,11 @@ failed_tasks=(
     "ad-adr0p2_0p4-finetune-mixed-16:finetune-mixed-16:2"
     "ad-adr0p2_0p4-finetune-mixed-64:finetune-mixed-64:0"
     "ad-adr0p2_0p4-finetune-mixed-64:finetune-mixed-64:1"
+    "ad-adr0p2_0p4-finetune-mixed-64:finetune-mixed-64:2"
+    "ad-adr0p2_0p4-finetune-mixed-256:finetune-mixed-256:0"
+    "ad-adr0p2_0p4-finetune-mixed-256:finetune-mixed-256:1"
+    "ad-adr0p2_0p4-finetune-mixed-1k:finetune-mixed-1k:1"
+    "ad-adr0p2_0p4-finetune-mixed-1k:finetune-mixed-1k:2"
 )
 
 if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then

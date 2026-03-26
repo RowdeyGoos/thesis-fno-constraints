@@ -11,11 +11,12 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-1
+#SBATCH --array=0-3
 
 # Mixed Dataset Fine-Tuning (AdvDiff): Failed large-sample reruns only
 # This script reruns the crashed tasks for:
-#   - ad-adr0p2_0p4-finetune-mixed-16k (seeds 0, 1)
+#   - ad-adr0p2_0p4-finetune-mixed-16k (seeds 1, 2)
+#   - ad-adr0p2_0p4-finetune-mixed-32k (seeds 0, 2)
 
 echo "=========================================="
 echo "Mixed Dataset Fine-Tuning (AdvDiff) - Large Samples (Task $SLURM_ARRAY_TASK_ID)"
@@ -60,8 +61,10 @@ CONFIG_FILE="config/operators_ad.yaml"
 
 # Format: "config_name:run_name:seed"
 failed_tasks=(
-    "ad-adr0p2_0p4-finetune-mixed-16k:finetune-mixed-16k:0"
     "ad-adr0p2_0p4-finetune-mixed-16k:finetune-mixed-16k:1"
+    "ad-adr0p2_0p4-finetune-mixed-16k:finetune-mixed-16k:2"
+    "ad-adr0p2_0p4-finetune-mixed-32k:finetune-mixed-32k:0"
+    "ad-adr0p2_0p4-finetune-mixed-32k:finetune-mixed-32k:2"
 )
 
 if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then

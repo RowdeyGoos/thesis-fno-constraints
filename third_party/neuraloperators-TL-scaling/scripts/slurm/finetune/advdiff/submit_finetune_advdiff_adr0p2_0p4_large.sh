@@ -11,13 +11,13 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-4
+#SBATCH --array=0-6
 
 # Transfer Learning: AdvDiff adr∈[0.2,0.4] - Failed large-sample reruns only
 # This script reruns the crashed tasks for:
 #   - ad-adr0p2_0p4-finetune-32k (seed 1)
-#   - ad-adr0p2_0p4-scratch-16k (seeds 0, 1)
-#   - ad-adr0p2_0p4-scratch-32k (seeds 1, 2)
+#   - ad-adr0p2_0p4-scratch-16k (seeds 0, 1, 2)
+#   - ad-adr0p2_0p4-scratch-32k (seeds 0, 1, 2)
 
 echo "=========================================="
 echo "Transfer Learning Experiment (AdvDiff adr∈[0.2,0.4] - Large Samples)"
@@ -67,6 +67,8 @@ failed_tasks=(
     "ad-adr0p2_0p4-finetune-32k:finetune-adr0p2_1-32k-samples:1:finetune"
     "ad-adr0p2_0p4-scratch-16k:scratch-16k-samples:0:scratch"
     "ad-adr0p2_0p4-scratch-16k:scratch-16k-samples:1:scratch"
+    "ad-adr0p2_0p4-scratch-16k:scratch-16k-samples:2:scratch"
+    "ad-adr0p2_0p4-scratch-32k:scratch-32k-samples:0:scratch"
     "ad-adr0p2_0p4-scratch-32k:scratch-32k-samples:1:scratch"
     "ad-adr0p2_0p4-scratch-32k:scratch-32k-samples:2:scratch"
 )
