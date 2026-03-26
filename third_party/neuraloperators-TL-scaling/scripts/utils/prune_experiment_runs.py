@@ -70,6 +70,7 @@ FAILED_SLURM_STATE_PREFIXES = (
 SUCCESS_LOG_MARKERS = (
     "completed successfully.",
     "info:root:done",
+    "wandb: waiting for w&b process to finish... (success).",
 )
 
 FAILURE_LOG_MARKERS = (
@@ -280,39 +281,51 @@ def read_text_tail(path: Path, max_bytes: int = 65536) -> str:
 
 def line_looks_like_done(line: str) -> bool:
     stripped = line.strip()
-    return stripped == "DONE" or stripped.endswith(":DONE") or stripped.endswith(": DONE")
+    if stripped == "DONE":
+        return True
+    upper = stripped.upper()
+    return (
+        upper.endswith(":DONE")
+        or upper.endswith(": DONE")
+        or upper.endswith(" - INFO - DONE")
+    )
 
 
 def classify_logs(log_files: Sequence[Path]) -> Tuple[str, str, str]:
     if not log_files:
         return UNKNOWN_STATUS, "logs", "no matched log files"
 
-    found_success = False
-    success_detail = ""
-
     for log_file in log_files:
         text = read_text_tail(log_file)
         text_lower = text.lower()
+        last_success_pos = -1
+        last_success_detail = ""
+        last_failure_pos = -1
+        last_failure_detail = ""
 
         for marker in FAILURE_LOG_MARKERS:
-            if marker in text_lower:
-                return FAILED_STATUS, "logs", f"{log_file.name}: matched '{marker}'"
+            pos = text_lower.rfind(marker)
+            if pos > last_failure_pos:
+                last_failure_pos = pos
+                last_failure_detail = f"{log_file.name}: matched '{marker}'"
 
         for marker in SUCCESS_LOG_MARKERS:
-            if marker in text_lower:
-                found_success = True
-                success_detail = f"{log_file.name}: matched '{marker}'"
-                break
+            pos = text_lower.rfind(marker)
+            if pos > last_success_pos:
+                last_success_pos = pos
+                last_success_detail = f"{log_file.name}: matched '{marker}'"
 
-        if not found_success:
-            for line in text.splitlines():
-                if line_looks_like_done(line):
-                    found_success = True
-                    success_detail = f"{log_file.name}: matched DONE line"
-                    break
+        for idx, line in enumerate(text.splitlines()):
+            if line_looks_like_done(line):
+                line_pos = idx
+                if line_pos > last_success_pos:
+                    last_success_pos = line_pos
+                    last_success_detail = f"{log_file.name}: matched DONE line"
 
-    if found_success:
-        return SUCCESS_STATUS, "logs", success_detail
+        if last_success_pos >= 0 and last_success_pos >= last_failure_pos:
+            return SUCCESS_STATUS, "logs", last_success_detail
+        if last_failure_pos >= 0:
+            return FAILED_STATUS, "logs", last_failure_detail
 
     return UNKNOWN_STATUS, "logs", "matched logs exist but no final success/failure marker found"
 
