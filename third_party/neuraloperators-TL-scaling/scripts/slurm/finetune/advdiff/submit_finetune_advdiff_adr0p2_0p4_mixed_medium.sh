@@ -10,7 +10,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
-#SBATCH --mem=16G
+#SBATCH --mem=8G
 #SBATCH --array=0-3
 
 # Mixed Dataset Fine-Tuning (AdvDiff): Failed medium-sample reruns only

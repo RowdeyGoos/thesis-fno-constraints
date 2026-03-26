@@ -1,5 +1,5 @@
 default: &DEFAULT
-  num_data_workers: 4
+  num_data_workers: 2
   # model
   model: 'fno'
   depth: 5
