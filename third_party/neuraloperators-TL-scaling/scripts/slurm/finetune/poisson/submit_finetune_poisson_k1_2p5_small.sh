@@ -44,22 +44,49 @@ module load apptainer 2>/dev/null || module load singularity 2>/dev/null
 
 export PYTHONUNBUFFERED=1
 
-# -------- W&B config --------
-export WANDB_START_METHOD=thread
-export WANDB__SERVICE_WAIT=300
-export WANDB_DIR=/workspace/wandb
-export WANDB_DATA_DIR=/workspace/wandb
-export WANDB_CACHE_DIR=/workspace/wandb/cache
-export WANDB_TEMP_DIR=/workspace/wandb/tmp
-
 cd "$SLURM_SUBMIT_DIR"
 
 JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
 JOB_TMP_DIR="$SLURM_SUBMIT_DIR/$JOB_TMP_REL"
 
+# Prefer node-local scratch for temp/W&B files to avoid NFS temp-file issues.
+SCRATCH_BIND=""
+HOST_SCRATCH_ROOT=""
+CONTAINER_SCRATCH_ROOT="/job-scratch"
+
+# -------- W&B / temp config --------
+export WANDB_START_METHOD=thread
+export WANDB__SERVICE_WAIT=300
+
+if [ -n "${SLURM_TMPDIR:-}" ] && [ -d "${SLURM_TMPDIR}" ]; then
+    HOST_SCRATCH_ROOT="${SLURM_TMPDIR}/neuraloperators-${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+    mkdir -p "$HOST_SCRATCH_ROOT/wandb/cache" "$HOST_SCRATCH_ROOT/wandb/tmp" "$HOST_SCRATCH_ROOT/tmp"
+    SCRATCH_BIND=",$HOST_SCRATCH_ROOT:${CONTAINER_SCRATCH_ROOT}"
+
+    export WANDB_DIR="${CONTAINER_SCRATCH_ROOT}/wandb"
+    export WANDB_DATA_DIR="${CONTAINER_SCRATCH_ROOT}/wandb"
+    export WANDB_CACHE_DIR="${CONTAINER_SCRATCH_ROOT}/wandb/cache"
+    export WANDB_TEMP_DIR="${CONTAINER_SCRATCH_ROOT}/wandb/tmp"
+    export TMPDIR="${CONTAINER_SCRATCH_ROOT}/tmp"
+
+    echo "Using node-local scratch for temp/W&B files: $HOST_SCRATCH_ROOT"
+else
+    export WANDB_DIR=/workspace/wandb
+    export WANDB_DATA_DIR=/workspace/wandb
+    export WANDB_CACHE_DIR=/workspace/wandb/cache
+    export WANDB_TEMP_DIR=/workspace/wandb/tmp
+    export TMPDIR="/workspace/${JOB_TMP_REL}"
+
+    echo "SLURM_TMPDIR is unavailable; falling back to /workspace scratch: $TMPDIR"
+fi
+
 cleanup_tmp_dir() {
-    rm -rf "$JOB_TMP_DIR"
-    rmdir "$SLURM_SUBMIT_DIR/tmp" 2>/dev/null || true
+    if [ -n "$HOST_SCRATCH_ROOT" ]; then
+        rm -rf "$HOST_SCRATCH_ROOT"
+    else
+        rm -rf "$JOB_TMP_DIR"
+        rmdir "$SLURM_SUBMIT_DIR/tmp" 2>/dev/null || true
+    fi
 }
 trap cleanup_tmp_dir EXIT
 
@@ -112,7 +139,7 @@ fi
 mkdir -p experiments
 
 # Bind directories
-BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
+BIND="--bind $SLURM_SUBMIT_DIR:/workspace${SCRATCH_BIND}"
 
 # Python command
 CMD="python /workspace/train.py \
@@ -129,9 +156,7 @@ echo ""
 # Run training
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             job_tmp="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}" && \
-             export TMPDIR="/workspace/${job_tmp}" && \
-             mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
+             mkdir -p experiments "$WANDB_DIR" "$WANDB_CACHE_DIR" "$WANDB_TEMP_DIR" "$TMPDIR" && \
              '"$CMD"
 
 status=$?
