@@ -138,7 +138,8 @@ CMD="python /workspace/train.py \
     --yaml_config=/workspace/config/operators_poisson.yaml \
     --config=$config_name \
     --run_num=transfer-${exp_desc}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
-    --root_dir=/workspace/experiments"
+    --root_dir=/workspace/experiments \
+    --debug_runtime_logging"
 
 echo "Running training..."
 echo "Command: $CMD"

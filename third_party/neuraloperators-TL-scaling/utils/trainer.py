@@ -2,6 +2,7 @@ import os, sys, time
 import numpy as np
 import argparse
 import random
+import shutil
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -80,6 +81,8 @@ class Trainer():
             self.device = torch.device('cpu')
         self.params = params
         self.params.device = self.device
+        self.debug_runtime_logging = bool(getattr(self.params, 'debug_runtime_logging', False))
+        self.runtime_debug_heartbeat_path = None
         self.checkpoint_selection_metric = str(
             getattr(self.params, 'checkpoint_selection_metric', 'val_loss')
         ).lower()
@@ -97,6 +100,75 @@ class Trainer():
         self.params['experiment_dir'] = os.path.abspath(exp_dir)
         self.params['checkpoint_path'] = os.path.join(exp_dir, 'checkpoints/ckpt.tar')
         self.params['resuming'] = True if os.path.isfile(self.params.checkpoint_path) else False
+        self.runtime_debug_heartbeat_path = os.path.join(exp_dir, 'runtime_debug_heartbeat.txt')
+        self.runtime_debug_event(
+            'init_exp_dir',
+            experiment_dir=self.params['experiment_dir'],
+            checkpoint_path=self.params['checkpoint_path'],
+            resuming=self.params['resuming'],
+        )
+
+    def runtime_debug_enabled(self):
+        return self.debug_runtime_logging and self.world_rank == 0
+
+    def _runtime_debug_storage_summary(self):
+        if not self.runtime_debug_enabled():
+            return {}
+
+        summary = {}
+        for label, path in (
+            ('experiment_dir', getattr(self.params, 'experiment_dir', None)),
+            ('tmpdir', os.environ.get('TMPDIR')),
+        ):
+            if not path:
+                summary[label] = '<unset>'
+                continue
+            try:
+                usage = shutil.disk_usage(path)
+                summary[label] = (
+                    f"path={path} free_gb={usage.free / (1024**3):.2f} "
+                    f"used_gb={usage.used / (1024**3):.2f}"
+                )
+            except Exception as exc:
+                summary[label] = f"path={path} error={exc}"
+        return summary
+
+    def _runtime_debug_path_state(self, path):
+        if not path:
+            return '<unset>'
+        try:
+            exists = os.path.exists(path)
+            if exists and os.path.isfile(path):
+                size_mb = os.path.getsize(path) / (1024**2)
+                return f"path={path} exists=true size_mb={size_mb:.2f}"
+            return f"path={path} exists={str(exists).lower()}"
+        except Exception as exc:
+            return f"path={path} error={exc}"
+
+    def runtime_debug_event(self, phase, **details):
+        if not self.runtime_debug_enabled():
+            return
+
+        payload = {
+            'phase': phase,
+            'epoch': getattr(self, 'epoch', None),
+            'iters': getattr(self, 'iters', None),
+        }
+        payload.update(details)
+        payload.update(self._runtime_debug_storage_summary())
+        message = "Runtime debug: " + ", ".join(
+            f"{key}={value}" for key, value in payload.items() if value is not None
+        )
+        logging.warning(message)
+
+        if not self.runtime_debug_heartbeat_path:
+            return
+        try:
+            with open(self.runtime_debug_heartbeat_path, 'w') as heartbeat:
+                for key, value in payload.items():
+                    heartbeat.write(f"{key}={value}\n")
+        except Exception:
+            logging.exception("Runtime debug: failed to update heartbeat file")
 
     def launch(self):
 
@@ -146,6 +218,12 @@ class Trainer():
             logging.info(self.params.log())
 
         set_seed(self.params, self.world_size)
+        self.runtime_debug_event(
+            'post_seed_setup',
+            seed=getattr(self.params, 'seed', None),
+            world_size=self.world_size,
+            device=self.device,
+        )
 
         self.params['global_batch_size'] = self.params.batch_size
         self.params['local_batch_size'] = int(self.params.batch_size//self.world_size)
@@ -208,6 +286,12 @@ class Trainer():
         if self.log_to_screen:
             logging.info(self.model)
             logging.info('number of model parameters: {}'.format(n_params))
+        self.runtime_debug_event(
+            'training_launch',
+            start_epoch=self.startEpoch,
+            max_epochs=self.params.max_epochs,
+            checkpoint_path=self.params.checkpoint_path,
+        )
 
         # launch training
         self.train()
@@ -225,6 +309,7 @@ class Trainer():
 
         for epoch in range(self.startEpoch, self.params.max_epochs):
             self.epoch = epoch
+            self.runtime_debug_event('epoch_start', epoch=epoch, max_epochs=self.params.max_epochs)
             if dist.is_initialized():
                 # shuffles data before every epoch
                 self.train_sampler.set_epoch(epoch)
@@ -233,9 +318,13 @@ class Trainer():
             self.loss_func.set_epoch(self.epoch, self.params.max_epochs)
             self.loss_func.set_phase('train')
             # train
+            self.runtime_debug_event('train_one_epoch_start')
             tr_time = self.train_one_epoch()
+            self.runtime_debug_event('train_one_epoch_done', train_seconds=tr_time)
             self.loss_func.set_phase('eval')
+            self.runtime_debug_event('val_one_epoch_start')
             val_time, fields = self.val_one_epoch()
+            self.runtime_debug_event('val_one_epoch_done', val_seconds=val_time)
             self.logs['wt_norm'] = self.get_model_wt_norm(self.model)
             self.logs['pde_al_lambda'] = self.loss_func.get_aug_lagrange_multiplier()
 
@@ -264,18 +353,62 @@ class Trainer():
                 if self.world_rank == 0:
                     #checkpoint at the end of every epoch
                     if is_best_loss:
+                        self.runtime_debug_event('save_logs_best_start')
                         self.save_logs(tag="_best")
-                    self.save_checkpoint(self.params.checkpoint_path, is_best=is_best_loss)
+                        self.runtime_debug_event('save_logs_best_done')
+                    self.runtime_debug_event(
+                        'checkpoint_save_start',
+                        checkpoint_path=self.params.checkpoint_path,
+                        best_checkpoint_path=self.params.checkpoint_path.replace('.tar', '_best.tar'),
+                        is_best=is_best_loss,
+                    )
+                    try:
+                        self.save_checkpoint(self.params.checkpoint_path, is_best=is_best_loss)
+                    except Exception:
+                        logging.exception(
+                            "Runtime debug: checkpoint save failed at epoch %s",
+                            self.epoch + 1,
+                        )
+                        raise
+                    self.runtime_debug_event(
+                        'checkpoint_save_done',
+                        checkpoint_path=self._runtime_debug_path_state(self.params.checkpoint_path),
+                        best_checkpoint_path=self._runtime_debug_path_state(
+                            self.params.checkpoint_path.replace('.tar', '_best.tar')
+                        ),
+                        is_best=is_best_loss,
+                    )
 
             if self.log_to_wandb:
                 # log visualizations every epoch
                 if plot_figs:
-                    fig = vis_fields(fields, self.params, self.domain)
-                    self.logs['vis'] = wandb.Image(fig)
-                    plt.close(fig)
+                    self.runtime_debug_event('wandb_image_start')
+                    fig = None
+                    try:
+                        fig = vis_fields(fields, self.params, self.domain)
+                        self.logs['vis'] = wandb.Image(fig)
+                    except Exception:
+                        logging.exception(
+                            "Runtime debug: wandb image creation failed at epoch %s",
+                            self.epoch + 1,
+                        )
+                        raise
+                    finally:
+                        if fig is not None:
+                            plt.close(fig)
+                    self.runtime_debug_event('wandb_image_done')
                 self.logs['learning_rate'] = self.optimizer.param_groups[0]['lr']
                 self.logs['time_per_epoch'] = tr_time
-                wandb.log(self.logs, step=self.epoch+1)
+                self.runtime_debug_event('wandb_log_start', step=self.epoch + 1)
+                try:
+                    wandb.log(self.logs, step=self.epoch+1)
+                except Exception:
+                    logging.exception(
+                        "Runtime debug: wandb.log failed at epoch %s",
+                        self.epoch + 1,
+                    )
+                    raise
+                self.runtime_debug_event('wandb_log_done', step=self.epoch + 1)
 
             if self.log_to_screen:
                 logging.info('Time taken for epoch {} is {} sec; with {}/{} in tr/val'.format(self.epoch+1, time.time()-start, tr_time, val_time))
@@ -307,7 +440,13 @@ class Trainer():
 
 
         if self.log_to_wandb:
-            wandb.finish()
+            self.runtime_debug_event('wandb_finish_start')
+            try:
+                wandb.finish()
+            except Exception:
+                logging.exception("Runtime debug: wandb.finish failed")
+                raise
+            self.runtime_debug_event('wandb_finish_done')
 
     
     def get_model_wt_norm(self, model):
