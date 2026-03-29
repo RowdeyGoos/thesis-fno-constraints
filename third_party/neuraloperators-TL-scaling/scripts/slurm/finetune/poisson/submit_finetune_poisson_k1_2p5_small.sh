@@ -11,23 +11,12 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-7
+#SBATCH --array=0-5
 
-# Transfer Learning: Poisson k∈[1,2.5] - Small Sample Sizes (16, 64, 256, 1k samples)
-# This script runs 8 experiments:
-#   - 4 fine-tuning experiments (16, 64, 256, 1k samples) with pre-trained weights from k1_5
-#   - 4 from-scratch experiments (16, 64, 256, 1k samples) without pre-training
-#
-# Time allocation: 30 minutes (sufficient for small sample training)
-#
-# Prerequisites:
-#   1. Pre-trained model checkpoint from poisson-scale-k1_5 pretraining
-#   2. Generated data for poisson k1_2.5 domain (3-component tensor format)
-#   3. Computed scales for k1_2.5 data
-#
-# Usage:
-#   Before submitting, update PRETRAIN_CHECKPOINT with your actual pretrain job ID
-#   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_small.sh
+# Transfer Learning: Poisson k∈[1,2.5] - Failed small-sample reruns only
+# This script reruns the crashed tasks for:
+#   - poisson-k1_2.5-finetune-1k (seeds 0, 1, 2)
+#   - poisson-k1_2.5-scratch-1k (seeds 0, 1, 2)
 
 echo "=========================================="
 echo "Transfer Learning Experiment (Poisson k∈[1,2.5] - Small Samples)"
@@ -38,7 +27,7 @@ echo "=========================================="
 # Guard against running without an array task context.
 if [ -z "${SLURM_ARRAY_TASK_ID:-}" ]; then
     echo "Error: SLURM_ARRAY_TASK_ID is not set."
-    echo "Submit this script with sbatch so the array directive (#SBATCH --array=0-7) is applied."
+    echo "Submit this script with sbatch so the array directive (#SBATCH --array=0-5) is applied."
     exit 1
 fi
 
@@ -79,8 +68,27 @@ trap cleanup_tmp_dir EXIT
 # Replace JOBID with your actual poisson-scale-k1_5 pretraining job ID
 PRETRAIN_CHECKPOINT="experiments/expts/poisson-scale-k1_5/pretrain-poisson-k1_5-12147812-0/checkpoints/ckpt_best.tar"
 
-# Verify checkpoint exists for fine-tuning tasks
-if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
+# Explicit failed task list.
+# Format: "config_name:experiment_description:seed:experiment_type"
+failed_tasks=(
+    "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples:0:finetune"
+    "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples:1:finetune"
+    "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples:2:finetune"
+    "poisson-k1_2.5-scratch-1k:scratch-1k-samples:0:scratch"
+    "poisson-k1_2.5-scratch-1k:scratch-1k-samples:1:scratch"
+    "poisson-k1_2.5-scratch-1k:scratch-1k-samples:2:scratch"
+)
+
+if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then
+    echo "Error: SLURM_ARRAY_TASK_ID $SLURM_ARRAY_TASK_ID is out of range (0-$((${#failed_tasks[@]} - 1)))."
+    exit 1
+fi
+
+IFS=':' read -r config_name exp_desc seed_value exp_type <<< "${failed_tasks[$SLURM_ARRAY_TASK_ID]}"
+seed_run_suffix="seed${seed_value}"
+seed_train_args="--seed=${seed_value} --train_shuffle --random_train_subset --subset_seed=${seed_value}"
+
+if [ "$exp_type" = "finetune" ]; then
     if [ ! -f "$PRETRAIN_CHECKPOINT" ]; then
         echo "WARNING: Pre-trained checkpoint not found at: $PRETRAIN_CHECKPOINT"
         echo "Please update PRETRAIN_CHECKPOINT variable in this script with the correct path"
@@ -90,40 +98,14 @@ if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
     fi
 fi
 
-# Define experiments
-# Format: "config_name:experiment_description"
-experiments=(
-    # Fine-tuning experiments from k1_5 pretrained (tasks 0-3)
-    "poisson-k1_2.5-finetune-16:finetune-k1_5-16-samples"
-    "poisson-k1_2.5-finetune-64:finetune-k1_5-64-samples"
-    "poisson-k1_2.5-finetune-256:finetune-k1_5-256-samples"
-    "poisson-k1_2.5-finetune-1k:finetune-k1_5-1k-samples"
-    # From-scratch experiments (tasks 4-7)
-    "poisson-k1_2.5-scratch-16:scratch-16-samples"
-    "poisson-k1_2.5-scratch-64:scratch-64-samples"
-    "poisson-k1_2.5-scratch-256:scratch-256-samples"
-    "poisson-k1_2.5-scratch-1k:scratch-1k-samples"
-)
-
-# Validate task index before reading the experiment entry.
-if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#experiments[@]}" ]; then
-    echo "Error: SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID is out of range (0-$((${#experiments[@]} - 1)))."
-    exit 1
-fi
-
-# Get experiment for this task
-IFS=':' read -r config_name exp_desc <<< "${experiments[$SLURM_ARRAY_TASK_ID]}"
-
 echo "Configuration: $config_name"
 echo "Experiment: $exp_desc"
+echo "Seed: $seed_value"
 echo ""
 
-# Determine if this is fine-tuning or from-scratch
-if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
-    exp_type="finetune"
+if [ "$exp_type" = "finetune" ]; then
     echo "Type: Fine-tuning with k1_5 pre-trained weights"
 else
-    exp_type="scratch"
     echo "Type: Training from scratch"
 fi
 
@@ -137,9 +119,9 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/config/operators_poisson.yaml \
     --config=$config_name \
-    --run_num=transfer-${exp_desc}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
+    --run_num=transfer-${exp_desc}-${seed_run_suffix}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
     --root_dir=/workspace/experiments \
-    --debug_runtime_logging"
+    ${seed_train_args}"
 
 echo "Running training..."
 echo "Command: $CMD"
