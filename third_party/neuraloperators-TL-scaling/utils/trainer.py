@@ -1,3 +1,4 @@
+import copy
 import os, sys, time
 import numpy as np
 import argparse
@@ -170,6 +171,50 @@ class Trainer():
         except Exception:
             logging.exception("Runtime debug: failed to update heartbeat file")
 
+    def _clone_to_cpu(self, value):
+        if torch.is_tensor(value):
+            return value.detach().cpu().clone()
+        if isinstance(value, OrderedDict):
+            return OrderedDict((key, self._clone_to_cpu(val)) for key, val in value.items())
+        if isinstance(value, dict):
+            return {key: self._clone_to_cpu(val) for key, val in value.items()}
+        if isinstance(value, list):
+            return [self._clone_to_cpu(val) for val in value]
+        if isinstance(value, tuple):
+            return tuple(self._clone_to_cpu(val) for val in value)
+        return copy.deepcopy(value)
+
+    def _serialize_log_value(self, value):
+        if torch.is_tensor(value):
+            value = value.detach().cpu()
+            if value.numel() == 1:
+                return float(value.item())
+            return value.tolist()
+        return value
+
+    def _snapshot_logs(self):
+        return {key: self._serialize_log_value(value) for key, value in self.logs.items()}
+
+    def build_checkpoint_payload(self, model=None, epoch=None, iters=None, model_only=False):
+        if model is None:
+            model = self.model
+        payload = {
+            'iters': self.iters if iters is None else iters,
+            'epoch': self.epoch if epoch is None else epoch,
+            'model_state': self._clone_to_cpu(model.state_dict()),
+            'optimizer_state_dict': None,
+            'scheduler_state_dict': None,
+        }
+        if not model_only:
+            payload['optimizer_state_dict'] = self._clone_to_cpu(self.optimizer.state_dict())
+            payload['scheduler_state_dict'] = (
+                self._clone_to_cpu(self.scheduler.state_dict()) if self.scheduler is not None else None
+            )
+        return payload
+
+    def save_checkpoint_payload(self, checkpoint_path, payload):
+        torch.save(payload, checkpoint_path)
+
     def launch(self):
 
         if self.sweep_id:
@@ -301,6 +346,14 @@ class Trainer():
             logging.info("Starting training loop...")
         best_selection_value = np.inf
         best_loss = np.inf
+        checkpoint_interval_epochs = max(
+            1,
+            int(getattr(self.params, 'checkpoint_interval_epochs', 1)),
+        )
+        checkpoint_best_at_end = bool(getattr(self.params, 'checkpoint_best_at_end', False))
+        checkpoint_best_model_only = bool(getattr(self.params, 'checkpoint_best_model_only', False))
+        best_checkpoint_payload = None
+        best_logs_snapshot = None
 
         best_epoch = 0
         best_err = 1
@@ -339,6 +392,12 @@ class Trainer():
                 best_selection_value = selection_value
                 best_loss = self.logs['val_loss']
                 best_err = self.logs['val_err']
+                if self.params.save_checkpoint and self.world_rank == 0 and checkpoint_best_at_end:
+                    best_checkpoint_payload = self.build_checkpoint_payload(
+                        epoch=self.epoch,
+                        iters=self.iters,
+                        model_only=checkpoint_best_model_only,
+                    )
             else:
                 is_best_loss = False
             self.logs['best_val_loss'] = best_loss
@@ -348,36 +407,47 @@ class Trainer():
 
             best_epoch = self.epoch if is_best_loss else best_epoch
             self.logs['best_epoch'] = best_epoch
+            if is_best_loss and checkpoint_best_at_end:
+                best_logs_snapshot = self._snapshot_logs()
 
             if self.params.save_checkpoint:
                 if self.world_rank == 0:
-                    #checkpoint at the end of every epoch
-                    if is_best_loss:
+                    should_save_periodic_checkpoint = (
+                        (self.epoch + 1) % checkpoint_interval_epochs == 0
+                        or (self.epoch + 1) == self.params.max_epochs
+                    )
+                    should_write_best_checkpoint_now = is_best_loss and not checkpoint_best_at_end
+                    if should_write_best_checkpoint_now:
                         self.runtime_debug_event('save_logs_best_start')
                         self.save_logs(tag="_best")
                         self.runtime_debug_event('save_logs_best_done')
-                    self.runtime_debug_event(
-                        'checkpoint_save_start',
-                        checkpoint_path=self.params.checkpoint_path,
-                        best_checkpoint_path=self.params.checkpoint_path.replace('.tar', '_best.tar'),
-                        is_best=is_best_loss,
-                    )
-                    try:
-                        self.save_checkpoint(self.params.checkpoint_path, is_best=is_best_loss)
-                    except Exception:
-                        logging.exception(
-                            "Runtime debug: checkpoint save failed at epoch %s",
-                            self.epoch + 1,
+                    if should_save_periodic_checkpoint or should_write_best_checkpoint_now:
+                        self.runtime_debug_event(
+                            'checkpoint_save_start',
+                            checkpoint_path=self.params.checkpoint_path,
+                            best_checkpoint_path=self.params.checkpoint_path.replace('.tar', '_best.tar'),
+                            is_best=should_write_best_checkpoint_now,
+                            checkpoint_interval_epochs=checkpoint_interval_epochs,
                         )
-                        raise
-                    self.runtime_debug_event(
-                        'checkpoint_save_done',
-                        checkpoint_path=self._runtime_debug_path_state(self.params.checkpoint_path),
-                        best_checkpoint_path=self._runtime_debug_path_state(
-                            self.params.checkpoint_path.replace('.tar', '_best.tar')
-                        ),
-                        is_best=is_best_loss,
-                    )
+                        try:
+                            self.save_checkpoint(
+                                self.params.checkpoint_path,
+                                is_best=should_write_best_checkpoint_now,
+                            )
+                        except Exception:
+                            logging.exception(
+                                "Runtime debug: checkpoint save failed at epoch %s",
+                                self.epoch + 1,
+                            )
+                            raise
+                        self.runtime_debug_event(
+                            'checkpoint_save_done',
+                            checkpoint_path=self._runtime_debug_path_state(self.params.checkpoint_path),
+                            best_checkpoint_path=self._runtime_debug_path_state(
+                                self.params.checkpoint_path.replace('.tar', '_best.tar')
+                            ),
+                            is_best=should_write_best_checkpoint_now,
+                        )
 
             if self.log_to_wandb:
                 # log visualizations every epoch
@@ -439,6 +509,32 @@ class Trainer():
                 )
 
 
+        if self.params.save_checkpoint and self.world_rank == 0 and checkpoint_best_at_end and best_checkpoint_payload is not None:
+            best_checkpoint_path = self.params.checkpoint_path.replace('.tar', '_best.tar')
+            self.runtime_debug_event(
+                'best_checkpoint_finalize_start',
+                best_checkpoint_path=best_checkpoint_path,
+                best_epoch=best_checkpoint_payload.get('epoch'),
+                checkpoint_best_model_only=checkpoint_best_model_only,
+            )
+            if best_logs_snapshot is not None:
+                self.runtime_debug_event('save_logs_best_start')
+                self.save_logs(tag="_best", logs=best_logs_snapshot, epoch=best_checkpoint_payload.get('epoch'))
+                self.runtime_debug_event('save_logs_best_done')
+            try:
+                self.save_checkpoint_payload(best_checkpoint_path, best_checkpoint_payload)
+            except Exception:
+                logging.exception(
+                    "Runtime debug: best checkpoint finalization failed for epoch %s",
+                    best_checkpoint_payload.get('epoch'),
+                )
+                raise
+            self.runtime_debug_event(
+                'best_checkpoint_finalize_done',
+                best_checkpoint_path=self._runtime_debug_path_state(best_checkpoint_path),
+                best_epoch=best_checkpoint_payload.get('epoch'),
+            )
+
         if self.log_to_wandb:
             self.runtime_debug_event('wandb_finish_start')
             try:
@@ -457,11 +553,15 @@ class Trainer():
         n = n**0.5
         return n
 
-    def save_logs(self, tag=""):
+    def save_logs(self, tag="", logs=None, epoch=None):
+        if logs is None:
+            logs = self.logs
+        if epoch is None:
+            epoch = self.epoch
         with open(os.path.join(self.params.experiment_dir, "logs"+tag+".txt"), "w") as f:
-            f.write("epoch,{}\n".format(self.epoch))
-            for k, v in self.logs.items():
-                f.write("{},{}\n".format(k,v))
+            f.write("epoch,{}\n".format(epoch))
+            for k, v in logs.items():
+                f.write("{},{}\n".format(k, self._serialize_log_value(v)))
 
 
     def train_one_epoch(self):
@@ -694,9 +794,16 @@ class Trainer():
 
         self.iters = checkpoint['iters']
         self.startEpoch = checkpoint['epoch'] + 1
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        if self.scheduler is not None:
-            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        optimizer_state = checkpoint.get('optimizer_state_dict')
+        scheduler_state = checkpoint.get('scheduler_state_dict')
+        if optimizer_state is not None:
+            self.optimizer.load_state_dict(optimizer_state)
+        else:
+            logging.warning("Checkpoint %s has no optimizer state; skipping optimizer restore", checkpoint_path)
+        if self.scheduler is not None and scheduler_state is not None:
+            self.scheduler.load_state_dict(scheduler_state)
+        elif self.scheduler is not None and scheduler_state is None:
+            logging.warning("Checkpoint %s has no scheduler state; skipping scheduler restore", checkpoint_path)
 
     def load_model(self, checkpoint_path):
         if torch.cuda.is_available():

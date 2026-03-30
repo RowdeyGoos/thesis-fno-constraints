@@ -119,6 +119,8 @@ helm-o1_5-base: &helm_o1_5_base
   system: 'helmholtz'
   in_dim: 3
   out_dim: 1
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
 
 # Base config for o1_5 with mixed format (6-component tensors)
 helm-o1_5-mixed-base: &helm_o1_5_mixed_base
@@ -138,6 +140,8 @@ helm-o1_5-mixed-base: &helm_o1_5_mixed_base
   in_dim: 7  # Helmholtz with mixed format: 1 (source) + 6 (tensor) = 7 input channels
   constraint_diffusion_tensor_order: 'k11_k12_k22'
   out_dim: 1
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
 
 # Pretrained transfer configs use source-domain scales (single-domain pretrain).
 helm-o1_5-pretrained-base: &helm_o1_5_pretrained_base

@@ -114,6 +114,8 @@ ad-adr0p2_0p4-base: &ad_adr0p2_0p4_base
   fc_cut: 2
   max_epochs: 500
   system: 'advection-diffusion'
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
 
 # Base config for adr0.2_0.4 with mixed format (6-component tensors)
 ad-adr0p2_0p4-mixed-base: &ad_adr0p2_0p4_mixed_base
@@ -132,6 +134,8 @@ ad-adr0p2_0p4-mixed-base: &ad_adr0p2_0p4_mixed_base
   system: 'advection-diffusion'
   in_dim: 7  # AdvDiff with mixed format: 1 (source) + 6 (tensor) = 7 input channels
   constraint_diffusion_tensor_order: 'k11_k12_k22'
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
 
 # Pretrained transfer configs use source-domain scales (single-domain pretrain).
 ad-adr0p2_0p4-pretrained-base: &ad_adr0p2_0p4_pretrained_base

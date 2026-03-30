@@ -139,6 +139,8 @@ poisson-k5_10-base: &poisson_k5_10_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
 
 # Transfer configs initialized from k1_5 pretraining should keep the source
 # normalization scales so the pretrained model sees the same input normalization
@@ -249,6 +251,8 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
   fc_cut: 2
   max_epochs: 500
   plot_figs: !!bool True
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
 
 # Base config for k1_2.5 with mixed format (6-component tensors)
 poisson-k1_2.5-mixed-base: &poisson_k1_2p5_mixed_base
@@ -265,6 +269,8 @@ poisson-k1_2.5-mixed-base: &poisson_k1_2p5_mixed_base
   fc_cut: 2
   max_epochs: 500
   plot_figs: !!bool True
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
   in_dim: 7  # Poisson with mixed format: 1 (source) + 6 (tensor) = 7 input channels
   constraint_diffusion_tensor_order: 'k11_k12_k22'
 
