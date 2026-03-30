@@ -116,6 +116,7 @@ helm-o1_5-base: &helm_o1_5_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
+  plot_figs: !!bool False
   system: 'helmholtz'
   in_dim: 3
   out_dim: 1
@@ -136,6 +137,7 @@ helm-o1_5-mixed-base: &helm_o1_5_mixed_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
+  plot_figs: !!bool False
   system: 'helmholtz'
   in_dim: 7  # Helmholtz with mixed format: 1 (source) + 6 (tensor) = 7 input channels
   constraint_diffusion_tensor_order: 'k11_k12_k22'

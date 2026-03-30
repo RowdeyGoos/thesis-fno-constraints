@@ -113,6 +113,7 @@ ad-adr0p2_0p4-base: &ad_adr0p2_0p4_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
+  plot_figs: !!bool False
   system: 'advection-diffusion'
   checkpoint_interval_epochs: 50
   checkpoint_best_at_end: !!bool True
@@ -131,6 +132,7 @@ ad-adr0p2_0p4-mixed-base: &ad_adr0p2_0p4_mixed_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
+  plot_figs: !!bool False
   system: 'advection-diffusion'
   in_dim: 7  # AdvDiff with mixed format: 1 (source) + 6 (tensor) = 7 input channels
   constraint_diffusion_tensor_order: 'k11_k12_k22'

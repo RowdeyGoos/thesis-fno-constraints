@@ -139,6 +139,7 @@ poisson-k5_10-base: &poisson_k5_10_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
+  plot_figs: !!bool False
   checkpoint_interval_epochs: 50
   checkpoint_best_at_end: !!bool True
 
@@ -250,7 +251,7 @@ poisson-k1_2.5-base: &poisson_k1_2p5_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
-  plot_figs: !!bool True
+  plot_figs: !!bool False
   checkpoint_interval_epochs: 50
   checkpoint_best_at_end: !!bool True
 
@@ -268,7 +269,7 @@ poisson-k1_2.5-mixed-base: &poisson_k1_2p5_mixed_base
   embed_cut: 64
   fc_cut: 2
   max_epochs: 500
-  plot_figs: !!bool True
+  plot_figs: !!bool False
   checkpoint_interval_epochs: 50
   checkpoint_best_at_end: !!bool True
   in_dim: 7  # Poisson with mixed format: 1 (source) + 6 (tensor) = 7 input channels
