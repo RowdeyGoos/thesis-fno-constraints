@@ -56,15 +56,16 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-# Configuration file
-CONFIG_FILE="config/operators_ad.yaml"
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
+RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
+CONFIG_FILE="${CONFIG_FILE:-config/operators_ad.yaml}"
 
 # Format: "config_name:run_name:seed"
 failed_tasks=(
-    "ad-adr0p2_0p4-finetune-mixed-4k:finetune-mixed-4k:0"
-    "ad-adr0p2_0p4-finetune-mixed-4k:finetune-mixed-4k:1"
-    "ad-adr0p2_0p4-finetune-mixed-8k:finetune-mixed-8k:0"
-    "ad-adr0p2_0p4-finetune-mixed-8k:finetune-mixed-8k:2"
+    "ad-adr0p2_0p4-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k:0"
+    "ad-adr0p2_0p4-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k:1"
+    "ad-adr0p2_0p4-finetune-${MIXED_VARIANT}-8k:finetune-${RUN_VARIANT}-8k:0"
+    "ad-adr0p2_0p4-finetune-${MIXED_VARIANT}-8k:finetune-${RUN_VARIANT}-8k:2"
 )
 
 if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then

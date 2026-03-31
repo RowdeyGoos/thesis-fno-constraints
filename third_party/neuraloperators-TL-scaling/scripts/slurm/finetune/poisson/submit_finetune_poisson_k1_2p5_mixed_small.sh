@@ -66,16 +66,16 @@ trap cleanup_tmp_dir EXIT
 
 source scripts/slurm/finetune/seed_grid.sh
 
-
-# Configuration file
-CONFIG_FILE="config/operators_poisson.yaml"
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
+RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
+CONFIG_FILE="${CONFIG_FILE:-config/operators_poisson.yaml}"
 
 # Array of configurations for mixed fine-tuning
 declare -a configs=(
-    "poisson-k1_2.5-finetune-mixed-16:finetune-mixed-16"
-    "poisson-k1_2.5-finetune-mixed-64:finetune-mixed-64"
-    "poisson-k1_2.5-finetune-mixed-256:finetune-mixed-256"
-    "poisson-k1_2.5-finetune-mixed-1k:finetune-mixed-1k"
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-16:finetune-${RUN_VARIANT}-16"
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-64:finetune-${RUN_VARIANT}-64"
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-256"
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-1k:finetune-${RUN_VARIANT}-1k"
 )
 
 # Get current task configuration

@@ -55,14 +55,16 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-CONFIG_FILE="config/operators_helmholtz.yaml"
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
+RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
+CONFIG_FILE="${CONFIG_FILE:-config/operators_helmholtz.yaml}"
 
 # Format: "config_name:run_name:seed"
 failed_tasks=(
-    "helm-o1_5-finetune-mixed-64:finetune-mixed-64:1"
-    "helm-o1_5-finetune-mixed-256:finetune-mixed-256:1"
-    "helm-o1_5-finetune-mixed-1k:finetune-mixed-1k:0"
-    "helm-o1_5-finetune-mixed-1k:finetune-mixed-1k:1"
+    "helm-o1_5-finetune-${MIXED_VARIANT}-64:finetune-${RUN_VARIANT}-64:1"
+    "helm-o1_5-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-256:1"
+    "helm-o1_5-finetune-${MIXED_VARIANT}-1k:finetune-${RUN_VARIANT}-1k:0"
+    "helm-o1_5-finetune-${MIXED_VARIANT}-1k:finetune-${RUN_VARIANT}-1k:1"
 )
 
 if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then

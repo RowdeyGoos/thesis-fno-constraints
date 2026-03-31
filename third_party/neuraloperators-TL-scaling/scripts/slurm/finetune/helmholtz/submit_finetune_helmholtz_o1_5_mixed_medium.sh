@@ -55,11 +55,13 @@ trap cleanup_tmp_dir EXIT
 
 source scripts/slurm/finetune/seed_grid.sh
 
-CONFIG_FILE="config/operators_helmholtz.yaml"
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
+RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
+CONFIG_FILE="${CONFIG_FILE:-config/operators_helmholtz.yaml}"
 
 declare -a configs=(
-    "helm-o1_5-finetune-mixed-4k:finetune-mixed-4k"
-    "helm-o1_5-finetune-mixed-8k:finetune-mixed-8k"
+    "helm-o1_5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k"
+    "helm-o1_5-finetune-${MIXED_VARIANT}-8k:finetune-${RUN_VARIANT}-8k"
 )
 
 IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
