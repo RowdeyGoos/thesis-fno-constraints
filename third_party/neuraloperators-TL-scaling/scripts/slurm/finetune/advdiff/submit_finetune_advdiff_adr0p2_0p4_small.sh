@@ -11,15 +11,11 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-10
+#SBATCH --array=0-0
 
 # Transfer Learning: AdvDiff adr∈[0.2,0.4] - Failed small-sample reruns only
 # This script reruns the crashed tasks for:
-#   - ad-adr0p2_0p4-finetune-1k (seeds 1, 2)
-#   - ad-adr0p2_0p4-scratch-16 (seed 0)
-#   - ad-adr0p2_0p4-scratch-64 (seeds 0, 1, 2)
-#   - ad-adr0p2_0p4-scratch-256 (seeds 0, 1)
-#   - ad-adr0p2_0p4-scratch-1k (seeds 0, 1, 2)
+#   - ad-adr0p2_0p4-finetune-1k (seed 1)
 
 echo "=========================================="
 echo "Transfer Learning Experiment (AdvDiff adr∈[0.2,0.4] - Small Samples)"
@@ -67,16 +63,6 @@ PRETRAIN_CHECKPOINT="experiments/expts/ad-scale-adr0p2_1/pretrain-ad-adr0p2_1-12
 # Format: "config_name:experiment_description:seed:experiment_type"
 failed_tasks=(
     "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples:1:finetune"
-    "ad-adr0p2_0p4-finetune-1k:finetune-adr0p2_1-1k-samples:2:finetune"
-    "ad-adr0p2_0p4-scratch-16:scratch-16-samples:0:scratch"
-    "ad-adr0p2_0p4-scratch-64:scratch-64-samples:0:scratch"
-    "ad-adr0p2_0p4-scratch-64:scratch-64-samples:1:scratch"
-    "ad-adr0p2_0p4-scratch-64:scratch-64-samples:2:scratch"
-    "ad-adr0p2_0p4-scratch-256:scratch-256-samples:0:scratch"
-    "ad-adr0p2_0p4-scratch-256:scratch-256-samples:1:scratch"
-    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples:0:scratch"
-    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples:1:scratch"
-    "ad-adr0p2_0p4-scratch-1k:scratch-1k-samples:2:scratch"
 )
 
 if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#failed_tasks[@]}" ]; then
