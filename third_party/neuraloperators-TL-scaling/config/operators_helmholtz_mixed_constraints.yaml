@@ -121,62 +121,62 @@ helm-o1_5-mixed-penalty-pde-pretrained-base: &helm_o1_5_mixed_penalty_pde_pretra
 # ========================================
 helm-o1_5-zeroshot-mixed-zero-hard:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-16:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-64:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-256:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-1k:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-4k:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-8k:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-16k:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-hard-32k:
   <<: *helm_o1_5_mixed_zero_hard_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-hard-only/pretrain-mixed-zero-hard-only-12239220-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
   batch_size: 128
   valid_batch_size: 128
@@ -186,62 +186,62 @@ helm-o1_5-finetune-mixed-zero-hard-32k:
 # ========================================
 helm-o1_5-zeroshot-mixed-zero-soft:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-16:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-64:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-256:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-1k:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-4k:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-8k:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-16k:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-zero-soft-32k:
   <<: *helm_o1_5_mixed_zero_soft_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-zero-soft-only/pretrain-mixed-zero-soft-only-12261875-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
   batch_size: 128
   valid_batch_size: 128
@@ -251,62 +251,62 @@ helm-o1_5-finetune-mixed-zero-soft-32k:
 # ========================================
 helm-o1_5-zeroshot-mixed-penalty-pde:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-16:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-64:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-256:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-1k:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-4k:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-8k:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-16k:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-penalty-pde-32k:
   <<: *helm_o1_5_mixed_penalty_pde_pretrained_base
-  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-scale-all-constraints-penalty-pde-only/pretrain-mixed-penalty-pde-only-12262323-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
   batch_size: 128
   valid_batch_size: 128
