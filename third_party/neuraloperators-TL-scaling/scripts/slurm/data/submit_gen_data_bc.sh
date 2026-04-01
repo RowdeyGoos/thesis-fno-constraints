@@ -29,7 +29,8 @@ fi
 cd "$PROJECT_DIR"
 
 DATASET="${DATASET:-all}"
-DATA_ROOT="${DATA_ROOT:-/path/to/data/bc}"
+DATA_ROOT="${DATA_ROOT:-data/bc}"
+RANGE_SET="${RANGE_SET:-transfer}"
 
 echo "=========================================="
 echo "BC data generation starting"
@@ -38,6 +39,7 @@ echo "Node list:   ${SLURM_NODELIST:-local}"
 echo "Project dir: ${PROJECT_DIR}"
 echo "Dataset:     ${DATASET}"
 echo "Data root:   ${DATA_ROOT}"
+echo "Range set:   ${RANGE_SET}"
 echo "=========================================="
 
 if ! command -v apptainer >/dev/null 2>&1 && ! command -v singularity >/dev/null 2>&1; then
@@ -78,7 +80,7 @@ if [ -n "$CONTAINER_BIN" ]; then
     fi
 
     export PYTHONUNBUFFERED=1
-    export DATASET DATA_ROOT
+    export DATASET DATA_ROOT RANGE_SET
 
     echo "Container runtime: ${CONTAINER_BIN}"
     echo "Container image:   ${CONTAINER_PATH}"
@@ -87,7 +89,7 @@ if [ -n "$CONTAINER_BIN" ]; then
 else
     echo "No apptainer/singularity runtime found; using host Python."
     export PYTHONUNBUFFERED=1
-    export DATASET DATA_ROOT
+    export DATASET DATA_ROOT RANGE_SET
     bash run_gen_data_bc.sh
 fi
 
