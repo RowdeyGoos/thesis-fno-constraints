@@ -130,78 +130,72 @@ helm-o1_5-mixed-bc-hard-pretrained-base: &helm_o1_5_mixed_bc_hard_pretrained_bas
   constraint_bc_enforcement: 'hard'
   constraint_bc_weight: 0.0
 
-# Mixed BC hard+soft checkpoints keep the hard projection active downstream,
-# while the soft BC regularizer remains pretraining-only for now.
-helm-o1_5-mixed-bc-hard-soft-pretrained-base: &helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  <<: *helm_o1_5_mixed_bc_base
-  scales_path:   'data/bc/mixed/_train_mixed_32k_bc_scales.npy'
-  constraint_bc_enforcement: 'hard'
-  constraint_bc_weight: 0.0
-
-# Replace JOBID after the corresponding mixed BC pretraining run completes on
-# the cluster.
+# Mixed BC pretraining job IDs:
+#   off  = 12254683
+#   soft = 12261874
+#   hard = 12253621
 
 # ========================================
 # BC Off
 # ========================================
 helm-o1_5-zeroshot-mixed-bc-off:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-16:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-64:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-256:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-1k:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-4k:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-8k:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-16k:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-off-32k:
   <<: *helm_o1_5_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples
   batch_size: 128
   valid_batch_size: 128
@@ -211,62 +205,62 @@ helm-o1_5-finetune-mixed-bc-off-32k:
 # ========================================
 helm-o1_5-zeroshot-mixed-bc-soft:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-16:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 2048
   batch_size: 16
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-64:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 512
   batch_size: 32
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-256:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 128
   batch_size: 64
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-1k:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 32
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-4k:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 8
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-8k:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 4
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-16k:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 2
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-soft-32k:
   <<: *helm_o1_5_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 1
   batch_size: 128
   valid_batch_size: 128
@@ -276,127 +270,62 @@ helm-o1_5-finetune-mixed-bc-soft-32k:
 # ========================================
 helm-o1_5-zeroshot-mixed-bc-hard:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-16:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 2048
   batch_size: 16
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-64:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 512
   batch_size: 32
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-256:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 128
   batch_size: 64
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-1k:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 32
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-4k:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 8
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-8k:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 4
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-16k:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 2
   batch_size: 128
   valid_batch_size: 128
 
 helm-o1_5-finetune-mixed-bc-hard-32k:
   <<: *helm_o1_5_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 1
-  batch_size: 128
-  valid_batch_size: 128
-
-# ========================================
-# BC Hard + Soft
-# ========================================
-helm-o1_5-zeroshot-mixed-bc-hard-soft:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  batch_size: 128
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-16:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 2048
-  batch_size: 16
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-64:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 512
-  batch_size: 32
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-256:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 128
-  batch_size: 64
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-1k:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 32
-  batch_size: 128
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-4k:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 8
-  batch_size: 128
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-8k:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 4
-  batch_size: 128
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-16k:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 2
-  batch_size: 128
-  valid_batch_size: 128
-
-helm-o1_5-finetune-mixed-bc-hard-soft-32k:
-  <<: *helm_o1_5_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 1
   batch_size: 128
   valid_batch_size: 128

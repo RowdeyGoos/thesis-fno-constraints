@@ -129,78 +129,72 @@ ad-adr0p2_0p4-mixed-bc-hard-pretrained-base: &ad_adr0p2_0p4_mixed_bc_hard_pretra
   constraint_bc_enforcement: 'hard'
   constraint_bc_weight: 0.0
 
-# Mixed BC hard+soft checkpoints keep the hard projection active downstream,
-# while the soft BC regularizer remains pretraining-only for now.
-ad-adr0p2_0p4-mixed-bc-hard-soft-pretrained-base: &ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  <<: *ad_adr0p2_0p4_mixed_bc_base
-  scales_path:   'data/bc/mixed/_train_mixed_32k_bc_scales.npy'
-  constraint_bc_enforcement: 'hard'
-  constraint_bc_weight: 0.0
-
-# Replace JOBID after the corresponding mixed BC pretraining run completes on
-# the cluster.
+# Mixed BC pretraining job IDs:
+#   off  = 12254683
+#   soft = 12261874
+#   hard = 12253621
 
 # ========================================
 # BC Off
 # ========================================
 ad-adr0p2_0p4-zeroshot-mixed-bc-off:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-16:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 2048  # 32768 / 2048 = 16 samples
   batch_size: 16
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-64:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 512   # 32768 / 512 = 64 samples
   batch_size: 32
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-256:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 128   # 32768 / 128 = 256 samples
   batch_size: 64
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-1k:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 32    # 32768 / 32 = 1024 samples
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-4k:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 8     # 32768 / 8 = 4096 samples
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-8k:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 4     # 32768 / 4 = 8192 samples
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-16k:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 2     # 32768 / 2 = 16384 samples
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-off-32k:
   <<: *ad_adr0p2_0p4_mixed_bc_off_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-off/pretrain-mixed-bc-off-12254683-0/checkpoints/ckpt_best.tar'
   subsample: 1     # 32768 / 1 = 32768 samples
   batch_size: 128
   valid_batch_size: 128
@@ -210,62 +204,62 @@ ad-adr0p2_0p4-finetune-mixed-bc-off-32k:
 # ========================================
 ad-adr0p2_0p4-zeroshot-mixed-bc-soft:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-16:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 2048
   batch_size: 16
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-64:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 512
   batch_size: 32
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-256:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 128
   batch_size: 64
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-1k:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 32
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-4k:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 8
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-8k:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 4
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-16k:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 2
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-soft-32k:
   <<: *ad_adr0p2_0p4_mixed_bc_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-soft/pretrain-mixed-bc-soft-12261874-0/checkpoints/ckpt_best.tar'
   subsample: 1
   batch_size: 128
   valid_batch_size: 128
@@ -275,127 +269,62 @@ ad-adr0p2_0p4-finetune-mixed-bc-soft-32k:
 # ========================================
 ad-adr0p2_0p4-zeroshot-mixed-bc-hard:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-16:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 2048
   batch_size: 16
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-64:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 512
   batch_size: 32
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-256:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 128
   batch_size: 64
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-1k:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 32
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-4k:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 8
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-8k:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 4
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-16k:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 2
   batch_size: 128
   valid_batch_size: 128
 
 ad-adr0p2_0p4-finetune-mixed-bc-hard-32k:
   <<: *ad_adr0p2_0p4_mixed_bc_hard_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 1
-  batch_size: 128
-  valid_batch_size: 128
-
-# ========================================
-# BC Hard + Soft
-# ========================================
-ad-adr0p2_0p4-zeroshot-mixed-bc-hard-soft:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  batch_size: 128
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-16:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 2048
-  batch_size: 16
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-64:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 512
-  batch_size: 32
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-256:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 128
-  batch_size: 64
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-1k:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 32
-  batch_size: 128
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-4k:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 8
-  batch_size: 128
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-8k:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 4
-  batch_size: 128
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-16k:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
-  subsample: 2
-  batch_size: 128
-  valid_batch_size: 128
-
-ad-adr0p2_0p4-finetune-mixed-bc-hard-soft-32k:
-  <<: *ad_adr0p2_0p4_mixed_bc_hard_soft_pretrained_base
-  weights: 'experiments/expts/mixed-bc-scale-all-hard-soft/pretrain-mixed-bc-hard-soft-JOBID-0/checkpoints/ckpt_best.tar'
+  weights: 'experiments/expts/mixed-bc-scale-all-hard/pretrain-mixed-bc-hard-12253621-0/checkpoints/ckpt_best.tar'
   subsample: 1
   batch_size: 128
   valid_batch_size: 128
