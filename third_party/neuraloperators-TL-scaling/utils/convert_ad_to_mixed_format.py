@@ -7,6 +7,8 @@ to have 6-component tensors with zero-padding: [k11, k12, k22, vx, vy, 0].
 
 This is necessary when fine-tuning a mixed-pretrained model (which expects 6 tensor
 components including the omega wavenumber channel) on a single-domain AdvDiff task.
+If a dataset also contains boundary condition maps under the optional `bc` key, they
+are preserved verbatim.
 
 Usage:
     # Check if conversion is needed (AdvDiff should already be 5 components)
@@ -52,15 +54,21 @@ def convert_ad_to_mixed_format(input_path, output_path, in_place=False, check_on
     with h5py.File(input_path, 'r') as f:
         fields = f['fields'][:]  # Shape: (n, 2, nx, ny)
         tensor = f['tensor'][:]  # Shape: (n, 5) for AdvDiff
+        bc = f['bc'][:] if 'bc' in f else None
+        file_attrs = dict(f.attrs)
         
         # Check compression
         fields_comp = f['fields'].compression
         tensor_comp = f['tensor'].compression
+        bc_comp = f['bc'].compression if 'bc' in f else None
         
         print(f"  Fields shape: {fields.shape}")
         print(f"  Tensor shape: {tensor.shape}")
+        print(f"  BC shape: {bc.shape if bc is not None else 'None'}")
         print(f"  Fields compression: {fields_comp if fields_comp else 'None (uncompressed)'}")
         print(f"  Tensor compression: {tensor_comp if tensor_comp else 'None (uncompressed)'}")
+        if bc is not None:
+            print(f"  BC compression: {bc_comp if bc_comp else 'None (uncompressed)'}")
         
         # Verify it's a 5-component tensor (AdvDiff format)
         if tensor.shape[1] == 5:
@@ -148,6 +156,12 @@ def convert_ad_to_mixed_format(input_path, output_path, in_place=False, check_on
         # Compression causes severe slowdown with multiple data workers on NFS
         f.create_dataset('fields', data=fields, dtype=np.float32)
         f.create_dataset('tensor', data=tensor_6, dtype=np.float32)
+        if bc is not None:
+            f.create_dataset('bc', data=bc, dtype=np.float32)
+        for key, value in file_attrs.items():
+            f.attrs[key] = value
+        if bc is not None:
+            f.attrs['has_bc'] = True
     
     print(f"\n✓ Conversion complete!")
     print(f"  Input:  {input_path}")
@@ -159,12 +173,17 @@ def convert_ad_to_mixed_format(input_path, output_path, in_place=False, check_on
     with h5py.File(final_output_path, 'r') as f:
         verify_fields_comp = f['fields'].compression
         verify_tensor_comp = f['tensor'].compression
+        verify_bc_comp = f['bc'].compression if 'bc' in f else None
         verify_tensor = f['tensor'][:]
+        verify_bc = f['bc'][:] if 'bc' in f else None
         
         print(f"\nVerification:")
         print(f"  Output tensor shape: {verify_tensor.shape}")
+        print(f"  Output bc shape: {verify_bc.shape if verify_bc is not None else 'None'}")
         print(f"  Fields compression: {verify_fields_comp if verify_fields_comp else 'None (uncompressed) ✓'}")
         print(f"  Tensor compression: {verify_tensor_comp if verify_tensor_comp else 'None (uncompressed) ✓'}")
+        if verify_bc is not None:
+            print(f"  BC compression: {verify_bc_comp if verify_bc_comp else 'None (uncompressed) ✓'}")
         if verify_tensor.shape[1] == 6:
             print(f"  First sample: k11={verify_tensor[0, 0]:.4f}, k12={verify_tensor[0, 1]:.4f}, "
                   f"k22={verify_tensor[0, 2]:.4f}, vx={verify_tensor[0, 3]:.4f}, vy={verify_tensor[0, 4]:.4f}, omega={verify_tensor[0, 5]:.4f}")
@@ -181,6 +200,7 @@ def main():
 NOTE: AdvDiff datasets typically have 5-component tensors [k11, k12, k22, vx, vy].
 This script converts them to 6-component format [k11, k12, k22, vx, vy, 0] with
 zero-padding for the omega (wavenumber) channel to match the mixed model format.
+If the dataset has a `bc` key, it is copied through unchanged.
 
 Examples:
   # Check if conversion is needed
@@ -211,7 +231,7 @@ Examples:
         '--input_path',
         type=str,
         required=True,
-        help='Path to input AdvDiff HDF5 file'
+        help='Path to input AdvDiff HDF5 file; optional bc maps are preserved'
     )
     parser.add_argument(
         '--output_path',
