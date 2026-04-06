@@ -11,11 +11,9 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-1
+#SBATCH --array=0-5
 
-# Mixed Dataset Fine-Tuning (Helmholtz): Medium Sample Sizes (reruns only)
-# This rerun slice is intentionally narrowed to the still-missing Helmholtz
-# mixed-zero-soft medium-sample transfer runs.
+# Mixed Dataset Fine-Tuning (Helmholtz): Medium Sample Sizes (4k, 8k samples)
 # Usage:
 #   sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_mixed_medium.sh
 
@@ -55,29 +53,18 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-MIXED_VARIANT="${MIXED_VARIANT:-mixed-zero-soft}"
+source scripts/slurm/finetune/seed_grid.sh
+
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
 RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
 CONFIG_FILE="${CONFIG_FILE:-config/operators_helmholtz.yaml}"
 
-if [ "$MIXED_VARIANT" != "mixed-zero-soft" ]; then
-    echo "Error: this rerun script is currently narrowed to MIXED_VARIANT=mixed-zero-soft."
-    echo "Found: $MIXED_VARIANT"
-    exit 1
-fi
-
-declare -a task_specs=(
-    "helm-o1_5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k:2"
-    "helm-o1_5-finetune-${MIXED_VARIANT}-8k:finetune-${RUN_VARIANT}-8k:0"
+declare -a configs=(
+    "helm-o1_5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k"
+    "helm-o1_5-finetune-${MIXED_VARIANT}-8k:finetune-${RUN_VARIANT}-8k"
 )
 
-if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#task_specs[@]}" ]; then
-    echo "Error: SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID is out of range for ${#task_specs[@]} rerun tasks."
-    exit 1
-fi
-
-IFS=':' read -r CONFIG_NAME RUN_NAME SEED_VALUE <<< "${task_specs[$SLURM_ARRAY_TASK_ID]}"
-SEED_RUN_SUFFIX="seed${SEED_VALUE}"
-SEED_TRAIN_ARGS="--seed=${SEED_VALUE} --train_shuffle --random_train_subset --subset_seed=${SEED_VALUE}"
+IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"

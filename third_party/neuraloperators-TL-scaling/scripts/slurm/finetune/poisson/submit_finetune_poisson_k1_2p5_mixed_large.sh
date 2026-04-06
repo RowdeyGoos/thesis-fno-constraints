@@ -13,9 +13,9 @@
 #SBATCH --mem=8G
 #SBATCH --array=0-2
 
-# Mixed Dataset Fine-Tuning: Large Sample Sizes (reruns only)
-# This rerun slice is intentionally narrowed to the still-missing Poisson 32k
-# mixed-zero-hard transfer runs.
+# Mixed Dataset Fine-Tuning: Large Sample Sizes (16k, 32k samples)
+# This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
+# with large numbers of downstream examples: 16k, 32k
 #
 # Time allocation: 2 hours (sufficient for large sample training)
 #
@@ -64,30 +64,18 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-MIXED_VARIANT="${MIXED_VARIANT:-mixed-zero-hard}"
+source scripts/slurm/finetune/seed_grid.sh
+
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
 RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
 CONFIG_FILE="${CONFIG_FILE:-config/operators_poisson.yaml}"
 
-if [ "$MIXED_VARIANT" != "mixed-zero-hard" ]; then
-    echo "Error: this rerun script is currently narrowed to MIXED_VARIANT=mixed-zero-hard."
-    echo "Found: $MIXED_VARIANT"
-    exit 1
-fi
-
-declare -a task_specs=(
-    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-32k:finetune-${RUN_VARIANT}-32k:0"
-    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-32k:finetune-${RUN_VARIANT}-32k:1"
-    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-32k:finetune-${RUN_VARIANT}-32k:2"
+declare -a configs=(
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-16k:finetune-${RUN_VARIANT}-16k"
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-32k:finetune-${RUN_VARIANT}-32k"
 )
 
-if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#task_specs[@]}" ]; then
-    echo "Error: SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID is out of range for ${#task_specs[@]} rerun tasks."
-    exit 1
-fi
-
-IFS=':' read -r CONFIG_NAME RUN_NAME SEED_VALUE <<< "${task_specs[$SLURM_ARRAY_TASK_ID]}"
-SEED_RUN_SUFFIX="seed${SEED_VALUE}"
-SEED_TRAIN_ARGS="--seed=${SEED_VALUE} --train_shuffle --random_train_subset --subset_seed=${SEED_VALUE}"
+IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"

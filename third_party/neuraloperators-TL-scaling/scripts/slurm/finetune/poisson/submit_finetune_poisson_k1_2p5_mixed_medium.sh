@@ -11,11 +11,11 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-2
+#SBATCH --array=0-5
 
-# Mixed Dataset Fine-Tuning: Medium Sample Sizes (reruns only)
-# This rerun slice is intentionally narrowed to the still-missing Poisson 4k
-# constrained mixed transfer runs.
+# Mixed Dataset Fine-Tuning: Medium Sample Sizes (4k, 8k samples)
+# This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
+# with medium numbers of downstream examples: 4k, 8k
 
 echo "=========================================="
 echo "Mixed Dataset Fine-Tuning - Medium Samples (Task $SLURM_ARRAY_TASK_ID)"
@@ -55,35 +55,18 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
-MIXED_VARIANT="${MIXED_VARIANT:-mixed-zero-hard}"
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
 RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
 CONFIG_FILE="${CONFIG_FILE:-config/operators_poisson.yaml}"
 
-case "$MIXED_VARIANT" in
-    mixed-zero-hard|mixed-zero-soft|mixed-penalty-pde)
-        ;;
-    *)
-        echo "Error: this rerun script is currently narrowed to:"
-        echo "  MIXED_VARIANT in {mixed-zero-hard, mixed-zero-soft, mixed-penalty-pde}"
-        echo "Found: $MIXED_VARIANT"
-        exit 1
-        ;;
-esac
+source scripts/slurm/finetune/seed_grid.sh
 
-declare -a task_specs=(
-    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k:0"
-    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k:1"
-    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k:2"
+declare -a configs=(
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k"
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-8k:finetune-${RUN_VARIANT}-8k"
 )
 
-if [ "$SLURM_ARRAY_TASK_ID" -lt 0 ] || [ "$SLURM_ARRAY_TASK_ID" -ge "${#task_specs[@]}" ]; then
-    echo "Error: SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID is out of range for ${#task_specs[@]} rerun tasks."
-    exit 1
-fi
-
-IFS=':' read -r CONFIG_NAME RUN_NAME SEED_VALUE <<< "${task_specs[$SLURM_ARRAY_TASK_ID]}"
-SEED_RUN_SUFFIX="seed${SEED_VALUE}"
-SEED_TRAIN_ARGS="--seed=${SEED_VALUE} --train_shuffle --random_train_subset --subset_seed=${SEED_VALUE}"
+IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $CONFIG_FILE"
 echo "Config name: $CONFIG_NAME"
