@@ -11,7 +11,9 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-5
+#SBATCH --array=0
+# Temporary rerun subset for currently missing seeds only:
+#   0 -> poisson-k1_2.5-finetune-mixed-4k, seed0
 
 # Mixed Dataset Fine-Tuning: Medium Sample Sizes (4k, 8k samples)
 # This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain

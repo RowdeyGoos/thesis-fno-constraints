@@ -11,7 +11,9 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-11
+#SBATCH --array=9
+# Temporary rerun subset for currently missing seeds only:
+#   9 -> helm-o1_5-scratch-8k, seed0
 
 # Transfer Learning: Helmholtz o∈[1,5] - Medium Sample Sizes (4k, 8k samples)
 # This script runs 4 experiments:
