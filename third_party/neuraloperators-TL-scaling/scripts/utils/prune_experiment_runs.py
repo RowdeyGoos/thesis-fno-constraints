@@ -8,8 +8,8 @@ setup folder:
 
 Optionally, `--keep-per-seed` keeps the newest N successful runs for each
 explicitly tagged downstream seed instead of N successful runs total per
-setup. Successful runs without a `seedN` marker in the directory name are
-pruned in this mode.
+setup. Runs without a `seedN` marker in the directory name are retained and
+excluded from seed-based pruning in this mode.
 
 It also prunes confirmed failed runs, even if they are recent.
 
@@ -116,6 +116,7 @@ class ClassifiedRun:
 @dataclass(frozen=True)
 class SetupPruneStats:
     successful_kept: int
+    protected_unseeded_kept: int
     active_kept: int
     unknown_kept: int
     old_success_pruned: int
@@ -152,9 +153,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Keep the newest N successful runs for each detected seed instead "
-            "of N successful runs total per setup. Only runs with an explicit "
-            "seedN marker are eligible to be kept; successful runs without "
-            "that marker are pruned in this mode."
+            "of N successful runs total per setup. Runs without an explicit "
+            "seedN marker are retained and excluded from seed-based pruning "
+            "in this mode."
         ),
     )
     parser.add_argument(
@@ -558,9 +559,6 @@ def partition_successful_runs(
     grouped_runs: Dict[Optional[int], List[ClassifiedRun]] = {}
 
     for run in successful_runs:
-        if run.entry.seed_source != "explicit":
-            pruned.append(run)
-            continue
         grouped_runs.setdefault(run.entry.seed, []).append(run)
 
     for runs in grouped_runs.values():
@@ -589,17 +587,25 @@ def prune_setup(
     if not run_entries:
         if verbose:
             print(f"[skip] {setup_dir.name}: no run directories found")
-        return SetupPruneStats(0, 0, 0, 0, 0, 0, False, False)
+        return SetupPruneStats(0, 0, 0, 0, 0, 0, 0, False, False)
 
     classified_runs = [
         classify_run(run_entry=entry, log_dir=log_dir, sacct_resolver=sacct_resolver)
         for entry in run_entries
     ]
 
-    successful_runs = [run for run in classified_runs if run.status == SUCCESS_STATUS]
-    failed_runs = [run for run in classified_runs if run.status == FAILED_STATUS]
-    active_runs = [run for run in classified_runs if run.status == ACTIVE_STATUS]
-    unknown_runs = [run for run in classified_runs if run.status == UNKNOWN_STATUS]
+    protected_unseeded_runs: List[ClassifiedRun] = []
+    seed_managed_runs: List[ClassifiedRun] = []
+    for run in classified_runs:
+        if keep_per_seed and run.entry.seed_source != "explicit":
+            protected_unseeded_runs.append(run)
+        else:
+            seed_managed_runs.append(run)
+
+    successful_runs = [run for run in seed_managed_runs if run.status == SUCCESS_STATUS]
+    failed_runs = [run for run in seed_managed_runs if run.status == FAILED_STATUS]
+    active_runs = [run for run in seed_managed_runs if run.status == ACTIVE_STATUS]
+    unknown_runs = [run for run in seed_managed_runs if run.status == UNKNOWN_STATUS]
 
     successful_runs.sort(
         key=lambda run: (run.entry.mtime_ns, run.entry.path.name),
@@ -616,6 +622,7 @@ def prune_setup(
     if not had_actions and not verbose:
         return SetupPruneStats(
             successful_kept=len(kept_successful_runs),
+            protected_unseeded_kept=len(protected_unseeded_runs),
             active_kept=len(active_runs),
             unknown_kept=len(unknown_runs),
             old_success_pruned=0,
@@ -630,6 +637,7 @@ def prune_setup(
         f"active={len(active_runs)} unknown={len(unknown_runs)} failed={len(failed_runs)}; "
         f"keeping {len(kept_successful_runs)} successful run(s)"
         f"{' by seed' if keep_per_seed else ''}, "
+        f"{len(protected_unseeded_runs)} protected unseeded run(s), "
         f"{len(pruned_old_successful_runs)} old successful run(s) "
         f"and {len(pruned_failed_runs)} failed run(s) "
         f"{'to delete' if apply else 'would be deleted'}"
@@ -639,6 +647,11 @@ def prune_setup(
         for run in kept_successful_runs:
             print(
                 f"  [keep-success] {run.entry.path.name} :: "
+                f"{format_run_status(run)}; {format_seed_detail(run)}"
+            )
+        for run in protected_unseeded_runs:
+            print(
+                f"  [keep-unseeded] {run.entry.path.name} :: "
                 f"{format_run_status(run)}; {format_seed_detail(run)}"
             )
         for run in active_runs:
@@ -687,6 +700,7 @@ def prune_setup(
 
     return SetupPruneStats(
         successful_kept=len(kept_successful_runs),
+        protected_unseeded_kept=len(protected_unseeded_runs),
         active_kept=len(active_runs),
         unknown_kept=len(unknown_runs),
         old_success_pruned=len(pruned_old_successful_runs),
@@ -725,6 +739,7 @@ def main() -> int:
     print(f"Log directory: {log_dir if log_dir is not None else 'disabled'}")
 
     total_successful_kept = 0
+    total_protected_unseeded_kept = 0
     total_active_kept = 0
     total_unknown_kept = 0
     total_old_success_pruned = 0
@@ -744,6 +759,7 @@ def main() -> int:
             verbose=args.verbose,
         )
         total_successful_kept += stats.successful_kept
+        total_protected_unseeded_kept += stats.protected_unseeded_kept
         total_active_kept += stats.active_kept
         total_unknown_kept += stats.unknown_kept
         total_old_success_pruned += stats.old_success_pruned
@@ -760,6 +776,7 @@ def main() -> int:
     print(f"  Setups with run directories: {setups_with_runs}")
     print(f"  Setups with pruning actions: {setups_with_actions}")
     print(f"  Successful runs retained: {total_successful_kept}")
+    print(f"  Protected unseeded runs retained: {total_protected_unseeded_kept}")
     print(f"  Active runs retained: {total_active_kept}")
     print(f"  Unknown-status runs retained: {total_unknown_kept}")
     print(
