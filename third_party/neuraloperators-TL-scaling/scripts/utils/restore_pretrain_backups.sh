@@ -16,6 +16,8 @@
 # - Restores every `pretrain-*` run under the configured setup folders.
 # - Also restores matching top-level `experiments/*.out` and `*.err` files.
 # - Excludes nested `wandb/` run artifacts inside experiment directories.
+# - In apply mode, uses `--inplace` and avoids preserving source permissions to
+#   play nicely with the cluster filesystem and partially restored runs.
 # - In apply mode the script uses `--ignore-existing` by default so it will
 #   fill in missing files without overwriting anything already restored.
 
@@ -81,7 +83,7 @@ mkdir -p "${DST_EXP}"
 if [[ "${MODE}" == "dry-run" ]]; then
     RSYNC_OPTS=(-avP --dry-run)
 else
-    RSYNC_OPTS=(-avP)
+    RSYNC_OPTS=(-rltvP --inplace --no-perms --no-owner --no-group)
     if [[ "${OVERWRITE}" -eq 0 ]]; then
         RSYNC_OPTS+=(--ignore-existing)
     fi
@@ -110,6 +112,13 @@ sync_path() {
     local dst="$2"
 
     rsync "${RSYNC_OPTS[@]}" --exclude='wandb/' "$src" "$dst"
+}
+
+make_destination_writable() {
+    local path="$1"
+
+    [[ -e "${path}" ]] || return 0
+    chmod -R u+rwX "${path}" 2>/dev/null || true
 }
 
 sync_log_if_present() {
@@ -191,6 +200,9 @@ for config in "${configs[@]}"; do
         run_name="$(basename "${src_run}")"
         echo "Restoring ${config}/${run_name}"
 
+        if [[ "${MODE}" == "apply" ]]; then
+            make_destination_writable "${dst_cfg}/${run_name}"
+        fi
         sync_path "${src_run}/" "${dst_cfg}/${run_name}/"
         restored_runs=$((restored_runs + 1))
         sync_logs_for_run "${run_name}"
