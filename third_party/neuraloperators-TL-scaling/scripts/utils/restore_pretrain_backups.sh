@@ -15,6 +15,7 @@
 # Notes:
 # - Restores every `pretrain-*` run under the configured setup folders.
 # - Also restores matching top-level `experiments/*.out` and `*.err` files.
+# - Excludes nested `wandb/` run artifacts inside experiment directories.
 # - In apply mode the script uses `--ignore-existing` by default so it will
 #   fill in missing files without overwriting anything already restored.
 
@@ -108,7 +109,7 @@ sync_path() {
     local src="$1"
     local dst="$2"
 
-    rsync "${RSYNC_OPTS[@]}" "$src" "$dst"
+    rsync "${RSYNC_OPTS[@]}" --exclude='wandb/' "$src" "$dst"
 }
 
 sync_log_if_present() {
