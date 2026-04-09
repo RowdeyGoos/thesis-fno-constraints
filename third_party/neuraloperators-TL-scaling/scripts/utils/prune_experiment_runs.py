@@ -6,6 +6,9 @@ setup folder:
 
     experiments/expts/<setup>/<run_dir>
 
+Optionally, `--keep-per-seed` keeps the newest N successful runs for each
+detected downstream seed instead of N successful runs total per setup.
+
 It also prunes confirmed failed runs, even if they are recent.
 
 Status detection is conservative:
@@ -27,6 +30,7 @@ Safety features:
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -85,6 +89,8 @@ FAILURE_LOG_MARKERS = (
     "std::bad_alloc",
 )
 
+EXPLICIT_SEED_RE = re.compile(r"(?:^|-)seed(?P<seed>\d+)(?:-|$)")
+
 
 @dataclass(frozen=True)
 class RunEntry:
@@ -92,6 +98,8 @@ class RunEntry:
     mtime_ns: int
     jobid: Optional[str]
     taskid: Optional[str]
+    seed: Optional[int]
+    seed_source: str
 
 
 @dataclass(frozen=True)
@@ -132,7 +140,20 @@ def parse_args() -> argparse.Namespace:
         "--keep",
         type=int,
         default=3,
-        help="Number of newest successful runs to keep per setup. Default: 3",
+        help=(
+            "Number of newest successful runs to keep per setup, or per seed "
+            "when --keep-per-seed is enabled. Default: 3"
+        ),
+    )
+    parser.add_argument(
+        "--keep-per-seed",
+        action="store_true",
+        help=(
+            "Keep the newest N successful runs for each detected seed instead "
+            "of N successful runs total per setup. Seed detection prefers "
+            "explicit seedN markers in run names and falls back to task_id %% 3 "
+            "for downstream transfer runs."
+        ),
     )
     parser.add_argument(
         "--apply",
@@ -212,17 +233,39 @@ def parse_run_job_suffix(run_name: str) -> Tuple[Optional[str], Optional[str]]:
     return None, None
 
 
+def looks_like_downstream_run(run_name: str) -> bool:
+    return (
+        run_name.startswith("transfer-")
+        or "-scratch-" in run_name
+        or "-finetune-" in run_name
+    )
+
+
+def parse_run_seed(run_name: str, taskid: Optional[str]) -> Tuple[Optional[int], str]:
+    explicit_match = EXPLICIT_SEED_RE.search(run_name)
+    if explicit_match:
+        return int(explicit_match.group("seed")), "explicit"
+
+    if taskid is not None and looks_like_downstream_run(run_name):
+        return int(taskid) % 3, "inferred_from_task_id"
+
+    return None, "unknown"
+
+
 def collect_run_dirs(setup_dir: Path) -> List[RunEntry]:
     run_entries: List[RunEntry] = []
     for run_dir in iter_real_dirs(setup_dir):
         stat = run_dir.stat()
         jobid, taskid = parse_run_job_suffix(run_dir.name)
+        seed, seed_source = parse_run_seed(run_dir.name, taskid)
         run_entries.append(
             RunEntry(
                 path=run_dir,
                 mtime_ns=stat.st_mtime_ns,
                 jobid=jobid,
                 taskid=taskid,
+                seed=seed,
+                seed_source=seed_source,
             )
         )
     run_entries.sort(key=lambda item: (item.mtime_ns, item.path.name), reverse=True)
@@ -494,11 +537,46 @@ def format_run_status(run: ClassifiedRun) -> str:
     return f"{run.status} via {run.status_source} ({run.status_detail})"
 
 
+def format_seed_detail(run: ClassifiedRun) -> str:
+    if run.entry.seed is None:
+        return "seed=unknown"
+    return f"seed={run.entry.seed} ({run.entry.seed_source})"
+
+
+def partition_successful_runs(
+    successful_runs: Sequence[ClassifiedRun],
+    keep: int,
+    keep_per_seed: bool,
+) -> Tuple[List[ClassifiedRun], List[ClassifiedRun]]:
+    if not keep_per_seed:
+        return list(successful_runs[:keep]), list(successful_runs[keep:])
+
+    kept: List[ClassifiedRun] = []
+    pruned: List[ClassifiedRun] = []
+    grouped_runs: Dict[Optional[int], List[ClassifiedRun]] = {}
+
+    for run in successful_runs:
+        grouped_runs.setdefault(run.entry.seed, []).append(run)
+
+    for runs in grouped_runs.values():
+        runs.sort(
+            key=lambda run: (run.entry.mtime_ns, run.entry.path.name),
+            reverse=True,
+        )
+        kept.extend(runs[:keep])
+        pruned.extend(runs[keep:])
+
+    kept.sort(key=lambda run: (run.entry.mtime_ns, run.entry.path.name), reverse=True)
+    pruned.sort(key=lambda run: (run.entry.mtime_ns, run.entry.path.name), reverse=True)
+    return kept, pruned
+
+
 def prune_setup(
     setup_dir: Path,
     log_dir: Optional[Path],
     sacct_resolver: SacctResolver,
     keep: int,
+    keep_per_seed: bool,
     apply: bool,
     verbose: bool,
 ) -> SetupPruneStats:
@@ -522,8 +600,11 @@ def prune_setup(
         key=lambda run: (run.entry.mtime_ns, run.entry.path.name),
         reverse=True,
     )
-    kept_successful_runs = successful_runs[:keep]
-    pruned_old_successful_runs = successful_runs[keep:]
+    kept_successful_runs, pruned_old_successful_runs = partition_successful_runs(
+        successful_runs=successful_runs,
+        keep=keep,
+        keep_per_seed=keep_per_seed,
+    )
     pruned_failed_runs = list(failed_runs)
 
     had_actions = bool(pruned_old_successful_runs or pruned_failed_runs)
@@ -542,7 +623,8 @@ def prune_setup(
     print(
         f"[setup] {setup_dir.name}: success={len(successful_runs)} "
         f"active={len(active_runs)} unknown={len(unknown_runs)} failed={len(failed_runs)}; "
-        f"keeping {len(kept_successful_runs)} successful run(s), "
+        f"keeping {len(kept_successful_runs)} successful run(s)"
+        f"{' by seed' if keep_per_seed else ''}, "
         f"{len(pruned_old_successful_runs)} old successful run(s) "
         f"and {len(pruned_failed_runs)} failed run(s) "
         f"{'to delete' if apply else 'would be deleted'}"
@@ -550,11 +632,20 @@ def prune_setup(
 
     if verbose:
         for run in kept_successful_runs:
-            print(f"  [keep-success] {run.entry.path.name} :: {format_run_status(run)}")
+            print(
+                f"  [keep-success] {run.entry.path.name} :: "
+                f"{format_run_status(run)}; {format_seed_detail(run)}"
+            )
         for run in active_runs:
-            print(f"  [keep-active] {run.entry.path.name} :: {format_run_status(run)}")
+            print(
+                f"  [keep-active] {run.entry.path.name} :: "
+                f"{format_run_status(run)}; {format_seed_detail(run)}"
+            )
         for run in unknown_runs:
-            print(f"  [keep-unknown] {run.entry.path.name} :: {format_run_status(run)}")
+            print(
+                f"  [keep-unknown] {run.entry.path.name} :: "
+                f"{format_run_status(run)}; {format_seed_detail(run)}"
+            )
 
     logs_to_prune: List[Path] = []
     seen_logs: Set[Path] = set()
@@ -562,7 +653,7 @@ def prune_setup(
     for run in pruned_old_successful_runs:
         print(f"  [{'delete-old-success' if apply else 'dry-run-old-success'}] {run.entry.path.name}")
         if verbose:
-            print(f"    {format_run_status(run)}")
+            print(f"    {format_run_status(run)}; {format_seed_detail(run)}")
         for log_file in run.matched_logs:
             if log_file in seen_logs:
                 continue
@@ -573,7 +664,7 @@ def prune_setup(
     for run in pruned_failed_runs:
         print(f"  [{'delete-failed' if apply else 'dry-run-failed'}] {run.entry.path.name}")
         if verbose:
-            print(f"    {format_run_status(run)}")
+            print(f"    {format_run_status(run)}; {format_seed_detail(run)}")
         for log_file in run.matched_logs:
             if log_file in seen_logs:
                 continue
@@ -617,7 +708,14 @@ def main() -> int:
 
     print(f"Scanning {root}")
     print(f"Mode: {'APPLY' if args.apply else 'DRY-RUN'}")
-    print(f"Keep successful runs per setup: {args.keep}")
+    print(
+        "Retention policy: "
+        + (
+            f"latest {args.keep} successful run(s) per detected seed"
+            if args.keep_per_seed
+            else f"latest {args.keep} successful run(s) per setup"
+        )
+    )
     print(f"Status detection: {sacct_resolver.summary()}")
     print(f"Log directory: {log_dir if log_dir is not None else 'disabled'}")
 
@@ -636,6 +734,7 @@ def main() -> int:
             log_dir=log_dir,
             sacct_resolver=sacct_resolver,
             keep=args.keep,
+            keep_per_seed=args.keep_per_seed,
             apply=args.apply,
             verbose=args.verbose,
         )
