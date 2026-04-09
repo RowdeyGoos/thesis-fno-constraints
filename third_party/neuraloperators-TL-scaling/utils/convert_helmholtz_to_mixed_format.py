@@ -8,7 +8,8 @@ to have 6-component tensors using the mixed dataset convention:
     [k11, k12, k22, vx, vy, omega] = [k, 0, k, 0, 0, omega]
 
 This is necessary when fine-tuning a mixed-pretrained model (which expects 6 tensor
-components) on a single-domain Helmholtz task.
+components) on a single-domain Helmholtz task. If a dataset also contains boundary
+condition maps under the optional `bc` key, they are preserved verbatim.
 """
 
 import argparse
@@ -28,9 +29,12 @@ def convert_helmholtz_to_mixed_format(input_path, output_path, in_place=False):
     with h5py.File(input_path, 'r') as f:
         fields = f['fields'][:]  # (n, 2, nx, ny)
         tensor = f['tensor'][:]  # (n, 2) for Helmholtz: [k, omega]
+        bc = f['bc'][:] if 'bc' in f else None
+        file_attrs = dict(f.attrs)
 
         print(f"  Fields shape: {fields.shape}")
         print(f"  Tensor shape: {tensor.shape}")
+        print(f"  BC shape:     {bc.shape if bc is not None else 'None'}")
 
         if tensor.shape[1] != 2:
             raise ValueError(
@@ -67,6 +71,12 @@ def convert_helmholtz_to_mixed_format(input_path, output_path, in_place=False):
         # Keep uncompressed for performant multi-worker loading on NFS
         f.create_dataset('fields', data=fields, dtype=np.float32)
         f.create_dataset('tensor', data=tensor_6, dtype=np.float32)
+        if bc is not None:
+            f.create_dataset('bc', data=bc, dtype=np.float32)
+        for key, value in file_attrs.items():
+            f.attrs[key] = value
+        if bc is not None:
+            f.attrs['has_bc'] = True
 
     print("\n✓ Conversion complete!")
     print(f"  Input:  {input_path}")
@@ -74,13 +84,20 @@ def convert_helmholtz_to_mixed_format(input_path, output_path, in_place=False):
     if in_place:
         print(f"  Backup: {backup_path}")
 
+    with h5py.File(final_output_path, 'r') as f:
+        verify_tensor = f['tensor'][:]
+        verify_bc = f['bc'][:] if 'bc' in f else None
+        print("\nVerification:")
+        print(f"  Output tensor shape: {verify_tensor.shape}")
+        print(f"  Output bc shape:     {verify_bc.shape if verify_bc is not None else 'None'}")
+
 
 def main():
     parser = argparse.ArgumentParser(
         description='Convert Helmholtz dataset to mixed-compatible 6-component tensor format.'
     )
     parser.add_argument('--input_path', type=str, required=True,
-                        help='Path to input Helmholtz HDF5 file with [k, omega] tensors')
+                        help='Path to input Helmholtz HDF5 file with [k, omega] tensors; optional bc maps are preserved')
     parser.add_argument('--output_path', type=str,
                         help='Path to output HDF5 file (required unless --in_place)')
     parser.add_argument('--in_place', action='store_true',

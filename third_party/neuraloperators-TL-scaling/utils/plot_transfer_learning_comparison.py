@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-Plot combined transfer learning comparison from separate evaluation results.
+Plot transfer-learning comparisons from separate evaluation result files.
 
-This script takes the results from three separate evaluations (mixed, k1_5, scratch)
-and creates a single comparison plot.
+The script supports two calling conventions:
 
-Usage:
-    # With default paths (poisson_results.json)
-    python utils/plot_transfer_learning_comparison.py
-    
-    # With custom paths
-    python utils/plot_transfer_learning_comparison.py \
-        --mixed_results results/transfer_learning_k1_2.5/mixed/poisson_results.json \
-        --k1_5_results results/transfer_learning_k1_2.5/k1_5/poisson_results.json \
-        --scratch_results results/transfer_learning_k1_2.5/scratch/poisson_results.json \
-        --output_dir results/transfer_learning_k1_2.5
+1. Legacy three-way comparison:
+   python utils/plot_transfer_learning_comparison.py \
+       --mixed_results results/.../mixed/poisson_results.json \
+       --k1_5_results results/.../k1_5/poisson_results.json \
+       --scratch_results results/.../scratch/poisson_results.json
+
+2. Generic multi-series comparison:
+   python utils/plot_transfer_learning_comparison.py \
+       --series mixed=results/.../mixed/poisson_results.json \
+       --series mixed-zero-hard=results/.../mixed-zero-hard/poisson_results.json \
+       --series mixed-zero-soft=results/.../mixed-zero-soft/poisson_results.json \
+       --series mixed-penalty-pde=results/.../mixed-penalty-pde/poisson_results.json
 """
 
 import argparse
@@ -23,6 +24,60 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
+
+
+SERIES_STYLES = {
+    'mixed': {
+        'color': '#0f766e',
+        'marker': 'o',
+        'label': 'Fine-tuned (Mixed Baseline)',
+    },
+    'k1_5': {
+        'color': '#2563eb',
+        'marker': 's',
+        'label': 'Fine-tuned (Single-Domain Pretraining)',
+    },
+    'scratch': {
+        'color': '#dc2626',
+        'marker': '^',
+        'label': 'Trained from Scratch',
+    },
+    'mixed-zero-hard': {
+        'color': '#1d4ed8',
+        'marker': 's',
+        'label': 'Mixed + Zero-Hard Constraint',
+    },
+    'mixed-zero-soft': {
+        'color': '#d97706',
+        'marker': 'D',
+        'label': 'Mixed + Zero-Soft Constraint',
+    },
+    'mixed-penalty-pde': {
+        'color': '#7c3aed',
+        'marker': '^',
+        'label': 'Mixed + PDE Penalty',
+    },
+    'mixed-bc-off': {
+        'color': '#0f766e',
+        'marker': 'o',
+        'label': 'Mixed BC Baseline',
+    },
+    'mixed-bc-soft': {
+        'color': '#d97706',
+        'marker': 'D',
+        'label': 'Mixed + BC Soft Constraint',
+    },
+    'mixed-bc-hard': {
+        'color': '#1d4ed8',
+        'marker': 's',
+        'label': 'Mixed + BC Hard Constraint',
+    },
+    'mixed-bc-hard-soft': {
+        'color': '#7c3aed',
+        'marker': '^',
+        'label': 'Mixed + BC Hard+Soft Constraint',
+    },
+}
 
 
 def load_results(filepath):
@@ -92,21 +147,115 @@ def _sample_to_plot_x(size, min_positive_size):
     return float(np.log2(min_positive_size) - 1.5)
 
 
-def plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, output_path, title="Transfer Learning Comparison"):
-    """Generate comparison plot"""
-    
+def _parse_kv_arg(spec, arg_name):
+    if '=' not in spec:
+        raise ValueError(f"{arg_name} must be in KEY=VALUE format: {spec}")
+    key, value = spec.split('=', 1)
+    key = key.strip()
+    value = value.strip()
+    if not key or not value:
+        raise ValueError(f"{arg_name} must be in KEY=VALUE format: {spec}")
+    return key, value
+
+
+def _series_label(series_key, label_overrides):
+    if series_key in label_overrides:
+        return label_overrides[series_key]
+    if series_key in SERIES_STYLES:
+        return SERIES_STYLES[series_key]['label']
+    return series_key.replace('-', ' ').replace('_', ' ').title()
+
+
+def _series_style(series_key, series_index):
+    fallback_colors = [
+        '#0f766e',
+        '#2563eb',
+        '#d97706',
+        '#7c3aed',
+        '#dc2626',
+        '#0891b2',
+    ]
+    fallback_markers = ['o', 's', 'D', '^', 'v', 'P']
+    style = SERIES_STYLES.get(series_key, {})
+    return {
+        'color': style.get('color', fallback_colors[series_index % len(fallback_colors)]),
+        'marker': style.get('marker', fallback_markers[series_index % len(fallback_markers)]),
+        'label': style.get('label', _series_label(series_key, {})),
+    }
+
+
+def build_series_specs(args):
+    label_overrides = {}
+    for spec in args.series_label:
+        key, label = _parse_kv_arg(spec, '--series_label')
+        label_overrides[key] = label
+
+    if args.series:
+        return [
+            {
+                'key': key,
+                'path': path,
+                'label': _series_label(key, label_overrides),
+            }
+            for key, path in (_parse_kv_arg(spec, '--series') for spec in args.series)
+        ]
+
+    legacy_specs = [
+        ('mixed', args.mixed_results),
+        ('k1_5', args.k1_5_results),
+        ('scratch', args.scratch_results),
+    ]
+    return [
+        {
+            'key': key,
+            'path': path,
+            'label': _series_label(key, label_overrides),
+        }
+        for key, path in legacy_specs
+    ]
+
+
+def load_series_entries(series_specs):
+    series_entries = []
+
+    print("\nLoading results...")
+    for spec in series_specs:
+        try:
+            data = load_results(spec['path'])
+            metrics = extract_metrics_by_size(data)
+            series_entries.append({
+                'key': spec['key'],
+                'label': spec['label'],
+                'path': spec['path'],
+                'metrics': metrics,
+            })
+            print(f"  ✓ {spec['label']}: {spec['path']}")
+        except Exception as e:
+            series_entries.append({
+                'key': spec['key'],
+                'label': spec['label'],
+                'path': spec['path'],
+                'metrics': {},
+            })
+            print(f"  ✗ {spec['label']}: {e}")
+
+    return series_entries
+
+
+def plot_comparison(series_entries, output_path, title="Transfer Learning Comparison"):
+    """Generate comparison plot for an arbitrary number of series."""
+
     # Set style
     sns.set_style("whitegrid")
-    plt.rcParams['figure.figsize'] = (12, 7)
     plt.rcParams['font.size'] = 12
-    
+
     # Combine all sample sizes
-    all_sizes = sorted(set(
-        list(mixed_metrics.keys()) + 
-        list(k1_5_metrics.keys()) + 
-        list(scratch_metrics.keys())
-    ))
-    
+    all_sizes = sorted({
+        size
+        for entry in series_entries
+        for size in entry['metrics'].keys()
+    })
+
     if not all_sizes:
         print("⚠️  No data to plot!")
         return
@@ -114,36 +263,29 @@ def plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, output_path, t
     positive_sizes = [s for s in all_sizes if s > 0]
     min_positive_size = min(positive_sizes) if positive_sizes else None
     x_map = {s: _sample_to_plot_x(s, min_positive_size) for s in all_sizes}
-    
+
     # Create figure
-    fig, ax = plt.subplots(figsize=(12, 7))
-    
+    fig_width = max(12, 10 + 1.2 * max(0, len(series_entries) - 3))
+    fig, ax = plt.subplots(figsize=(fig_width, 7))
+
     # Plot each line
-    markers = {'mixed': 'o', 'k1_5': 's', 'scratch': '^'}
-    colors = {'mixed': '#2ecc71', 'k1_5': '#3498db', 'scratch': '#e74c3c'}
-    # Keep legend labels experiment-agnostic; the meaning of the middle curve
-    # depends on what results you feed in (Poisson-pretrained, AdvDiff-pretrained, etc.).
-    labels = {
-        'mixed': 'Fine-tuned (Mixed-Domain Pretraining)',
-        'k1_5': 'Fine-tuned (Single-Domain Pretraining)',
-        'scratch': 'Trained from Scratch'
-    }
-    
-    for metrics_dict, key in [(mixed_metrics, 'mixed'), (k1_5_metrics, 'k1_5'), (scratch_metrics, 'scratch')]:
+    for idx, entry in enumerate(series_entries):
+        metrics_dict = entry['metrics']
         if metrics_dict:
             sizes = sorted(metrics_dict.keys())
             errors = [metrics_dict[s]['test_error'] for s in sizes]
             min_band = [metrics_dict[s].get('test_error_min') for s in sizes]
             max_band = [metrics_dict[s].get('test_error_max') for s in sizes]
             x_vals = [x_map[s] for s in sizes]
-            
+
+            style = _series_style(entry['key'], idx)
             ax.plot(x_vals, errors,
-                   marker=markers[key],
+                   marker=style['marker'],
                    linestyle='-',
                    linewidth=2.5,
                    markersize=10,
-                   label=labels[key],
-                   color=colors[key],
+                   label=entry['label'],
+                   color=style['color'],
                    alpha=0.9)
 
             if any(v is not None for v in min_band) and any(v is not None for v in max_band):
@@ -153,11 +295,11 @@ def plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, output_path, t
                     x_vals,
                     min_plot,
                     max_plot,
-                    color=colors[key],
+                    color=style['color'],
                     alpha=0.15,
                     linewidth=0,
                 )
-    
+
     # Formatting
     ax.set_xlabel('Number of Downstream Training Samples', fontsize=14, fontweight='bold')
     ax.set_ylabel('Test Error (Relative L2)', fontsize=14, fontweight='bold')
@@ -174,85 +316,67 @@ def plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, output_path, t
     ax.set_axisbelow(True)
     
     # Legend
-    ax.legend(loc='best', fontsize=12, frameon=True, shadow=True, fancybox=True)
-    
+    legend_cols = 1 if len(series_entries) <= 4 else 2
+    ax.legend(loc='best', fontsize=12, frameon=True, shadow=True, fancybox=True, ncol=legend_cols)
+
     # Tight layout
     plt.tight_layout()
-    
+
     # Save
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"✓ Plot saved to: {output_path}")
-    
+
     # Save PDF version
     pdf_path = output_path.replace('.png', '.pdf')
     plt.savefig(pdf_path, bbox_inches='tight')
     print(f"✓ Plot saved to: {pdf_path}")
-    
+
     plt.close()
 
 
-def print_summary_table(mixed_metrics, k1_5_metrics, scratch_metrics):
-    """Print summary table of results"""
-    
-    all_sizes = sorted(set(
-        list(mixed_metrics.keys()) + 
-        list(k1_5_metrics.keys()) + 
-        list(scratch_metrics.keys())
-    ))
-    
+def print_summary_table(series_entries):
+    """Print summary table of results for all provided series."""
+
+    all_sizes = sorted({
+        size
+        for entry in series_entries
+        for size in entry['metrics'].keys()
+    })
+
     print("\n" + "="*80)
     print("TRANSFER LEARNING RESULTS SUMMARY")
     print("="*80)
-    print(f"\n{'Samples':<12} {'Mixed':<18} {'k1_5':<18} {'Scratch':<18}")
-    print("-" * 80)
-    
+
+    if not all_sizes:
+        print("\nNo result points available.")
+        return
+
+    column_width = 20
+    header = f"\n{'Samples':<12}" + "".join(f"{entry['label'][:column_width-1]:<{column_width}}" for entry in series_entries)
+    print(header)
+    print("-" * max(80, len(header)))
+
     for size in all_sizes:
-        mixed_str = f"{mixed_metrics[size]['test_error']:.6f}" if size in mixed_metrics else "N/A"
-        k1_5_str = f"{k1_5_metrics[size]['test_error']:.6f}" if size in k1_5_metrics else "N/A"
-        scratch_str = f"{scratch_metrics[size]['test_error']:.6f}" if size in scratch_metrics else "N/A"
-        
-        print(f"{size:<12} {mixed_str:<18} {k1_5_str:<18} {scratch_str:<18}")
-    
-    # Calculate improvements
-    print("\n" + "="*80)
-    print("TRANSFER LEARNING BENEFITS (% improvement over scratch)")
-    print("="*80)
-    
-    for size in all_sizes:
-        scratch_entry = scratch_metrics.get(size)
-        scratch_err = scratch_entry['test_error'] if scratch_entry else None
-        if scratch_err:
-            print(f"\n{size} samples:")
-            
-            # Mixed improvement
-            mixed_entry = mixed_metrics.get(size)
-            mixed_err = mixed_entry['test_error'] if mixed_entry else None
-            if mixed_err:
-                improvement = ((scratch_err - mixed_err) / scratch_err) * 100
-                print(f"  Mixed pretraining:   {improvement:+6.2f}%")
-            
-            # k1_5 improvement
-            k1_5_entry = k1_5_metrics.get(size)
-            k1_5_err = k1_5_entry['test_error'] if k1_5_entry else None
-            if k1_5_err:
-                improvement = ((scratch_err - k1_5_err) / scratch_err) * 100
-                print(f"  k1_5 pretraining:    {improvement:+6.2f}%")
-            
-            # Mixed vs k1_5
-            if mixed_err and k1_5_err:
-                if mixed_err < k1_5_err:
-                    improvement = ((k1_5_err - mixed_err) / k1_5_err) * 100
-                    winner = "mixed"
-                else:
-                    improvement = ((mixed_err - k1_5_err) / mixed_err) * 100
-                    winner = "k1_5"
-                print(f"  Mixed vs k1_5:       {improvement:+6.2f}% ({winner} better)")
+        row = f"{size:<12}"
+        for entry in series_entries:
+            metrics = entry['metrics']
+            if size in metrics:
+                metric_str = f"{metrics[size]['test_error']:.6f}"
+                row += f"{metric_str:<{column_width}}"
+            else:
+                row += f"{'N/A':<{column_width}}"
+        print(row)
 
 
 def main():
     parser = argparse.ArgumentParser(description='Plot transfer learning comparison')
-    
-    parser.add_argument('--mixed_results', type=str, 
+
+    parser.add_argument('--series', action='append', default=[],
+                       help='Generic comparison series in KEY=PATH format. May be passed multiple times.')
+    parser.add_argument('--series_label', action='append', default=[],
+                       help='Optional legend label override in KEY=LABEL format. May be passed multiple times.')
+
+    parser.add_argument('--mixed_results', type=str,
                        default='results/transfer_learning_k1_2.5/mixed/poisson_results.json',
                        help='Path to mixed-pretrained results JSON')
     parser.add_argument('--k1_5_results', type=str,
@@ -271,51 +395,25 @@ def main():
     print("\n" + "="*80)
     print("TRANSFER LEARNING COMPARISON PLOT")
     print("="*80)
-    
-    # Load results
-    print("\nLoading results...")
-    try:
-        mixed_data = load_results(args.mixed_results)
-        print(f"  ✓ Mixed: {args.mixed_results}")
-    except Exception as e:
-        print(f"  ✗ Mixed: {e}")
-        mixed_data = {}
-    
-    try:
-        k1_5_data = load_results(args.k1_5_results)
-        print(f"  ✓ k1_5: {args.k1_5_results}")
-    except Exception as e:
-        print(f"  ✗ k1_5: {e}")
-        k1_5_data = {}
-    
-    try:
-        scratch_data = load_results(args.scratch_results)
-        print(f"  ✓ Scratch: {args.scratch_results}")
-    except Exception as e:
-        print(f"  ✗ Scratch: {e}")
-        scratch_data = {}
-    
-    # Extract errors by sample size
-    mixed_metrics = extract_metrics_by_size(mixed_data)
-    k1_5_metrics = extract_metrics_by_size(k1_5_data)
-    scratch_metrics = extract_metrics_by_size(scratch_data)
-    
+
+    series_specs = build_series_specs(args)
+    series_entries = load_series_entries(series_specs)
+
     print("\nExtracted data points:")
-    print(f"  Mixed: {len(mixed_metrics)} sizes")
-    print(f"  k1_5: {len(k1_5_metrics)} sizes")
-    print(f"  Scratch: {len(scratch_metrics)} sizes")
-    
+    for entry in series_entries:
+        print(f"  {entry['label']}: {len(entry['metrics'])} sizes")
+
     # Print summary table
-    print_summary_table(mixed_metrics, k1_5_metrics, scratch_metrics)
-    
+    print_summary_table(series_entries)
+
     # Create output directory
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate plot
     output_path = output_dir / 'transfer_learning_comparison.png'
-    plot_comparison(mixed_metrics, k1_5_metrics, scratch_metrics, str(output_path), args.title)
-    
+    plot_comparison(series_entries, str(output_path), args.title)
+
     print("\n" + "="*80)
     print("COMPLETE!")
     print("="*80)

@@ -6,7 +6,8 @@ This script modifies Poisson datasets (which have 3-component tensors: [k11, k12
 to have 6-component tensors with zero-padding: [k11, k12, k22, 0, 0, 0].
 
 This is necessary when fine-tuning a mixed-pretrained model (which expects 6 tensor
-components) on a single-domain Poisson task.
+components) on a single-domain Poisson task. If a dataset also contains boundary
+condition maps under the optional `bc` key, they are preserved verbatim.
 
 Usage:
     python utils/convert_poisson_to_mixed_format.py \
@@ -45,9 +46,12 @@ def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
     with h5py.File(input_path, 'r') as f:
         fields = f['fields'][:]  # Shape: (n, 2, nx, ny)
         tensor = f['tensor'][:]  # Shape: (n, 3) for Poisson
+        bc = f['bc'][:] if 'bc' in f else None
+        file_attrs = dict(f.attrs)
         
         print(f"  Fields shape: {fields.shape}")
         print(f"  Tensor shape: {tensor.shape}")
+        print(f"  BC shape:     {bc.shape if bc is not None else 'None'}")
         
         # Verify it's a 3-component tensor (Poisson format)
         if tensor.shape[1] != 3:
@@ -84,6 +88,12 @@ def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
         # Compression causes severe slowdown with multiple data workers on NFS
         f.create_dataset('fields', data=fields, dtype=np.float32)
         f.create_dataset('tensor', data=tensor_6, dtype=np.float32)
+        if bc is not None:
+            f.create_dataset('bc', data=bc, dtype=np.float32)
+        for key, value in file_attrs.items():
+            f.attrs[key] = value
+        if bc is not None:
+            f.attrs['has_bc'] = True
     
     print(f"\n✓ Conversion complete!")
     print(f"  Input:  {input_path}")
@@ -94,8 +104,10 @@ def convert_poisson_to_mixed_format(input_path, output_path, in_place=False):
     # Verify the output
     with h5py.File(final_output_path, 'r') as f:
         verify_tensor = f['tensor'][:]
+        verify_bc = f['bc'][:] if 'bc' in f else None
         print(f"\nVerification:")
         print(f"  Output tensor shape: {verify_tensor.shape}")
+        print(f"  Output bc shape:     {verify_bc.shape if verify_bc is not None else 'None'}")
         print(f"  First sample (original): [{tensor[0, 0]:.4f}, {tensor[0, 1]:.4f}, {tensor[0, 2]:.4f}]")
         print(f"  First sample (new):      [{verify_tensor[0, 0]:.4f}, {verify_tensor[0, 1]:.4f}, "
               f"{verify_tensor[0, 2]:.4f}, {verify_tensor[0, 3]:.4f}, {verify_tensor[0, 4]:.4f}, {verify_tensor[0, 5]:.4f}]")
@@ -111,6 +123,11 @@ Examples:
   python utils/convert_poisson_to_mixed_format.py \\
       --input_path data/poisson/_train_k1_2.5_32k.h5 \\
       --output_path data/poisson/_train_k1_2.5_32k_mixed_format.h5
+
+  # Convert BC-conditioned data and preserve the bc dataset
+  python utils/convert_poisson_to_mixed_format.py \\
+      --input_path data/bc/poisson/_train_k1p0_2p5_32k_bc.h5 \\
+      --output_path data/bc/poisson/_train_k1p0_2p5_32k_bc_mixed.h5
   
   # Convert in place (overwrites original, creates backup)
   python utils/convert_poisson_to_mixed_format.py \\
@@ -130,7 +147,7 @@ Examples:
         '--input_path',
         type=str,
         required=True,
-        help='Path to input Poisson HDF5 file with 3-component tensors'
+        help='Path to input Poisson HDF5 file with 3-component tensors; optional bc maps are preserved'
     )
     parser.add_argument(
         '--output_path',

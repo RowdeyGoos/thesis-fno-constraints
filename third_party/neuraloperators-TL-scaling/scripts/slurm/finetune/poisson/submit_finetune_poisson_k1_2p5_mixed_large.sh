@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-5
+#SBATCH --array=0-2
 
 # Mixed Dataset Fine-Tuning: Large Sample Sizes (16k, 32k samples)
 # This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
@@ -70,13 +70,11 @@ MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
 RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
 CONFIG_FILE="${CONFIG_FILE:-config/operators_poisson.yaml}"
 
-# Array of configurations for mixed fine-tuning
 declare -a configs=(
     "poisson-k1_2.5-finetune-${MIXED_VARIANT}-16k:finetune-${RUN_VARIANT}-16k"
     "poisson-k1_2.5-finetune-${MIXED_VARIANT}-32k:finetune-${RUN_VARIANT}-32k"
 )
 
-# Get current task configuration
 IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
 
 echo "Configuration: $CONFIG_FILE"

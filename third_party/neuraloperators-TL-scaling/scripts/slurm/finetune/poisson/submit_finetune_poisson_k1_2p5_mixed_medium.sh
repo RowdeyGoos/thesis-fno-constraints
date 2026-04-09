@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-2
+#SBATCH --array=0-5
 
 # Mixed Dataset Fine-Tuning: Medium Sample Sizes (4k, 8k samples)
 # This script fine-tunes the mixed-pretrained model on Poisson k∈[1,2.5] domain
@@ -62,7 +62,7 @@ CONFIG_FILE="${CONFIG_FILE:-config/operators_poisson.yaml}"
 source scripts/slurm/finetune/seed_grid.sh
 
 declare -a configs=(
-    # "poisson-k1_2.5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k"
+    "poisson-k1_2.5-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-4k"
     "poisson-k1_2.5-finetune-${MIXED_VARIANT}-8k:finetune-${RUN_VARIANT}-8k"
 )
 
