@@ -7,7 +7,9 @@ setup folder:
     experiments/expts/<setup>/<run_dir>
 
 Optionally, `--keep-per-seed` keeps the newest N successful runs for each
-detected downstream seed instead of N successful runs total per setup.
+explicitly tagged downstream seed instead of N successful runs total per
+setup. Successful runs without a `seedN` marker in the directory name are
+pruned in this mode.
 
 It also prunes confirmed failed runs, even if they are recent.
 
@@ -150,9 +152,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Keep the newest N successful runs for each detected seed instead "
-            "of N successful runs total per setup. Seed detection prefers "
-            "explicit seedN markers in run names and falls back to task_id %% 3 "
-            "for downstream transfer runs."
+            "of N successful runs total per setup. Only runs with an explicit "
+            "seedN marker are eligible to be kept; successful runs without "
+            "that marker are pruned in this mode."
         ),
     )
     parser.add_argument(
@@ -556,6 +558,9 @@ def partition_successful_runs(
     grouped_runs: Dict[Optional[int], List[ClassifiedRun]] = {}
 
     for run in successful_runs:
+        if run.entry.seed_source != "explicit":
+            pruned.append(run)
+            continue
         grouped_runs.setdefault(run.entry.seed, []).append(run)
 
     for runs in grouped_runs.values():
@@ -711,7 +716,7 @@ def main() -> int:
     print(
         "Retention policy: "
         + (
-            f"latest {args.keep} successful run(s) per detected seed"
+            f"latest {args.keep} successful run(s) per explicit seed marker"
             if args.keep_per_seed
             else f"latest {args.keep} successful run(s) per setup"
         )
