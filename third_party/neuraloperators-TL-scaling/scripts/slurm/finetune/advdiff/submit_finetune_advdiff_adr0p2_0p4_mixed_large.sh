@@ -11,7 +11,10 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-5
+#SBATCH --array=0,4
+# Temporary rerun subset for currently missing seeds only:
+#   0 -> ad-adr0p2_0p4-finetune-mixed-16k, seed0
+#   4 -> ad-adr0p2_0p4-finetune-mixed-32k, seed1
 
 # Mixed Dataset Fine-Tuning (AdvDiff): Large Sample Sizes (16k, 32k samples)
 # This script fine-tunes the mixed-pretrained model on AdvDiff adr∈[0.2,0.4] domain

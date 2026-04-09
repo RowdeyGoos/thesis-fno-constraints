@@ -11,7 +11,9 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=0-23
+#SBATCH --array=9
+# Temporary rerun subset for currently missing seeds only:
+#   9 -> poisson-k1_2.5-finetune-1k, seed0
 
 # Transfer Learning: Poisson k∈[1,2.5] - Small Sample Sizes (16, 64, 256, 1k samples)
 # This script runs 8 experiments:
@@ -27,7 +29,7 @@ echo "=========================================="
 # Guard against running without an array task context.
 if [ -z "${SLURM_ARRAY_TASK_ID:-}" ]; then
     echo "Error: SLURM_ARRAY_TASK_ID is not set."
-    echo "Submit this script with sbatch so the array directive (#SBATCH --array=0-7) is applied."
+    echo "Submit this script with sbatch so the array directive is applied."
     exit 1
 fi
 
