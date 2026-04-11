@@ -176,6 +176,52 @@ def create_hdf5(path, dat, ten, other):
             f.create_dataset('tensor', ten.shape, dtype='<f4', data=ten)
             f.create_dataset('other', other.shape, dtype='<f4', data=other)
 
+
+def _chunk_shape(n_samples, chunk_samples, *tail_shape):
+    if n_samples <= 0:
+        return None
+    return (max(1, min(int(chunk_samples), int(n_samples))), *tail_shape)
+
+
+def _report_progress(split_name, done, total, start_time):
+    elapsed = max(time.time() - start_time, 1.0e-9)
+    rate = done / elapsed
+    remaining = max(total - done, 0)
+    eta = (remaining / rate) if rate > 0 else float("inf")
+    pct = (100.0 * done / max(total, 1))
+    print(
+        f"[{split_name}] {done}/{total} ({pct:5.1f}%) | "
+        f"{rate:7.2f} samples/s | elapsed {elapsed:8.1f}s | eta {eta:8.1f}s",
+        flush=True,
+    )
+
+
+def create_hdf5_datasets(path, n_samples, nx, ny, tensor_dim, other_dim, chunk_samples):
+    f = h5py.File(path, "w")
+    field_chunks = _chunk_shape(n_samples, chunk_samples, 2, nx, ny)
+    tensor_chunks = _chunk_shape(n_samples, chunk_samples, tensor_dim)
+    other_chunks = _chunk_shape(n_samples, chunk_samples, other_dim)
+
+    fields_ds = f.create_dataset(
+        'fields',
+        shape=(n_samples, 2, nx, ny),
+        dtype='<f4',
+        chunks=field_chunks,
+    )
+    tensor_ds = f.create_dataset(
+        'tensor',
+        shape=(n_samples, tensor_dim),
+        dtype='<f4',
+        chunks=tensor_chunks,
+    )
+    other_ds = f.create_dataset(
+        'other',
+        shape=(n_samples, other_dim),
+        dtype='<f4',
+        chunks=other_chunks,
+    )
+    return f, fields_ds, tensor_ds, other_ds
+
 def num_ex(ntrain, idx, num_vfs):
     nex = (ntrain//num_vfs if idx is not num_vfs-1 else ntrain - (num_vfs-1)*(ntrain//num_vfs))
     return nex
@@ -196,9 +242,13 @@ if __name__ == '__main__':
     parser.add_argument("--datapath", default="./", type=str, help="path to root dir to store data")
     parser.add_argument("--adr1", default=0.2, type=float, help="sample AD ratios starting from adr1")
     parser.add_argument("--adr2", default=1, type=float, help="sample AD ratios  ending at adr2")
+    parser.add_argument("--h5_chunk_samples", default=256, type=int, help="samples per HDF5 chunk/write flush")
+    parser.add_argument("--progress_every", default=1000, type=int, help="print progress every N samples (<=0 disables)")
 
     args = parser.parse_args()
     print(args)
+    if args.h5_chunk_samples <= 0:
+        raise ValueError("--h5_chunk_samples must be >= 1")
     seed = 0
 
     random.seed(seed)
@@ -227,61 +277,97 @@ if __name__ == '__main__':
     space = 2*std
     x_g, y_g = np.meshgrid(x, y)
 
-    train = np.zeros((ntrain, 2, x.shape[0], y.shape[0]))
-    train_ten = np.zeros((ntrain, 5))
-    train_ratios = np.zeros((ntrain, 1))
-    val = np.zeros((nval, 2, x.shape[0], y.shape[0]))
-    val_ten = np.zeros((nval, 5))
-    val_ratios = np.zeros((nval, 1))
-    test = np.zeros((ntest, 2, x.shape[0], y.shape[0]))
-    test_ten = np.zeros((ntest, 5))
-    test_ratios = np.zeros((ntest, 1))
+    os.makedirs(args.datapath, exist_ok=True)
+    train_path = os.path.join(args.datapath, "_train_adr{}_{}_32k.h5".format(params.ad1, params.ad2))
+    val_path = os.path.join(args.datapath, "_val_adr{}_{}_4k.h5".format(params.ad1, params.ad2))
+    test_path = os.path.join(args.datapath, "_test_adr{}_{}_4k.h5".format(params.ad1, params.ad2))
+
+    train_file, train_fields_ds, train_tensor_ds, train_other_ds = create_hdf5_datasets(
+        train_path, ntrain, x.shape[0], y.shape[0], 5, 1, args.h5_chunk_samples
+    )
+    val_file, val_fields_ds, val_tensor_ds, val_other_ds = create_hdf5_datasets(
+        val_path, nval, x.shape[0], y.shape[0], 5, 1, args.h5_chunk_samples
+    )
+    test_file, test_fields_ds, test_tensor_ds, test_other_ds = create_hdf5_datasets(
+        test_path, ntest, x.shape[0], y.shape[0], 5, 1, args.h5_chunk_samples
+    )
 
     vfs = [0.2, 0.4, 0.6, 0.8]
     num_vfs = len(vfs)
-    print_freq = 100
     t0 = time.time()
+    train_start = val_start = test_start = t0
+    train_last_report = val_last_report = test_last_report = 0
     sim_train = sim_val = sim_test = 0
-    for idx, vf in enumerate(vfs):
-        nex = num_ex(ntrain, idx, num_vfs)
-        print("For vf {}, there are {} train examples".format(vf, nex))
-        for s in range(nex):
-            u, source, k, v, ratios = advdiff(x, y, std, space, vf, params)
-            train[sim_train,0,...] = source
-            train[sim_train,1,...] = u
-            train_ten[sim_train, 0:3] = k * params.diff_coef_scale * (1 - params.lam)
-            train_ten[sim_train, 3:5] = v * params.adv_coef_scale * params.lam
-            train_ratios[sim_train] = ratios
-            sim_train += 1
-            if s%print_freq==0:
-                print("finished {} train for vf {}".format(s, vf))
-        nex = num_ex(nval, idx, num_vfs)
-        print("For vf {}, there are {} val examples".format(vf, nex))
-        for s in range(nex):
-            u, source, k, v, ratios = advdiff(x, y, std, space, vf, params)
-            val[sim_val,0,...] = source
-            val[sim_val,1,...] = u
-            val_ten[sim_val, 0:3] = k * params.diff_coef_scale * (1 - params.lam)
-            val_ten[sim_val, 3:5] = v * params.adv_coef_scale * params.lam
-            val_ratios[sim_val] = ratios
-            sim_val += 1
-        nex = num_ex(ntest, idx, num_vfs)
-        print("For vf {}, there are {} test examples".format(vf, nex))
-        for s in range(nex):
-            u, source, k, v, ratios = advdiff(x, y, std, space, vf, params)
-            test[sim_test,0,...] = source
-            test[sim_test,1,...] = u
-            test_ten[sim_test, 0:3] = k * params.diff_coef_scale * (1 - params.lam)
-            test_ten[sim_test, 3:5] = v * params.adv_coef_scale * params.lam
-            test_ratios[sim_test] = ratios
-            sim_test += 1
-            if s%print_freq==0:
-                print("finished {} test".format(sim_test))
+    try:
+        if args.progress_every > 0:
+            print(f"[train] starting generation ({ntrain} samples)", flush=True)
+            print(f"[val] starting generation ({nval} samples)", flush=True)
+            print(f"[test] starting generation ({ntest} samples)", flush=True)
+
+        for idx, vf in enumerate(vfs):
+            nex = num_ex(ntrain, idx, num_vfs)
+            print("For vf {}, there are {} train examples".format(vf, nex))
+            for _ in range(nex):
+                u, source, k, v, ratios = advdiff(x, y, std, space, vf, params)
+                train_fields_ds[sim_train, 0] = source
+                train_fields_ds[sim_train, 1] = u
+                train_tensor_ds[sim_train, 0:3] = k * params.diff_coef_scale * (1 - params.lam)
+                train_tensor_ds[sim_train, 3:5] = v * params.adv_coef_scale * params.lam
+                train_other_ds[sim_train] = ratios
+                sim_train += 1
+                if sim_train % args.h5_chunk_samples == 0:
+                    train_file.flush()
+                if args.progress_every > 0 and ((sim_train - train_last_report) >= args.progress_every or sim_train == ntrain):
+                    _report_progress("train", sim_train, ntrain, train_start)
+                    train_last_report = sim_train
+
+            nex = num_ex(nval, idx, num_vfs)
+            print("For vf {}, there are {} val examples".format(vf, nex))
+            for _ in range(nex):
+                u, source, k, v, ratios = advdiff(x, y, std, space, vf, params)
+                val_fields_ds[sim_val, 0] = source
+                val_fields_ds[sim_val, 1] = u
+                val_tensor_ds[sim_val, 0:3] = k * params.diff_coef_scale * (1 - params.lam)
+                val_tensor_ds[sim_val, 3:5] = v * params.adv_coef_scale * params.lam
+                val_other_ds[sim_val] = ratios
+                sim_val += 1
+                if sim_val % args.h5_chunk_samples == 0:
+                    val_file.flush()
+                if args.progress_every > 0 and ((sim_val - val_last_report) >= args.progress_every or sim_val == nval):
+                    _report_progress("val", sim_val, nval, val_start)
+                    val_last_report = sim_val
+
+            nex = num_ex(ntest, idx, num_vfs)
+            print("For vf {}, there are {} test examples".format(vf, nex))
+            for _ in range(nex):
+                u, source, k, v, ratios = advdiff(x, y, std, space, vf, params)
+                test_fields_ds[sim_test, 0] = source
+                test_fields_ds[sim_test, 1] = u
+                test_tensor_ds[sim_test, 0:3] = k * params.diff_coef_scale * (1 - params.lam)
+                test_tensor_ds[sim_test, 3:5] = v * params.adv_coef_scale * params.lam
+                test_other_ds[sim_test] = ratios
+                sim_test += 1
+                if sim_test % args.h5_chunk_samples == 0:
+                    test_file.flush()
+                if args.progress_every > 0 and ((sim_test - test_last_report) >= args.progress_every or sim_test == ntest):
+                    _report_progress("test", sim_test, ntest, test_start)
+                    test_last_report = sim_test
+
+        train_file.flush()
+        val_file.flush()
+        test_file.flush()
+
+        if args.progress_every > 0:
+            if train_last_report != ntrain:
+                _report_progress("train", ntrain, ntrain, train_start)
+            if val_last_report != nval:
+                _report_progress("val", nval, nval, val_start)
+            if test_last_report != ntest:
+                _report_progress("test", ntest, ntest, test_start)
+    finally:
+        train_file.close()
+        val_file.close()
+        test_file.close()
 
     print("time = {}".format(time.time() - t0))
-    datapath = args.datapath
-    print("saving files to {}".format(datapath))
-
-    create_hdf5(os.path.join(datapath, "_train_adr{}_{}_32k.h5".format(params.ad1,params.ad2)), train, train_ten, train_ratios)
-    create_hdf5(os.path.join(datapath, "_val_adr{}_{}_4k.h5".format(params.ad1,params.ad2)), val, val_ten, val_ratios)
-    create_hdf5(os.path.join(datapath, "_test_adr{}_{}_4k.h5".format(params.ad1,params.ad2)), test, test_ten, test_ratios)
+    print("saved files to {}".format(args.datapath))

@@ -3,9 +3,9 @@
 #SBATCH --output=experiments/%x-%j.out
 #SBATCH --error=experiments/%x-%j.err
 #SBATCH --mail-type=END
-#SBATCH --time=11:00:00
+#SBATCH --time=4:00:00
 #SBATCH --partition=insy,general
-#SBATCH --qos=medium
+#SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2

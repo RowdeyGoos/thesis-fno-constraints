@@ -46,6 +46,8 @@ helmholtz_transfer_o2="${TRANSFER_HELMHOLTZ_O2:-15}"
 
 compute_scales="${COMPUTE_SCALES:-1}"
 generate_mixed_format="${GENERATE_MIXED_FORMAT:-1}"
+h5_chunk_samples="${H5_CHUNK_SAMPLES:-256}"
+progress_every="${PROGRESS_EVERY:-1000}"
 
 dataset="${DATASET:-all}"
 range_set="${RANGE_SET:-transfer}"
@@ -155,7 +157,9 @@ generate_poisson() {
         --n "$n" \
         --datapath "$datapath" \
         --e1 "$e1" \
-        --e2 "$e2"
+        --e2 "$e2" \
+        --h5_chunk_samples "$h5_chunk_samples" \
+        --progress_every "$progress_every"
 
     train_file="_train_k${e1_str}_${e2_str}_32k.h5"
     val_file="_val_k${e1_str}_${e2_str}_4k.h5"
@@ -192,7 +196,9 @@ generate_advdiff() {
         --n "$n" \
         --datapath "$datapath" \
         --adr1 "$adr1" \
-        --adr2 "$adr2"
+        --adr2 "$adr2" \
+        --h5_chunk_samples "$h5_chunk_samples" \
+        --progress_every "$progress_every"
 
     train_file="_train_adr${adr1_str}_${adr2_str}_32k.h5"
     val_file="_val_adr${adr1_str}_${adr2_str}_4k.h5"
@@ -229,7 +235,9 @@ generate_helmholtz() {
         --n "$n" \
         --datapath "$datapath" \
         --o1 "$o1" \
-        --o2 "$o2"
+        --o2 "$o2" \
+        --h5_chunk_samples "$h5_chunk_samples" \
+        --progress_every "$progress_every"
 
     train_file="_train_o${o1_str}_${o2_str}_32k.h5"
     val_file="_val_o${o1_str}_${o2_str}_4k.h5"
@@ -253,6 +261,8 @@ echo "Grid:         ${n}x${n}"
 echo "Split sizes:  train=${ntrain}, val=${nval}, test=${ntest}"
 echo "Scales:       ${compute_scales}"
 echo "Mixed copies: ${generate_mixed_format}"
+echo "Chunk size:   ${h5_chunk_samples}"
+echo "Progress:     ${progress_every}"
 echo "=========================================="
 
 if [ "$dataset" = "all" ] || [ "$dataset" = "poisson" ]; then
