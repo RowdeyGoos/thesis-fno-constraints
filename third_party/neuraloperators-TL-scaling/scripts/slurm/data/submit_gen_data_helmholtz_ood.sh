@@ -14,8 +14,12 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+if [ -n "${SLURM_SUBMIT_DIR:-}" ]; then
+    PROJECT_DIR="${SLURM_SUBMIT_DIR}"
+else
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+fi
 
 if [ ! -f "${PROJECT_DIR}/run_gen_data_ood.sh" ]; then
     echo "Error: expected project root with run_gen_data_ood.sh, got: ${PROJECT_DIR}"
