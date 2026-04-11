@@ -13,16 +13,23 @@
 
 set -euo pipefail
 
-if [ -n "${SLURM_SUBMIT_DIR:-}" ]; then
-    PROJECT_DIR="${SLURM_SUBMIT_DIR}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PROJECT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+
+if [ -n "${PROJECT_DIR:-}" ] && [ -f "${PROJECT_DIR}/run_gen_data_ood.sh" ]; then
+    RESOLVED_PROJECT_DIR="${PROJECT_DIR}"
+elif [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/run_gen_data_ood.sh" ]; then
+    RESOLVED_PROJECT_DIR="${SLURM_SUBMIT_DIR}"
 else
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    PROJECT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+    RESOLVED_PROJECT_DIR="${SCRIPT_PROJECT_DIR}"
 fi
+
+PROJECT_DIR="${RESOLVED_PROJECT_DIR}"
 
 if [ ! -f "${PROJECT_DIR}/run_gen_data_ood.sh" ]; then
     echo "Error: expected project root with run_gen_data_ood.sh, got: ${PROJECT_DIR}"
-    echo "Submit from third_party/neuraloperators-TL-scaling or set SLURM_SUBMIT_DIR accordingly."
+    echo "Script-derived project dir: ${SCRIPT_PROJECT_DIR}"
+    echo "SLURM_SUBMIT_DIR: ${SLURM_SUBMIT_DIR:-<unset>}"
     exit 1
 fi
 
