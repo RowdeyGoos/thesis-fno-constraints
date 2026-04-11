@@ -54,6 +54,7 @@ def convert_ad_to_mixed_format(input_path, output_path, in_place=False, check_on
     with h5py.File(input_path, 'r') as f:
         fields = f['fields'][:]  # Shape: (n, 2, nx, ny)
         tensor = f['tensor'][:]  # Shape: (n, 5) for AdvDiff
+        other = f['other'][:] if 'other' in f else None
         bc = f['bc'][:] if 'bc' in f else None
         file_attrs = dict(f.attrs)
         
@@ -64,6 +65,7 @@ def convert_ad_to_mixed_format(input_path, output_path, in_place=False, check_on
         
         print(f"  Fields shape: {fields.shape}")
         print(f"  Tensor shape: {tensor.shape}")
+        print(f"  Other shape: {other.shape if other is not None else 'None'}")
         print(f"  BC shape: {bc.shape if bc is not None else 'None'}")
         print(f"  Fields compression: {fields_comp if fields_comp else 'None (uncompressed)'}")
         print(f"  Tensor compression: {tensor_comp if tensor_comp else 'None (uncompressed)'}")
@@ -156,6 +158,8 @@ def convert_ad_to_mixed_format(input_path, output_path, in_place=False, check_on
         # Compression causes severe slowdown with multiple data workers on NFS
         f.create_dataset('fields', data=fields, dtype=np.float32)
         f.create_dataset('tensor', data=tensor_6, dtype=np.float32)
+        if other is not None:
+            f.create_dataset('other', data=other, dtype=np.float32)
         if bc is not None:
             f.create_dataset('bc', data=bc, dtype=np.float32)
         for key, value in file_attrs.items():
@@ -173,12 +177,14 @@ def convert_ad_to_mixed_format(input_path, output_path, in_place=False, check_on
     with h5py.File(final_output_path, 'r') as f:
         verify_fields_comp = f['fields'].compression
         verify_tensor_comp = f['tensor'].compression
+        verify_other = f['other'][:] if 'other' in f else None
         verify_bc_comp = f['bc'].compression if 'bc' in f else None
         verify_tensor = f['tensor'][:]
         verify_bc = f['bc'][:] if 'bc' in f else None
         
         print(f"\nVerification:")
         print(f"  Output tensor shape: {verify_tensor.shape}")
+        print(f"  Output other shape: {verify_other.shape if verify_other is not None else 'None'}")
         print(f"  Output bc shape: {verify_bc.shape if verify_bc is not None else 'None'}")
         print(f"  Fields compression: {verify_fields_comp if verify_fields_comp else 'None (uncompressed) ✓'}")
         print(f"  Tensor compression: {verify_tensor_comp if verify_tensor_comp else 'None (uncompressed) ✓'}")
