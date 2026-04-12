@@ -11,9 +11,10 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:a40:1
 #SBATCH --mem=8G
-#SBATCH --array=9
+#SBATCH --array=21,22
 # Temporary rerun subset for currently missing seeds only:
-#   9 -> poisson-k1_2.5-finetune-1k, seed0
+#   21 -> poisson-k1_2.5-scratch-1k, seed0
+#   22 -> poisson-k1_2.5-scratch-1k, seed1
 
 # Transfer Learning: Poisson k∈[1,2.5] - Small Sample Sizes (16, 64, 256, 1k samples)
 # This script runs 8 experiments:
