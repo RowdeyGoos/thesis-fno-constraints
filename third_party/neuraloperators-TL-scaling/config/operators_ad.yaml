@@ -450,3 +450,80 @@ ad-adr1p6_1p8-finetune-mixed-4k:
   subsample: 8
   batch_size: 128
   valid_batch_size: 128
+
+# Scratch baselines on the same OOD AdvDiff bins (regular, non-mixed datasets).
+ad-adr1_1p2-base: &ad_adr1_1p2_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.0_1.2_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.0_1.2_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.0_1.2_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.0_1.2_32k_scales.npy'
+
+ad-adr1_1p2-scratch-256:
+  <<: *ad_adr1_1p2_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1_1p2-scratch-4k:
+  <<: *ad_adr1_1p2_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p2_1p4-base: &ad_adr1p2_1p4_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.2_1.4_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.2_1.4_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.2_1.4_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.2_1.4_32k_scales.npy'
+
+ad-adr1p2_1p4-scratch-256:
+  <<: *ad_adr1p2_1p4_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p2_1p4-scratch-4k:
+  <<: *ad_adr1p2_1p4_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p4_1p6-base: &ad_adr1p4_1p6_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.4_1.6_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.4_1.6_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.4_1.6_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.4_1.6_32k_scales.npy'
+
+ad-adr1p4_1p6-scratch-256:
+  <<: *ad_adr1p4_1p6_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p4_1p6-scratch-4k:
+  <<: *ad_adr1p4_1p6_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p6_1p8-base: &ad_adr1p6_1p8_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.6_1.8_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.6_1.8_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.6_1.8_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.6_1.8_32k_scales.npy'
+
+ad-adr1p6_1p8-scratch-256:
+  <<: *ad_adr1p6_1p8_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p6_1p8-scratch-4k:
+  <<: *ad_adr1p6_1p8_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128

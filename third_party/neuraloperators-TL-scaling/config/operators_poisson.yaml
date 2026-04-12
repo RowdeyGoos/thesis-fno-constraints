@@ -587,3 +587,80 @@ poisson-k12p5_15-finetune-mixed-4k:
   subsample: 8
   batch_size: 128
   valid_batch_size: 128
+
+# Scratch baselines on the same OOD Poisson bins (regular, non-mixed datasets).
+poisson-k5_7p5-base: &poisson_k5_7p5_base
+  <<: *poisson_k1_2p5_base
+  train_path:    'data/poisson/_train_k5.0_7.5_32k.h5'
+  val_path:      'data/poisson/_val_k5.0_7.5_4k.h5'
+  test_path:     'data/poisson/_test_k5.0_7.5_4k.h5'
+  scales_path:   'data/poisson/_train_k5.0_7.5_32k_scales.npy'
+
+poisson-k5_7p5-scratch-256:
+  <<: *poisson_k5_7p5_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+poisson-k5_7p5-scratch-4k:
+  <<: *poisson_k5_7p5_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k7p5_10-base: &poisson_k7p5_10_base
+  <<: *poisson_k1_2p5_base
+  train_path:    'data/poisson/_train_k7.5_10.0_32k.h5'
+  val_path:      'data/poisson/_val_k7.5_10.0_4k.h5'
+  test_path:     'data/poisson/_test_k7.5_10.0_4k.h5'
+  scales_path:   'data/poisson/_train_k7.5_10.0_32k_scales.npy'
+
+poisson-k7p5_10-scratch-256:
+  <<: *poisson_k7p5_10_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+poisson-k7p5_10-scratch-4k:
+  <<: *poisson_k7p5_10_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k10_12p5-base: &poisson_k10_12p5_base
+  <<: *poisson_k1_2p5_base
+  train_path:    'data/poisson/_train_k10.0_12.5_32k.h5'
+  val_path:      'data/poisson/_val_k10.0_12.5_4k.h5'
+  test_path:     'data/poisson/_test_k10.0_12.5_4k.h5'
+  scales_path:   'data/poisson/_train_k10.0_12.5_32k_scales.npy'
+
+poisson-k10_12p5-scratch-256:
+  <<: *poisson_k10_12p5_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+poisson-k10_12p5-scratch-4k:
+  <<: *poisson_k10_12p5_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+poisson-k12p5_15-base: &poisson_k12p5_15_base
+  <<: *poisson_k1_2p5_base
+  train_path:    'data/poisson/_train_k12.5_15.0_32k.h5'
+  val_path:      'data/poisson/_val_k12.5_15.0_4k.h5'
+  test_path:     'data/poisson/_test_k12.5_15.0_4k.h5'
+  scales_path:   'data/poisson/_train_k12.5_15.0_32k_scales.npy'
+
+poisson-k12p5_15-scratch-256:
+  <<: *poisson_k12p5_15_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+poisson-k12p5_15-scratch-4k:
+  <<: *poisson_k12p5_15_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128

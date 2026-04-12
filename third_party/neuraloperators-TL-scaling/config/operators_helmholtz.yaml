@@ -442,3 +442,80 @@ helm-o25_30-finetune-mixed-4k:
   subsample: 8
   batch_size: 128
   valid_batch_size: 128
+
+# Scratch baselines on the same OOD Helmholtz bins (regular, non-mixed datasets).
+helm-o10_15-base: &helm_o10_15_base
+  <<: *helm_o1_5_base
+  train_path:    'data/helmholtz/_train_o10_15_32k.h5'
+  val_path:      'data/helmholtz/_val_o10_15_4k.h5'
+  test_path:     'data/helmholtz/_test_o10_15_4k.h5'
+  scales_path:   'data/helmholtz/_train_o10_15_32k_scales.npy'
+
+helm-o10_15-scratch-256:
+  <<: *helm_o10_15_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+helm-o10_15-scratch-4k:
+  <<: *helm_o10_15_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o15_20-base: &helm_o15_20_base
+  <<: *helm_o1_5_base
+  train_path:    'data/helmholtz/_train_o15_20_32k.h5'
+  val_path:      'data/helmholtz/_val_o15_20_4k.h5'
+  test_path:     'data/helmholtz/_test_o15_20_4k.h5'
+  scales_path:   'data/helmholtz/_train_o15_20_32k_scales.npy'
+
+helm-o15_20-scratch-256:
+  <<: *helm_o15_20_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+helm-o15_20-scratch-4k:
+  <<: *helm_o15_20_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o20_25-base: &helm_o20_25_base
+  <<: *helm_o1_5_base
+  train_path:    'data/helmholtz/_train_o20_25_32k.h5'
+  val_path:      'data/helmholtz/_val_o20_25_4k.h5'
+  test_path:     'data/helmholtz/_test_o20_25_4k.h5'
+  scales_path:   'data/helmholtz/_train_o20_25_32k_scales.npy'
+
+helm-o20_25-scratch-256:
+  <<: *helm_o20_25_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+helm-o20_25-scratch-4k:
+  <<: *helm_o20_25_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+helm-o25_30-base: &helm_o25_30_base
+  <<: *helm_o1_5_base
+  train_path:    'data/helmholtz/_train_o25_30_32k.h5'
+  val_path:      'data/helmholtz/_val_o25_30_4k.h5'
+  test_path:     'data/helmholtz/_test_o25_30_4k.h5'
+  scales_path:   'data/helmholtz/_train_o25_30_32k_scales.npy'
+
+helm-o25_30-scratch-256:
+  <<: *helm_o25_30_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+helm-o25_30-scratch-4k:
+  <<: *helm_o25_30_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
