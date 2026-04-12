@@ -312,8 +312,29 @@ def find_checkpoint(experiment_dir: str, config_name: str, run_pattern: str = "*
     return checkpoints[-1]
 
 
+def middle_value(values: List[float]) -> float:
+    """Return the sorted middle finite value, matching 3-seed median selection."""
+    finite_values = np.sort(np.asarray(values, dtype=float)[np.isfinite(values)])
+    if finite_values.size == 0:
+        return np.nan
+    return float(finite_values[finite_values.size // 2])
+
+
+def get_reported_metric(metrics: Dict[str, float], metric_name: str) -> float:
+    """Read the plotted/reported metric, preferring the middle seed when trial data exists."""
+    trial_metrics = metrics.get('trial_metrics')
+    if isinstance(trial_metrics, list) and trial_metrics:
+        return middle_value([trial.get(metric_name, np.nan) for trial in trial_metrics])
+
+    value = metrics.get(metric_name, np.nan)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return np.nan
+
+
 def aggregate_metrics(metrics_list: List[Dict[str, float]]) -> Dict[str, float]:
-    """Aggregate repeated-run metrics for mean/std and min-max spread reporting."""
+    """Aggregate repeated-run metrics using the middle seed plus spread statistics."""
     if not metrics_list:
         return {
             'test_error': np.nan,
@@ -343,7 +364,7 @@ def aggregate_metrics(metrics_list: List[Dict[str, float]]) -> Dict[str, float]:
             aggregated[f'{metric_name}_max'] = np.nan
             continue
 
-        aggregated[metric_name] = float(np.mean(finite_values))
+        aggregated[metric_name] = middle_value(finite_values.tolist())
         aggregated[f'{metric_name}_std'] = float(np.std(finite_values))
         aggregated[f'{metric_name}_min'] = float(np.min(finite_values))
         aggregated[f'{metric_name}_max'] = float(np.max(finite_values))
@@ -526,20 +547,14 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
             continue
         
         sample_sizes = sorted(results[model_type].keys())
-        errors = [results[model_type][size]['test_error'] for size in sample_sizes]
-        lower_band = [results[model_type][size].get('test_error_min', np.nan) for size in sample_sizes]
-        upper_band = [results[model_type][size].get('test_error_max', np.nan) for size in sample_sizes]
+        errors = [get_reported_metric(results[model_type][size], 'test_error') for size in sample_sizes]
         
         # Filter out NaN values
-        valid_points = [
-            (s, e, lo, hi)
-            for s, e, lo, hi in zip(sample_sizes, errors, lower_band, upper_band)
-            if not np.isnan(e)
-        ]
+        valid_points = [(s, e) for s, e in zip(sample_sizes, errors) if not np.isnan(e)]
         if not valid_points:
             continue
         
-        sample_sizes_valid, errors_valid, min_valid, max_valid = zip(*valid_points)
+        sample_sizes_valid, errors_valid = zip(*valid_points)
         
         # Plot with appropriate style
         facecolors = 'none' if model_type == 'scratch' else colors[model_type]
@@ -556,16 +571,6 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
                 linestyle=linestyles[model_type],
                 linewidth=2,
                 label=labels[model_type])
-
-        if any(not np.isnan(v) for v in min_valid) and any(not np.isnan(v) for v in max_valid):
-            ax.fill_between(
-                x_vals,
-                min_valid,
-                max_valid,
-                color=colors[model_type],
-                alpha=0.15,
-                linewidth=0,
-            )
     
     # Formatting
     ax.set_xlabel('Number of downstream examples', fontsize=14, fontweight='bold')
@@ -702,7 +707,7 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
             continue
         
         sample_sizes = sorted(results[model_type].keys())
-        errors = [results[model_type][size]['test_error'] for size in sample_sizes]
+        errors = [get_reported_metric(results[model_type][size], 'test_error') for size in sample_sizes]
         
         # Filter out NaN values
         valid_points = [(s, e) for s, e in zip(sample_sizes, errors) if not np.isnan(e)]
@@ -810,7 +815,7 @@ def print_results_table(results: Dict[str, Dict[int, Dict[str, float]]]):
         row = f"{model_type.capitalize():<25} | "
         for size in sample_sizes:
             if size in results[model_type]:
-                error = results[model_type][size]['test_error']
+                error = get_reported_metric(results[model_type][size], 'test_error')
                 std = results[model_type][size].get('test_error_std', np.nan)
                 n_trials = int(results[model_type][size].get('n_trials', 1))
                 if np.isnan(error):
@@ -892,7 +897,7 @@ def main():
     parser.add_argument(
         '--aggregate_runs',
         action='store_true',
-        help='Evaluate all matching downstream runs per config and aggregate mean/std/min-max spread'
+        help='Evaluate all matching downstream runs per config and report the middle seed with spread stats'
     )
 
     parser.add_argument(
