@@ -13,8 +13,6 @@
 #SBATCH --mem=8G
 #SBATCH --array=0-23
 
-set -euo pipefail
-
 echo "=========================================="
 echo "Mixed OOD Fine-Tuning (Poisson) - 256 and 4k samples"
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
@@ -28,31 +26,6 @@ if [ ! -f "$CONTAINER_PATH" ]; then
     exit 1
 fi
 
-resolve_project_dir() {
-    local candidate
-    if [ -n "${PROJECT_DIR:-}" ] && [ -f "${PROJECT_DIR}/train.py" ]; then
-        printf '%s\n' "${PROJECT_DIR}"
-        return
-    fi
-    if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/train.py" ]; then
-        printf '%s\n' "${SLURM_SUBMIT_DIR}"
-        return
-    fi
-    if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/third_party/neuraloperators-TL-scaling/train.py" ]; then
-        printf '%s\n' "${SLURM_SUBMIT_DIR}/third_party/neuraloperators-TL-scaling"
-        return
-    fi
-    candidate="$(cd "$(dirname "$0")/../../../.." && pwd)"
-    printf '%s\n' "${candidate}"
-}
-
-PROJECT_DIR="$(resolve_project_dir)"
-if [ ! -f "${PROJECT_DIR}/train.py" ]; then
-    echo "Error: expected neuraloperators project root with train.py, got: ${PROJECT_DIR}"
-    echo "SLURM_SUBMIT_DIR=${SLURM_SUBMIT_DIR:-<unset>}"
-    exit 1
-fi
-
 module load apptainer 2>/dev/null || module load singularity 2>/dev/null
 
 export PYTHONUNBUFFERED=1
@@ -63,14 +36,14 @@ export WANDB_DATA_DIR=/workspace/wandb
 export WANDB_CACHE_DIR=/workspace/wandb/cache
 export WANDB_TEMP_DIR=/workspace/wandb/tmp
 
-cd "${PROJECT_DIR}"
+cd "$SLURM_SUBMIT_DIR"
 
 JOB_TMP_REL="tmp/${SLURM_JOB_ID}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
-JOB_TMP_DIR="${PROJECT_DIR}/${JOB_TMP_REL}"
+JOB_TMP_DIR="$SLURM_SUBMIT_DIR/$JOB_TMP_REL"
 
 cleanup_tmp_dir() {
     rm -rf "${JOB_TMP_DIR}"
-    rmdir "${PROJECT_DIR}/tmp" 2>/dev/null || true
+    rmdir "$SLURM_SUBMIT_DIR/tmp" 2>/dev/null || true
 }
 trap cleanup_tmp_dir EXIT
 
@@ -91,7 +64,6 @@ declare -a configs=(
 
 IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
 
-echo "Project dir: ${PROJECT_DIR}"
 echo "Configuration: ${CONFIG_FILE}"
 echo "Config name: ${CONFIG_NAME}"
 echo "Run name: ${RUN_NAME}"
@@ -111,7 +83,7 @@ echo ""
 
 mkdir -p experiments
 
-BIND="--bind ${PROJECT_DIR}:/workspace"
+BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 CMD="python /workspace/train.py \
     --yaml_config=/workspace/${CONFIG_FILE} \
     --config=${CONFIG_NAME} \
