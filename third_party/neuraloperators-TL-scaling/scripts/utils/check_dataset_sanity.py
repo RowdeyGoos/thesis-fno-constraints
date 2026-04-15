@@ -57,7 +57,7 @@ def _all_finite(arr: np.ndarray) -> bool:
 
 def _maybe_load_scales(path: pathlib.Path):
     if not path.exists():
-        return None, None
+        return None, 'missing scales file'
     try:
         arr = np.load(path)
     except Exception as exc:
@@ -252,6 +252,8 @@ def _check_single_file(
             scales, scales_error = _maybe_load_scales(scales_path)
             if scales_error is not None:
                 return False, {'error': f'{scales_path}: {scales_error}'}
+            if scales is None:
+                return False, {'error': f'{scales_path}: missing scales contents'}
             ok, err = check_scales(scales, tensor_dim)
             if not ok:
                 return False, {'error': f'{scales_path}: {err}'}
