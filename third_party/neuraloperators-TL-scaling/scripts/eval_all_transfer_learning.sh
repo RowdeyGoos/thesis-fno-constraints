@@ -90,6 +90,7 @@ python utils/plot_transfer_learning_comparison.py \
     --k1_5_results "$OUTPUT_DIR/k1_5/poisson_results.json" \
     --scratch_results "$OUTPUT_DIR/scratch/poisson_results.json" \
     --output_dir "$OUTPUT_DIR" \
+    --output_name "poisson_k1_2p5_transfer_learning_comparison" \
     --title "Transfer Learning: Poisson k∈[1,2.5]"
 
 echo ""
@@ -101,5 +102,5 @@ echo "Results saved to: $OUTPUT_DIR"
 echo "  - Mixed results:     $OUTPUT_DIR/mixed/"
 echo "  - k1_5 results:      $OUTPUT_DIR/k1_5/"
 echo "  - Scratch results:   $OUTPUT_DIR/scratch/"
-echo "  - Combined plot:     $OUTPUT_DIR/transfer_learning_comparison.png"
+echo "  - Combined plot:     $OUTPUT_DIR/poisson_k1_2p5_transfer_learning_comparison.png"
 echo ""

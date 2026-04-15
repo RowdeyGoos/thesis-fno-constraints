@@ -141,6 +141,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                 --k1_5_results results/transfer_learning_helmholtz_o1_5/helmholtz/helmholtz_results.json \
                 --scratch_results results/transfer_learning_helmholtz_o1_5/scratch/helmholtz_results.json \
                 --output_dir results/transfer_learning_helmholtz_o1_5 \
+                --output_name helmholtz_o1_5_transfer_learning_comparison \
                 --title "Transfer Learning: Helmholtz o∈[1,5]"'
 
 status=$?
@@ -154,7 +155,7 @@ if [ $status -eq 0 ]; then
     echo "  - Mixed results:      $OUTPUT_DIR/mixed/"
     echo "  - Helmholtz results:  $OUTPUT_DIR/helmholtz/"
     echo "  - Scratch results:    $OUTPUT_DIR/scratch/"
-    echo "  - Comparison plot:    $OUTPUT_DIR/transfer_learning_comparison.png"
+    echo "  - Comparison plot:    $OUTPUT_DIR/helmholtz_o1_5_transfer_learning_comparison.png"
 else
     echo "Evaluation FAILED with exit code $status"
 fi

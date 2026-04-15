@@ -141,6 +141,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                 --k1_5_results results/transfer_learning_k1_2.5/k1_5/poisson_results.json \
                 --scratch_results results/transfer_learning_k1_2.5/scratch/poisson_results.json \
                 --output_dir results/transfer_learning_k1_2.5 \
+                --output_name poisson_k1_2p5_transfer_learning_comparison \
                 --title "Transfer Learning: Poisson k∈[1,2.5]"'
 
 status=$?
@@ -154,7 +155,7 @@ if [ $status -eq 0 ]; then
     echo "  - Mixed results:     results/transfer_learning_k1_2.5/mixed/"
     echo "  - k1_5 results:      results/transfer_learning_k1_2.5/k1_5/"
     echo "  - Scratch results:   results/transfer_learning_k1_2.5/scratch/"
-    echo "  - Comparison plot:   results/transfer_learning_k1_2.5/transfer_learning_comparison.png"
+    echo "  - Comparison plot:   results/transfer_learning_k1_2.5/poisson_k1_2p5_transfer_learning_comparison.png"
 else
     echo "Evaluation FAILED with exit code $status"
 fi

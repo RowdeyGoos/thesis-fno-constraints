@@ -87,6 +87,7 @@ plot_comparison() {
         --series "mixed-zero-soft=results/transfer_learning_constraints_advdiff_adr0.2_0.4/mixed-zero-soft/advdiff_results.json"
         --series "mixed-penalty-pde=results/transfer_learning_constraints_advdiff_adr0.2_0.4/mixed-penalty-pde/advdiff_results.json"
         --output_dir "$OUTPUT_DIR"
+        --output_name "advdiff_adr0p2_0p4_transfer_learning_constraints_comparison"
         --title "Transfer Learning Constraints: AdvDiff adr in [0.2,0.4]"
     )
 
@@ -164,7 +165,7 @@ if [ $status -eq 0 ]; then
     echo "  - Mixed zero-hard:    $OUTPUT_DIR/mixed-zero-hard/"
     echo "  - Mixed zero-soft:    $OUTPUT_DIR/mixed-zero-soft/"
     echo "  - Mixed PDE penalty:  $OUTPUT_DIR/mixed-penalty-pde/"
-    echo "  - Comparison plot:    $OUTPUT_DIR/transfer_learning_comparison.png"
+    echo "  - Comparison plot:    $OUTPUT_DIR/advdiff_adr0p2_0p4_transfer_learning_constraints_comparison.png"
 else
     echo "Evaluation FAILED with exit code $status"
 fi

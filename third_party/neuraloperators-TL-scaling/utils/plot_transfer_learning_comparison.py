@@ -20,6 +20,8 @@ The script supports two calling conventions:
 
 import argparse
 import json
+import re
+import unicodedata
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -84,6 +86,34 @@ def load_results(filepath):
     """Load evaluation results from JSON file"""
     with open(filepath, 'r') as f:
         return json.load(f)
+
+
+def slugify_filename(value):
+    """Convert a plot title or label into a filesystem-friendly stem."""
+    normalized = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    normalized = re.sub(r'(?<=\d)\.(?=\d)', 'p', normalized)
+    normalized = normalized.lower()
+    normalized = normalized.replace('&', ' and ')
+    normalized = re.sub(r'[^a-z0-9]+', '_', normalized)
+    normalized = normalized.strip('_')
+    return normalized or 'transfer_learning_comparison'
+
+
+def determine_output_stem(args):
+    """Pick a descriptive output stem for the comparison plot."""
+    if args.output_name:
+        return slugify_filename(args.output_name)
+
+    title_stem = slugify_filename(args.title)
+    if title_stem != 'transfer_learning_comparison':
+        return title_stem
+
+    output_dir_name = Path(args.output_dir).name
+    output_dir_stem = slugify_filename(output_dir_name)
+    if output_dir_stem:
+        return f'{output_dir_stem}_comparison'
+
+    return 'transfer_learning_comparison'
 
 
 def extract_metrics_by_size(results):
@@ -387,6 +417,8 @@ def main():
                        help='Path to from-scratch results JSON')
     parser.add_argument('--output_dir', type=str, default='results/transfer_learning_k1_2.5',
                        help='Output directory for plot')
+    parser.add_argument('--output_name', type=str, default=None,
+                       help='Optional basename for the saved plot files, without extension')
     parser.add_argument('--title', type=str, default='Transfer Learning Comparison',
                        help='Plot title')
     
@@ -411,7 +443,8 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate plot
-    output_path = output_dir / 'transfer_learning_comparison.png'
+    output_stem = determine_output_stem(args)
+    output_path = output_dir / f'{output_stem}.png'
     plot_comparison(series_entries, str(output_path), args.title)
 
     print("\n" + "="*80)

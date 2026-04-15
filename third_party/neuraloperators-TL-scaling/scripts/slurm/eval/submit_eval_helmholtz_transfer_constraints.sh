@@ -87,6 +87,7 @@ plot_comparison() {
         --series "mixed-zero-soft=results/transfer_learning_constraints_helmholtz_o1_5/mixed-zero-soft/helmholtz_results.json"
         --series "mixed-penalty-pde=results/transfer_learning_constraints_helmholtz_o1_5/mixed-penalty-pde/helmholtz_results.json"
         --output_dir "$OUTPUT_DIR"
+        --output_name "helmholtz_o1_5_transfer_learning_constraints_comparison"
         --title "Transfer Learning Constraints: Helmholtz omega in [1,5]"
     )
 
@@ -164,7 +165,7 @@ if [ $status -eq 0 ]; then
     echo "  - Mixed zero-hard:    $OUTPUT_DIR/mixed-zero-hard/"
     echo "  - Mixed zero-soft:    $OUTPUT_DIR/mixed-zero-soft/"
     echo "  - Mixed PDE penalty:  $OUTPUT_DIR/mixed-penalty-pde/"
-    echo "  - Comparison plot:    $OUTPUT_DIR/transfer_learning_comparison.png"
+    echo "  - Comparison plot:    $OUTPUT_DIR/helmholtz_o1_5_transfer_learning_constraints_comparison.png"
 else
     echo "Evaluation FAILED with exit code $status"
 fi

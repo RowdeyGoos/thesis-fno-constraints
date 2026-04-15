@@ -141,6 +141,7 @@ apptainer exec --nv $BIND "$CONTAINER_PATH" \
                 --k1_5_results results/transfer_learning_advdiff_adr0.2_0.4/advdiff/advdiff_results.json \
                 --scratch_results results/transfer_learning_advdiff_adr0.2_0.4/scratch/advdiff_results.json \
                 --output_dir results/transfer_learning_advdiff_adr0.2_0.4 \
+                --output_name advdiff_adr0p2_0p4_transfer_learning_comparison \
                 --title "Transfer Learning: AdvDiff adr∈[0.2,0.4]"'
 
 status=$?
@@ -154,7 +155,7 @@ if [ $status -eq 0 ]; then
     echo "  - Mixed results:     $OUTPUT_DIR/mixed/"
     echo "  - AdvDiff results:   $OUTPUT_DIR/advdiff/"
     echo "  - Scratch results:   $OUTPUT_DIR/scratch/"
-    echo "  - Comparison plot:   $OUTPUT_DIR/transfer_learning_comparison.png"
+    echo "  - Comparison plot:   $OUTPUT_DIR/advdiff_adr0p2_0p4_transfer_learning_comparison.png"
 else
     echo "Evaluation FAILED with exit code $status"
 fi
