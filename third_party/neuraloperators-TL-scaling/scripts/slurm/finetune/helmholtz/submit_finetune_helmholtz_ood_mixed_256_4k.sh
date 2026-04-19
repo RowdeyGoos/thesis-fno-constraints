@@ -14,7 +14,7 @@
 #SBATCH --array=0-23
 
 echo "=========================================="
-echo "Mixed OOD Fine-Tuning (Helmholtz) - 256 and 4k samples"
+echo "OOD Fine-Tuning (Helmholtz, ${RUN_VARIANT:-mixed}) - 256 and 4k samples"
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: ${SLURM_NODELIST:-unknown}"
 echo "=========================================="
@@ -47,19 +47,21 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
+RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
 CONFIG_FILE="${CONFIG_FILE:-config/operators_helmholtz.yaml}"
 
 source scripts/slurm/finetune/seed_grid.sh
 
 declare -a configs=(
-    "helm-o10_15-finetune-mixed-256:finetune-mixed-o10_15-256"
-    "helm-o10_15-finetune-mixed-4k:finetune-mixed-o10_15-4k"
-    "helm-o15_20-finetune-mixed-256:finetune-mixed-o15_20-256"
-    "helm-o15_20-finetune-mixed-4k:finetune-mixed-o15_20-4k"
-    "helm-o20_25-finetune-mixed-256:finetune-mixed-o20_25-256"
-    "helm-o20_25-finetune-mixed-4k:finetune-mixed-o20_25-4k"
-    "helm-o25_30-finetune-mixed-256:finetune-mixed-o25_30-256"
-    "helm-o25_30-finetune-mixed-4k:finetune-mixed-o25_30-4k"
+    "helm-o10_15-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-o10_15-256"
+    "helm-o10_15-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-o10_15-4k"
+    "helm-o15_20-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-o15_20-256"
+    "helm-o15_20-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-o15_20-4k"
+    "helm-o20_25-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-o20_25-256"
+    "helm-o20_25-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-o20_25-4k"
+    "helm-o25_30-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-o25_30-256"
+    "helm-o25_30-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-o25_30-4k"
 )
 
 IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
@@ -91,7 +93,7 @@ CMD="python /workspace/train.py \
     --root_dir=/workspace/experiments \
     ${SEED_TRAIN_ARGS}"
 
-echo "Running mixed OOD fine-tuning (Task ${SLURM_ARRAY_TASK_ID})..."
+echo "Running OOD fine-tuning (Task ${SLURM_ARRAY_TASK_ID})..."
 echo "Command: ${CMD}"
 echo ""
 

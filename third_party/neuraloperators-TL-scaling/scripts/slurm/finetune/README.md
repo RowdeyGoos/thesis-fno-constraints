@@ -49,6 +49,14 @@ Default downstream protocol:
 - `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_mixed_medium.sh`
 - `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_o1_5_mixed_large.sh`
 
+## OOD Mixed Jobs
+
+- `sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_ood_mixed_256_4k.sh`
+- `sbatch scripts/slurm/finetune/advdiff/submit_finetune_advdiff_ood_mixed_256_4k.sh`
+- `sbatch scripts/slurm/finetune/helmholtz/submit_finetune_helmholtz_ood_mixed_256_4k.sh`
+- The OOD mixed launchers now accept `MIXED_VARIANT`, `RUN_VARIANT`, and `CONFIG_FILE`, so the same scripts can launch constrained OOD variants such as `mixed-zero-hard`, `mixed-zero-soft`, and `mixed-penalty-pde`.
+- Example: `sbatch --export=ALL,MIXED_VARIANT=mixed-zero-hard,RUN_VARIANT=mixed-zero-hard,CONFIG_FILE=config/operators_poisson_mixed_constraints.yaml scripts/slurm/finetune/poisson/submit_finetune_poisson_ood_mixed_256_4k.sh`
+
 ## Related Evaluation Jobs
 
 - `sbatch scripts/slurm/eval/submit_eval_poisson_transfer.sh`

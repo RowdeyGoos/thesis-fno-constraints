@@ -14,7 +14,7 @@
 #SBATCH --array=0-23
 
 echo "=========================================="
-echo "Mixed OOD Fine-Tuning (AdvDiff) - 256 and 4k samples"
+echo "OOD Fine-Tuning (AdvDiff, ${RUN_VARIANT:-mixed}) - 256 and 4k samples"
 echo "Job ID: ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "Node: ${SLURM_NODELIST:-unknown}"
 echo "=========================================="
@@ -47,19 +47,21 @@ cleanup_tmp_dir() {
 }
 trap cleanup_tmp_dir EXIT
 
+MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
+RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
 CONFIG_FILE="${CONFIG_FILE:-config/operators_ad.yaml}"
 
 source scripts/slurm/finetune/seed_grid.sh
 
 declare -a configs=(
-    "ad-adr1_1p2-finetune-mixed-256:finetune-mixed-adr1_1p2-256"
-    "ad-adr1_1p2-finetune-mixed-4k:finetune-mixed-adr1_1p2-4k"
-    "ad-adr1p2_1p4-finetune-mixed-256:finetune-mixed-adr1p2_1p4-256"
-    "ad-adr1p2_1p4-finetune-mixed-4k:finetune-mixed-adr1p2_1p4-4k"
-    "ad-adr1p4_1p6-finetune-mixed-256:finetune-mixed-adr1p4_1p6-256"
-    "ad-adr1p4_1p6-finetune-mixed-4k:finetune-mixed-adr1p4_1p6-4k"
-    "ad-adr1p6_1p8-finetune-mixed-256:finetune-mixed-adr1p6_1p8-256"
-    "ad-adr1p6_1p8-finetune-mixed-4k:finetune-mixed-adr1p6_1p8-4k"
+    "ad-adr1_1p2-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-adr1_1p2-256"
+    "ad-adr1_1p2-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-adr1_1p2-4k"
+    "ad-adr1p2_1p4-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-adr1p2_1p4-256"
+    "ad-adr1p2_1p4-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-adr1p2_1p4-4k"
+    "ad-adr1p4_1p6-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-adr1p4_1p6-256"
+    "ad-adr1p4_1p6-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-adr1p4_1p6-4k"
+    "ad-adr1p6_1p8-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-adr1p6_1p8-256"
+    "ad-adr1p6_1p8-finetune-${MIXED_VARIANT}-4k:finetune-${RUN_VARIANT}-adr1p6_1p8-4k"
 )
 
 IFS=':' read -r CONFIG_NAME RUN_NAME <<< "${configs[$SEED_EXPERIMENT_IDX]}"
@@ -91,7 +93,7 @@ CMD="python /workspace/train.py \
     --root_dir=/workspace/experiments \
     ${SEED_TRAIN_ARGS}"
 
-echo "Running mixed OOD fine-tuning (Task ${SLURM_ARRAY_TASK_ID})..."
+echo "Running OOD fine-tuning (Task ${SLURM_ARRAY_TASK_ID})..."
 echo "Command: ${CMD}"
 echo ""
 
