@@ -6,7 +6,9 @@ config files against the run directories currently present under
 experiments/expts/<setup>/.
 
 It reports which setups have all expected seeds, which are incomplete, and
-which do not have any run directory yet.
+which do not have any run directory yet. The default config set includes the
+baseline operator YAMLs plus the mixed-constraint YAMLs, so constrained IID and
+OOD setups are audited together. Report rows are tagged as ``IID`` or ``OOD``.
 
 Seed detection rules:
 - Prefer explicit `seedN` markers in the run directory name.
@@ -28,9 +30,15 @@ DEFAULT_CONFIG_PATHS = (
     "config/operators_poisson.yaml",
     "config/operators_ad.yaml",
     "config/operators_helmholtz.yaml",
+    "config/operators_poisson_mixed_constraints.yaml",
+    "config/operators_ad_mixed_constraints.yaml",
+    "config/operators_helmholtz_mixed_constraints.yaml",
 )
 TOP_LEVEL_KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):")
 EXPLICIT_SEED_RE = re.compile(r"(?:^|-)seed(?P<seed>\d+)(?:-|$)")
+POISSON_LOWER_BOUND_RE = re.compile(r"^poisson-k(?P<lower>\d+(?:p\d+)?)(?:_|-)")
+ADVDIFF_LOWER_BOUND_RE = re.compile(r"^ad-adr(?P<lower>\d+(?:p\d+)?)(?:_|-)")
+HELMHOLTZ_LOWER_BOUND_RE = re.compile(r"^helm-o(?P<lower>\d+(?:p\d+)?)(?:_|-)")
 
 
 @dataclass(frozen=True)
@@ -78,8 +86,9 @@ class SetupCoverage:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Check which downstream finetune/scratch setups have all expected seeds "
-            "present under experiments/expts."
+            "Check which downstream finetune/scratch setups have all expected "
+            "seeds present under experiments/expts, including constrained and "
+            "OOD setups from the default operator YAMLs."
         )
     )
     parser.add_argument(
@@ -94,7 +103,7 @@ def parse_args() -> argparse.Namespace:
         default=list(DEFAULT_CONFIG_PATHS),
         help=(
             "Config files to scan for expected downstream setup names. "
-            "Defaults to operators_poisson/ad/helmholtz."
+            "Defaults to baseline plus mixed-constraint operator YAMLs."
         ),
     )
     parser.add_argument(
@@ -211,6 +220,30 @@ def looks_like_downstream_setup(name: str) -> bool:
     return is_expected_downstream_key(name)
 
 
+def parse_range_lower_bound(token: str) -> float:
+    return float(token.replace("p", "."))
+
+
+def is_ood_setup(name: str) -> bool:
+    match = POISSON_LOWER_BOUND_RE.match(name)
+    if match:
+        return parse_range_lower_bound(match.group("lower")) >= 5.0
+
+    match = ADVDIFF_LOWER_BOUND_RE.match(name)
+    if match:
+        return parse_range_lower_bound(match.group("lower")) >= 1.0
+
+    match = HELMHOLTZ_LOWER_BOUND_RE.match(name)
+    if match:
+        return parse_range_lower_bound(match.group("lower")) >= 10.0
+
+    return False
+
+
+def setup_category(name: str) -> str:
+    return "OOD" if is_ood_setup(name) else "IID"
+
+
 def main() -> int:
     args = parse_args()
     root = validate_root(args.root_dir)
@@ -234,6 +267,10 @@ def main() -> int:
     complete = [row for row in coverage_rows if row.is_complete]
     incomplete = [row for row in coverage_rows if row.has_any_runs and not row.is_complete]
     missing_all = [row for row in coverage_rows if not row.has_any_runs]
+    ood_rows = [row for row in coverage_rows if is_ood_setup(row.setup_name)]
+    ood_complete = [row for row in ood_rows if row.is_complete]
+    ood_incomplete = [row for row in ood_rows if row.has_any_runs and not row.is_complete]
+    ood_missing_all = [row for row in ood_rows if not row.has_any_runs]
 
     print(f"Scanning run root: {root}")
     print("Configs:")
@@ -246,13 +283,18 @@ def main() -> int:
     print(f"  Complete (all seeds present): {len(complete)}")
     print(f"  Incomplete (some seeds missing): {len(incomplete)}")
     print(f"  Missing entirely (no run directory): {len(missing_all)}")
+    print(f"  OOD setups tracked: {len(ood_rows)}")
+    print(f"    OOD complete: {len(ood_complete)}")
+    print(f"    OOD incomplete: {len(ood_incomplete)}")
+    print(f"    OOD missing entirely: {len(ood_missing_all)}")
 
     if incomplete:
         print("")
         print("Incomplete setups:")
         for row in incomplete:
             print(
-                f"  - {row.setup_name}: present={format_seed_set(row.present_seeds)} "
+                f"  - {row.setup_name} [{setup_category(row.setup_name)}]: "
+                f"present={format_seed_set(row.present_seeds)} "
                 f"missing={format_seed_set(row.missing_seeds)} "
                 f"runs={len(row.runs)} explicit={row.explicit_seed_runs} "
                 f"inferred={row.inferred_seed_runs} unknown={row.unknown_seed_runs}"
@@ -262,14 +304,18 @@ def main() -> int:
         print("")
         print("Missing setups:")
         for row in missing_all:
-            print(f"  - {row.setup_name}: present=- missing={format_seed_set(row.missing_seeds)}")
+            print(
+                f"  - {row.setup_name} [{setup_category(row.setup_name)}]: "
+                f"present=- missing={format_seed_set(row.missing_seeds)}"
+            )
 
     if args.show_complete and complete:
         print("")
         print("Complete setups:")
         for row in complete:
             print(
-                f"  - {row.setup_name}: present={format_seed_set(row.present_seeds)} "
+                f"  - {row.setup_name} [{setup_category(row.setup_name)}]: "
+                f"present={format_seed_set(row.present_seeds)} "
                 f"runs={len(row.runs)} explicit={row.explicit_seed_runs} "
                 f"inferred={row.inferred_seed_runs} unknown={row.unknown_seed_runs}"
             )
