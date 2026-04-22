@@ -50,8 +50,28 @@ trap cleanup_tmp_dir EXIT
 MIXED_VARIANT="${MIXED_VARIANT:-mixed}"
 RUN_VARIANT="${RUN_VARIANT:-$MIXED_VARIANT}"
 CONFIG_FILE="${CONFIG_FILE:-config/operators_ad.yaml}"
+RERUN_MISSING_ONLY="${RERUN_MISSING_ONLY:-${MISSING_ONLY:-0}}"
 
 source scripts/slurm/finetune/seed_grid.sh
+
+if [ "${RERUN_MISSING_ONLY}" = "1" ]; then
+    case "${MIXED_VARIANT}" in
+        mixed-zero-hard)
+            SEED_TASK_ALLOWLIST="${SEED_TASK_ALLOWLIST:-23}"
+            ;;
+        mixed-penalty-pde)
+            SEED_TASK_ALLOWLIST="${SEED_TASK_ALLOWLIST:-22,23}"
+            ;;
+        *)
+            echo "Missing-only mode requested, but no AdvDiff OOD gaps are listed for ${MIXED_VARIANT}."
+            exit 0
+            ;;
+    esac
+fi
+
+if [ -n "${SEED_TASK_ALLOWLIST:-}" ]; then
+    seed_skip_unless_task_allowed "${SEED_TASK_ALLOWLIST}" "${SLURM_ARRAY_TASK_ID}" "AdvDiff ${MIXED_VARIANT} OOD"
+fi
 
 declare -a configs=(
     "ad-adr1_1p2-finetune-${MIXED_VARIANT}-256:finetune-${RUN_VARIANT}-adr1_1p2-256"
