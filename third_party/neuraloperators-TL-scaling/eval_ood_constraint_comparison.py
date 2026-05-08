@@ -21,7 +21,13 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from eval_ood_comparison import OOD_EXPERIMENTS, evaluate_series
+from eval_ood_comparison import (
+    MEAN_BASELINE_ORDER,
+    MEAN_BASELINE_SPECS,
+    OOD_EXPERIMENTS,
+    evaluate_mean_baseline_series,
+    evaluate_series,
+)
 from eval_transfer_learning import get_reported_metric, save_results_json
 
 
@@ -195,12 +201,12 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
 
     fig, ax = plt.subplots(figsize=(12, 6.5))
 
-    for series_key in SERIES_ORDER:
+    for series_key in [*SERIES_ORDER, *MEAN_BASELINE_ORDER]:
         series_result = results['series'].get(series_key)
         if not series_result:
             continue
 
-        style = SERIES_SPECS[series_key]
+        style = MEAN_BASELINE_SPECS.get(series_key, SERIES_SPECS.get(series_key))
         points = series_result.get('points', {})
         errors = []
         min_band = []
@@ -289,7 +295,7 @@ def print_results_table(results: Dict, experiment_type: str):
     print(header)
     print('-' * len(header))
 
-    for series_key in SERIES_ORDER:
+    for series_key in [*SERIES_ORDER, *MEAN_BASELINE_ORDER]:
         series_result = results['series'].get(series_key)
         if not series_result:
             continue
@@ -384,6 +390,21 @@ def main():
         )
         results['series'][series_key] = {
             'label': plan['label'],
+            'yaml_config': plan['yaml_config'],
+            'points': points,
+        }
+
+    for baseline_key in MEAN_BASELINE_ORDER:
+        budget_key = MEAN_BASELINE_SPECS[baseline_key]['budget_key']
+        reference_series = f'mixed_{budget_key}'
+        plan = series_plan[reference_series]
+        points = evaluate_mean_baseline_series(
+            yaml_config=plan['yaml_config'],
+            bin_keys=experiment_spec['bin_keys'],
+            config_names=plan['config_names'],
+        )
+        results['series'][baseline_key] = {
+            'label': MEAN_BASELINE_SPECS[baseline_key]['label'],
             'yaml_config': plan['yaml_config'],
             'points': points,
         }

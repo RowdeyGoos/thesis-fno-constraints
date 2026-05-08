@@ -17,7 +17,6 @@ import argparse
 import json
 import re
 import unicodedata
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
@@ -84,20 +83,9 @@ def _format_sample_tick(size):
     return str(size)
 
 
-def _sample_to_plot_x(size, min_positive_size):
-    """
-    Map sample sizes to plotting coordinates with explicit log2 spacing.
-
-    This avoids symlog's linear threshold region around zero, which makes the
-    0-shot point look oddly spaced relative to the positive sample counts.
-    """
-    if size > 0:
-        return float(np.log2(size))
-
-    if min_positive_size is None:
-        return 0.0
-
-    return float(np.log2(min_positive_size) - 1.5)
+def _build_sample_x_map(sample_sizes):
+    """Map sorted sample sizes to evenly spaced categorical x positions."""
+    return {size: idx for idx, size in enumerate(sample_sizes)}
 
 
 def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, title="Transfer Learning Comparison"):
@@ -119,9 +107,7 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
         print("⚠️  No data to plot!")
         return
 
-    positive_sizes = [s for s in all_sizes if s > 0]
-    min_positive_size = min(positive_sizes) if positive_sizes else None
-    x_map = {s: _sample_to_plot_x(s, min_positive_size) for s in all_sizes}
+    x_map = _build_sample_x_map(all_sizes)
     
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 7))

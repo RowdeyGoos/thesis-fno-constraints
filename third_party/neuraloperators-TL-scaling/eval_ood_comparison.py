@@ -9,9 +9,11 @@ x-axis so the degradation trend is visible in one figure.
 
 import argparse
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List
 
+import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,6 +26,7 @@ from eval_transfer_learning import (
     get_reported_metric,
     save_results_json,
 )
+from utils.YParams import YParams
 
 
 mpl.rcParams['font.size'] = 12
@@ -75,6 +78,27 @@ SERIES_SPECS = {
 }
 
 
+MEAN_BASELINE_ORDER = ['mean_256', 'mean_4k']
+
+
+MEAN_BASELINE_SPECS = {
+    'mean_256': {
+        'label': 'Mean baseline (256 samples)',
+        'color': '#6b7280',
+        'marker': 'D',
+        'linestyle': ':',
+        'budget_key': '256',
+    },
+    'mean_4k': {
+        'label': 'Mean baseline (4K samples)',
+        'color': '#111827',
+        'marker': 'D',
+        'linestyle': ':',
+        'budget_key': '4k',
+    },
+}
+
+
 OOD_EXPERIMENTS = {
     'poisson': {
         'yaml_config': 'config/operators_poisson.yaml',
@@ -122,6 +146,131 @@ OOD_EXPERIMENTS = {
         'results_filename': 'helmholtz_ood_results.json',
     },
 }
+
+
+def _resolve_data_path(path: str) -> str:
+    """Resolve config data paths the same way the eval scripts are run: from cwd."""
+    return path if os.path.isabs(path) else os.path.abspath(path)
+
+
+def _training_indices(params, n_samples: int) -> np.ndarray:
+    """Match PDESolns train-subset indexing for mean-baseline fitting."""
+    subsample = int(getattr(params, 'subsample', 1))
+    if subsample < 1:
+        raise ValueError(f"subsample must be >= 1, got {subsample}")
+
+    target_n = int(n_samples / subsample)
+    if target_n <= 0:
+        return np.asarray([], dtype=np.int64)
+
+    random_subset = str(getattr(params, 'random_train_subset', False)).lower() in {'1', 'true', 'yes', 'y', 'on'}
+    if random_subset:
+        subset_seed = getattr(params, 'subset_seed', None)
+        if subset_seed is None:
+            subset_seed = getattr(params, 'seed', 0)
+        rng = np.random.default_rng(int(subset_seed))
+        return np.sort(rng.choice(n_samples, size=target_n, replace=False)).astype(np.int64)
+
+    return (np.arange(target_n, dtype=np.int64) * subsample).astype(np.int64)
+
+
+def _read_target_batch(fields, indices: np.ndarray) -> np.ndarray:
+    """Read target channels from the HDF5 fields dataset."""
+    target_start = fields.shape[1] - 1
+    return fields[indices, target_start:target_start + 1].astype(np.float64)
+
+
+def _compute_train_target_mean(train_path: str, indices: np.ndarray, batch_size: int = 512) -> np.ndarray:
+    """Compute the spatial mean target field over the selected downstream train subset."""
+    if indices.size == 0:
+        raise ValueError(f"No training samples selected for mean baseline from {train_path}")
+
+    with h5py.File(train_path, 'r') as f:
+        fields = f['fields']
+        target_sum = None
+        n_seen = 0
+
+        for start in range(0, indices.size, batch_size):
+            batch_indices = indices[start:start + batch_size]
+            targets = _read_target_batch(fields, batch_indices)
+            batch_sum = np.sum(targets, axis=0)
+            target_sum = batch_sum if target_sum is None else target_sum + batch_sum
+            n_seen += targets.shape[0]
+
+    return target_sum / float(n_seen)
+
+
+def evaluate_mean_baseline(yaml_config: str, config_name: str) -> Dict[str, float]:
+    """Evaluate a constant predictor equal to the downstream train-target mean field."""
+    logging.info('')
+    logging.info('=' * 80)
+    logging.info('Evaluating mean baseline for config %s', config_name)
+    logging.info('=' * 80)
+
+    try:
+        params = YParams(os.path.abspath(yaml_config), config_name)
+        train_path = _resolve_data_path(params.train_path)
+        test_path = _resolve_data_path(params.test_path)
+
+        with h5py.File(train_path, 'r') as f_train:
+            train_n = int(f_train['fields'].shape[0])
+        train_indices = _training_indices(params, train_n)
+        mean_target = _compute_train_target_mean(train_path, train_indices)
+
+        rel_errors = []
+        squared_errors = []
+        with h5py.File(test_path, 'r') as f_test:
+            fields = f_test['fields']
+            n_test = int(fields.shape[0])
+            all_indices = np.arange(n_test, dtype=np.int64)
+
+            for start in range(0, n_test, 512):
+                batch_indices = all_indices[start:start + 512]
+                targets = _read_target_batch(fields, batch_indices)
+                diff = mean_target[None, ...] - targets
+                numerator = np.sum(diff ** 2, axis=(-1, -2))
+                denominator = np.sum(targets ** 2, axis=(-1, -2))
+                rel_errors.append(np.sqrt(numerator / denominator))
+                squared_errors.append(np.mean(diff ** 2, axis=(-1, -2)))
+
+        rel_errors = np.concatenate(rel_errors, axis=0)
+        squared_errors = np.concatenate(squared_errors, axis=0)
+        metrics = {
+            'test_error': float(np.mean(rel_errors)),
+            'test_loss': float(np.mean(squared_errors)),
+            'n_train_mean_samples': int(train_indices.size),
+            'train_path': train_path,
+            'test_path': test_path,
+            'config_name': config_name,
+            'baseline': 'train_target_mean',
+        }
+        logging.info(
+            'Mean baseline results: test_error=%.6f, n_train_mean_samples=%d',
+            metrics['test_error'],
+            metrics['n_train_mean_samples'],
+        )
+        return metrics
+    except Exception as exc:
+        logging.error('Error evaluating mean baseline for %s: %s', config_name, exc)
+        return {
+            'test_error': np.nan,
+            'test_loss': np.nan,
+            'n_train_mean_samples': 0,
+            'config_name': config_name,
+            'baseline': 'train_target_mean',
+        }
+
+
+def evaluate_mean_baseline_series(
+    yaml_config: str,
+    bin_keys: List[str],
+    config_names: Dict[str, str],
+) -> Dict[str, Dict]:
+    """Evaluate the mean baseline across all OOD bins for one sample budget."""
+    return {
+        bin_key: evaluate_mean_baseline(yaml_config, config_names[bin_key])
+        for bin_key in bin_keys
+    }
 
 
 def build_series_plan(experiment_type: str) -> Dict[str, Dict]:
@@ -196,12 +345,12 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
 
     fig, ax = plt.subplots(figsize=(11, 6))
 
-    for series_key in ['mixed_256', 'mixed_4k', 'scratch_256', 'scratch_4k']:
+    for series_key in ['mixed_256', 'mixed_4k', 'scratch_256', 'scratch_4k', *MEAN_BASELINE_ORDER]:
         series_result = results['series'].get(series_key)
         if not series_result:
             continue
 
-        series_style = SERIES_SPECS[series_key]
+        series_style = MEAN_BASELINE_SPECS.get(series_key, SERIES_SPECS.get(series_key))
         points = series_result.get('points', {})
         errors = []
         min_band = []
@@ -291,7 +440,7 @@ def print_results_table(results: Dict, experiment_type: str):
     print(header)
     print('-' * len(header))
 
-    for series_key in ['mixed_256', 'mixed_4k', 'scratch_256', 'scratch_4k']:
+    for series_key in ['mixed_256', 'mixed_4k', 'scratch_256', 'scratch_4k', *MEAN_BASELINE_ORDER]:
         series_result = results['series'].get(series_key)
         if not series_result:
             continue
@@ -391,6 +540,20 @@ def main():
         )
         results['series'][series_key] = {
             'label': plan['label'],
+            'points': points,
+        }
+
+    for baseline_key in MEAN_BASELINE_ORDER:
+        budget_key = MEAN_BASELINE_SPECS[baseline_key]['budget_key']
+        reference_series = f'scratch_{budget_key}'
+        plan = series_plan[reference_series]
+        points = evaluate_mean_baseline_series(
+            yaml_config=yaml_config,
+            bin_keys=experiment_spec['bin_keys'],
+            config_names=plan['config_names'],
+        )
+        results['series'][baseline_key] = {
+            'label': MEAN_BASELINE_SPECS[baseline_key]['label'],
             'points': points,
         }
 

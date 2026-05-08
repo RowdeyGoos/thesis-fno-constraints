@@ -81,19 +81,9 @@ def format_sample_tick(size: int) -> str:
     return str(size)
 
 
-def sample_to_plot_x(size: int, min_positive_size: Optional[int]) -> float:
-    """
-    Map sample sizes to plotting coordinates with explicit log2 spacing.
-
-    Positive sizes use log2(sample_size). Zero-shot gets a dedicated slot to the
-    left of the smallest positive sample, avoiding symlog's nonlinear transition
-    near zero that causes awkward spacing in these transfer-learning plots.
-    """
-    if size > 0:
-        return float(np.log2(size))
-    if min_positive_size is None:
-        return 0.0
-    return float(np.log2(min_positive_size) - 1.5)
+def build_sample_x_map(sample_sizes: List[int]) -> Dict[int, int]:
+    """Map sorted sample sizes to evenly spaced categorical x positions."""
+    return {size: idx for idx, size in enumerate(sample_sizes)}
 
 
 def get_experiment_groups(experiment_type: str, include_mixed: bool = False) -> Dict[str, List[str]]:
@@ -513,8 +503,8 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     data_samples = []
     for model_results in results.values():
         data_samples.extend(model_results.keys())
-    positive_data_samples = [s for s in data_samples if s > 0]
-    min_positive_size = min(positive_data_samples) if positive_data_samples else None
+    data_samples = sorted(set(data_samples))
+    x_map = build_sample_x_map(data_samples)
     
     # Define colors and markers
     colors = {
@@ -559,7 +549,7 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
         # Plot with appropriate style
         facecolors = 'none' if model_type == 'scratch' else colors[model_type]
         
-        x_vals = [sample_to_plot_x(s, min_positive_size) for s in sample_sizes_valid]
+        x_vals = [x_map[s] for s in sample_sizes_valid]
 
         ax.plot(x_vals, errors_valid,
                 marker=markers[model_type],
@@ -574,31 +564,13 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     
     # Formatting
     ax.set_xlabel('Number of downstream examples', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=14, fontweight='bold')
+    ax.set_ylabel(r'Testing error (relative $\ell_2$)', fontsize=14, fontweight='bold')
     ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
     
-    # Set x-ticks to match paper
-    xticks = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
-    xtick_labels = [format_sample_tick(x) for x in xticks]
-    
-    # Filter to only show ticks in data range
     if data_samples:
-        min_sample = min(data_samples)
-        max_sample = max(data_samples)
-        
-        valid_ticks = []
-        for t, label in zip(xticks, xtick_labels):
-            if t == 0 and min_sample == 0:
-                valid_ticks.append((t, label))
-            elif t > 0 and t >= max(min_sample / 2, 1) and t <= max_sample * 2:
-                valid_ticks.append((t, label))
-        
-        if valid_ticks:
-            xticks_filtered, xtick_labels_filtered = zip(*valid_ticks)
-            xtick_positions = [sample_to_plot_x(int(t), min_positive_size) for t in xticks_filtered]
-            ax.set_xticks(xtick_positions)
-            ax.set_xticklabels(xtick_labels_filtered)
-            ax.margins(x=0.05)
+        ax.set_xticks([x_map[s] for s in data_samples])
+        ax.set_xticklabels([format_sample_tick(s) for s in data_samples])
+        ax.margins(x=0.05)
     
     # Add grid
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
@@ -673,31 +645,14 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
         'mixed': 'TL from Mixed Pre-trained',
     }
     
-    # Set x-ticks
-    xticks = [0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
-    xtick_labels = [format_sample_tick(x) for x in xticks]
-    
     # Get data range
     data_samples = []
     for model_results in results.values():
         data_samples.extend(model_results.keys())
-    
-    min_sample = min(data_samples) if data_samples else 16
-    max_sample = max(data_samples) if data_samples else 4096
-    positive_data_samples = [s for s in data_samples if s > 0]
-    min_positive_size = min(positive_data_samples) if positive_data_samples else None
-    
-    valid_ticks = []
-    for t, label in zip(xticks, xtick_labels):
-        if t == 0 and min_sample == 0:
-            valid_ticks.append((t, label))
-        elif t > 0 and t >= max(min_sample / 2, 1) and t <= max_sample * 2:
-            valid_ticks.append((t, label))
-    
-    if valid_ticks:
-        xticks_filtered, xtick_labels_filtered = zip(*valid_ticks)
-    else:
-        xticks_filtered, xtick_labels_filtered = xticks, xtick_labels
+    data_samples = sorted(set(data_samples))
+    x_map = build_sample_x_map(data_samples)
+    xtick_positions = [x_map[s] for s in data_samples]
+    xtick_labels = [format_sample_tick(s) for s in data_samples]
     
     # Plot each model type in its own subplot
     for idx, model_type in enumerate(model_types):
@@ -720,7 +675,7 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
         facecolors = 'none' if model_type == 'scratch' else colors[model_type]
         linestyle = '--' if model_type == 'scratch' else '-'
         
-        x_vals = [sample_to_plot_x(s, min_positive_size) for s in sample_sizes_valid]
+        x_vals = [x_map[s] for s in sample_sizes_valid]
 
         ax.plot(x_vals, errors_valid,
                 marker='o',
@@ -735,11 +690,10 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
         # Formatting
         ax.set_xlabel('Number of downstream examples', fontsize=12, fontweight='bold')
         if idx == 0:
-            ax.set_ylabel('Testing error (relative $\ell_2$)', fontsize=12, fontweight='bold')
+            ax.set_ylabel(r'Testing error (relative $\ell_2$)', fontsize=12, fontweight='bold')
         ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
-        xtick_positions = [sample_to_plot_x(int(t), min_positive_size) for t in xticks_filtered]
         ax.set_xticks(xtick_positions)
-        ax.set_xticklabels(xtick_labels_filtered)
+        ax.set_xticklabels(xtick_labels)
         ax.margins(x=0.05)
         ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
         ax.set_title(titles[model_type], fontsize=13, fontweight='bold', pad=10)
