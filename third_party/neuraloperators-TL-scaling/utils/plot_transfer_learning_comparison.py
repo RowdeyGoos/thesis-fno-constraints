@@ -22,7 +22,6 @@ import argparse
 import json
 import re
 import unicodedata
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
@@ -159,22 +158,9 @@ def _format_sample_tick(size):
     return str(size)
 
 
-def _sample_to_plot_x(size, min_positive_size):
-    """
-    Map sample sizes to a plotting coordinate.
-
-    Positive sample sizes use log2 spacing. Zero-shot gets a dedicated slot placed
-    to the left of the smallest positive sample so it does not rely on symlog's
-    linear threshold region (which causes visually odd spacing).
-    """
-    if size > 0:
-        return float(np.log2(size))
-
-    if min_positive_size is None:
-        return 0.0
-
-    # Place zero-shot 1.5 log2-units to the left of the smallest positive size.
-    return float(np.log2(min_positive_size) - 1.5)
+def _build_sample_x_map(sample_sizes):
+    """Map sorted sample sizes to evenly spaced categorical x positions."""
+    return {size: idx for idx, size in enumerate(sample_sizes)}
 
 
 def _parse_kv_arg(spec, arg_name):
@@ -290,9 +276,7 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
         print("⚠️  No data to plot!")
         return
 
-    positive_sizes = [s for s in all_sizes if s > 0]
-    min_positive_size = min(positive_sizes) if positive_sizes else None
-    x_map = {s: _sample_to_plot_x(s, min_positive_size) for s in all_sizes}
+    x_map = _build_sample_x_map(all_sizes)
 
     # Create figure
     fig_width = max(12, 10 + 1.2 * max(0, len(series_entries) - 3))
