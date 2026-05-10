@@ -52,7 +52,7 @@ mpl.rcParams['font.size'] = 12
 mpl.rcParams['axes.labelsize'] = 14
 mpl.rcParams['axes.titlesize'] = 14
 mpl.rcParams['legend.fontsize'] = 11
-mpl.rcParams['xtick.labelsize'] = 11
+mpl.rcParams['xtick.labelsize'] = 13
 mpl.rcParams['ytick.labelsize'] = 11
 mpl.rcParams['figure.dpi'] = 150
 
@@ -569,7 +569,7 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     
     if data_samples:
         ax.set_xticks([x_map[s] for s in data_samples])
-        ax.set_xticklabels([format_sample_tick(s) for s in data_samples])
+        ax.set_xticklabels([format_sample_tick(s) for s in data_samples], fontsize=13)
         ax.margins(x=0.05)
     
     # Add grid
@@ -693,7 +693,7 @@ def plot_individual_comparison(results: Dict[str, Dict[int, Dict[str, float]]],
             ax.set_ylabel(r'Testing error (relative $\ell_2$)', fontsize=12, fontweight='bold')
         ax.set_yscale('log', base=10)  # Base-10 log scale for better differentiation
         ax.set_xticks(xtick_positions)
-        ax.set_xticklabels(xtick_labels)
+        ax.set_xticklabels(xtick_labels, fontsize=13)
         ax.margins(x=0.05)
         ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
         ax.set_title(titles[model_type], fontsize=13, fontweight='bold', pad=10)

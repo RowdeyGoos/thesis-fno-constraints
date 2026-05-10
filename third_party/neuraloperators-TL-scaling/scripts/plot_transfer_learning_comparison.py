@@ -143,7 +143,7 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     
     xtick_positions = [x_map[s] for s in all_sizes]
     ax.set_xticks(xtick_positions)
-    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes])
+    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=13)
     ax.margins(x=0.05)
     
     # Grid

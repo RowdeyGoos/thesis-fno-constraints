@@ -322,7 +322,7 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
     ax.set_yscale('log', base=10)
     xtick_positions = [x_map[s] for s in all_sizes]
     ax.set_xticks(xtick_positions)
-    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes])
+    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=13)
     ax.margins(x=0.05)
     
     # Grid

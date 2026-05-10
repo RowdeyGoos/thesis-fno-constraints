@@ -33,7 +33,7 @@ mpl.rcParams['font.size'] = 12
 mpl.rcParams['axes.labelsize'] = 14
 mpl.rcParams['axes.titlesize'] = 14
 mpl.rcParams['legend.fontsize'] = 11
-mpl.rcParams['xtick.labelsize'] = 11
+mpl.rcParams['xtick.labelsize'] = 13
 mpl.rcParams['ytick.labelsize'] = 11
 mpl.rcParams['figure.dpi'] = 150
 
@@ -411,7 +411,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
             )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels(experiment_spec['bin_labels'])
+    ax.set_xticklabels(experiment_spec['bin_labels'], fontsize=13)
     ax.set_xlabel(
         f"{experiment_spec['range_axis_label']} (increasing OOD distance)",
         fontsize=13,
