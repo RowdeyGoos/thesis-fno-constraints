@@ -9,6 +9,7 @@ x-axis so the degradation trend is visible in one figure.
 
 import argparse
 import logging
+import math
 import os
 from pathlib import Path
 from typing import Dict, List
@@ -16,6 +17,7 @@ from typing import Dict, List
 import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 
 from eval_transfer_learning import (
@@ -103,6 +105,31 @@ MEAN_BASELINE_SPECS = {
         'budget_key': '4k',
     },
 }
+
+
+def format_log_decade_yaxis(ax):
+    """Show log-scale y-axis labels only at powers of ten."""
+    y_values = []
+    for line in ax.lines:
+        y_values.extend(
+            float(y)
+            for y in line.get_ydata()
+            if np.isfinite(y) and y > 0
+        )
+
+    if not y_values:
+        return
+
+    y_min = 10 ** math.floor(math.log10(min(y_values)))
+    y_max = 10 ** math.ceil(math.log10(max(y_values)))
+    if y_min == y_max:
+        y_max *= 10
+
+    ax.set_ylim(y_min, y_max)
+    ax.yaxis.set_major_locator(mticker.LogLocator(base=10.0, subs=(1.0,)))
+    ax.yaxis.set_major_formatter(mticker.LogFormatterMathtext(base=10.0))
+    ax.yaxis.set_minor_locator(mticker.LogLocator(base=10.0, subs=range(2, 10)))
+    ax.yaxis.set_minor_formatter(mticker.NullFormatter())
 
 
 OOD_EXPERIMENTS = {
@@ -419,6 +446,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     )
     ax.set_ylabel('Test error (relative L2)', fontsize=13, fontweight='bold')
     ax.set_yscale('log', base=10)
+    format_log_decade_yaxis(ax)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
     ax.legend(loc='best', frameon=True, fancybox=True, shadow=True)

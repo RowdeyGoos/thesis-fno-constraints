@@ -27,6 +27,7 @@ from eval_ood_comparison import (
     OOD_EXPERIMENTS,
     evaluate_mean_baseline_series,
     evaluate_series,
+    format_log_decade_yaxis,
 )
 from eval_transfer_learning import get_reported_metric, save_results_json
 
@@ -276,6 +277,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     )
     ax.set_ylabel('Test error (relative L2)', fontsize=13, fontweight='bold')
     ax.set_yscale('log', base=10)
+    format_log_decade_yaxis(ax)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
     ax.legend(loc='best', ncol=2, frameon=True, fancybox=True, shadow=True)

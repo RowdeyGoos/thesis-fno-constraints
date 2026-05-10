@@ -15,9 +15,11 @@ Usage:
 
 import argparse
 import json
+import math
 import re
 import unicodedata
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import seaborn as sns
 from pathlib import Path
 
@@ -88,6 +90,31 @@ def _build_sample_x_map(sample_sizes):
     return {size: idx for idx, size in enumerate(sample_sizes)}
 
 
+def _format_log_decade_yaxis(ax):
+    """Show log-scale y-axis labels only at powers of ten."""
+    y_values = []
+    for line in ax.lines:
+        y_values.extend(
+            float(y)
+            for y in line.get_ydata()
+            if math.isfinite(y) and y > 0
+        )
+
+    if not y_values:
+        return
+
+    y_min = 10 ** math.floor(math.log10(min(y_values)))
+    y_max = 10 ** math.ceil(math.log10(max(y_values)))
+    if y_min == y_max:
+        y_max *= 10
+
+    ax.set_ylim(y_min, y_max)
+    ax.yaxis.set_major_locator(mticker.LogLocator(base=10.0, subs=(1.0,)))
+    ax.yaxis.set_major_formatter(mticker.LogFormatterMathtext(base=10.0))
+    ax.yaxis.set_minor_locator(mticker.LogLocator(base=10.0, subs=range(2, 10)))
+    ax.yaxis.set_minor_formatter(mticker.NullFormatter())
+
+
 def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, title="Transfer Learning Comparison"):
     """Generate comparison plot"""
     
@@ -140,6 +167,8 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     ax.set_xlabel('Number of Downstream Training Samples', fontsize=14, fontweight='bold')
     ax.set_ylabel('Test Error (Relative L2)', fontsize=14, fontweight='bold')
     ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+    ax.set_yscale('log', base=10)
+    _format_log_decade_yaxis(ax)
     
     xtick_positions = [x_map[s] for s in all_sizes]
     ax.set_xticks(xtick_positions)
