@@ -117,7 +117,7 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     colors = {'mixed': '#2ecc71', 'k1_5': '#3498db', 'scratch': '#e74c3c'}
     labels = {
         'mixed': 'Mixed pretrain',
-        'k1_5': 'Single-domain pretrain',
+        'k1_5': 'Equation-specific pretrain',
         'scratch': 'Scratch'
     }
     

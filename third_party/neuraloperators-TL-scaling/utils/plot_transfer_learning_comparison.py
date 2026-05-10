@@ -36,7 +36,7 @@ SERIES_STYLES = {
     'k1_5': {
         'color': '#2563eb',
         'marker': 's',
-        'label': 'Single-domain pretrain',
+        'label': 'Equation-specific pretrain',
     },
     'scratch': {
         'color': '#dc2626',

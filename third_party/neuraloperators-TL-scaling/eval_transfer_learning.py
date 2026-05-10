@@ -521,7 +521,7 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     
     labels = {
         'scratch': 'Scratch',
-        'finetune': 'Single-domain pretrain',
+        'finetune': 'Equation-specific pretrain',
         'mixed': 'Mixed pretrain',
     }
     
