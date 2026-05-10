@@ -55,6 +55,7 @@ SERIES_ORDER = [
 SERIES_SPECS = {
     'mixed_256': {
         'label': 'Mixed baseline (256)',
+        'legend_label': 'Mixed pretrain 256',
         'color': '#0f766e',
         'marker': 'o',
         'linestyle': '--',
@@ -64,6 +65,7 @@ SERIES_SPECS = {
     },
     'mixed_4k': {
         'label': 'Mixed baseline (4K)',
+        'legend_label': 'Mixed pretrain 4K',
         'color': '#0f766e',
         'marker': 's',
         'linestyle': '-',
@@ -73,6 +75,7 @@ SERIES_SPECS = {
     },
     'mixed_zero_hard_256': {
         'label': 'Mixed + zero-hard (256)',
+        'legend_label': 'Zero-mode hard 256',
         'color': '#1d4ed8',
         'marker': 'o',
         'linestyle': '--',
@@ -82,6 +85,7 @@ SERIES_SPECS = {
     },
     'mixed_zero_hard_4k': {
         'label': 'Mixed + zero-hard (4K)',
+        'legend_label': 'Zero-mode hard 4K',
         'color': '#1d4ed8',
         'marker': 's',
         'linestyle': '-',
@@ -91,6 +95,7 @@ SERIES_SPECS = {
     },
     'mixed_zero_soft_256': {
         'label': 'Mixed + zero-soft (256)',
+        'legend_label': 'Zero-mode soft 256',
         'color': '#d97706',
         'marker': 'o',
         'linestyle': '--',
@@ -100,6 +105,7 @@ SERIES_SPECS = {
     },
     'mixed_zero_soft_4k': {
         'label': 'Mixed + zero-soft (4K)',
+        'legend_label': 'Zero-mode soft 4K',
         'color': '#d97706',
         'marker': 's',
         'linestyle': '-',
@@ -109,6 +115,7 @@ SERIES_SPECS = {
     },
     'mixed_penalty_pde_256': {
         'label': 'Mixed + PDE penalty (256)',
+        'legend_label': 'PDE penalty 256',
         'color': '#7c3aed',
         'marker': 'o',
         'linestyle': '--',
@@ -118,6 +125,7 @@ SERIES_SPECS = {
     },
     'mixed_penalty_pde_4k': {
         'label': 'Mixed + PDE penalty (4K)',
+        'legend_label': 'PDE penalty 4K',
         'color': '#7c3aed',
         'marker': 's',
         'linestyle': '-',
@@ -243,7 +251,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
             markersize=7.5,
             linestyle=style['linestyle'],
             linewidth=2.1,
-            label=style['label'],
+            label=style.get('legend_label', style['label']),
         )
 
         min_arr = np.asarray(min_band, dtype=float)

@@ -41,6 +41,7 @@ mpl.rcParams['figure.dpi'] = 150
 SERIES_SPECS = {
     'mixed_256': {
         'label': 'Mixed pre-trained (256 samples)',
+        'legend_label': 'Mixed pretrain 256',
         'color': '#0f766e',
         'marker': 'o',
         'linestyle': '-',
@@ -50,6 +51,7 @@ SERIES_SPECS = {
     },
     'mixed_4k': {
         'label': 'Mixed pre-trained (4K samples)',
+        'legend_label': 'Mixed pretrain 4K',
         'color': '#115e59',
         'marker': 's',
         'linestyle': '-',
@@ -59,6 +61,7 @@ SERIES_SPECS = {
     },
     'scratch_256': {
         'label': 'Scratch (256 samples)',
+        'legend_label': 'Scratch 256',
         'color': '#dc2626',
         'marker': 'o',
         'linestyle': '--',
@@ -68,6 +71,7 @@ SERIES_SPECS = {
     },
     'scratch_4k': {
         'label': 'Scratch (4K samples)',
+        'legend_label': 'Scratch 4K',
         'color': '#991b1b',
         'marker': 's',
         'linestyle': '--',
@@ -84,6 +88,7 @@ MEAN_BASELINE_ORDER = ['mean_256', 'mean_4k']
 MEAN_BASELINE_SPECS = {
     'mean_256': {
         'label': 'Mean baseline (256 samples)',
+        'legend_label': 'Mean baseline 256',
         'color': '#6b7280',
         'marker': 'D',
         'linestyle': ':',
@@ -91,6 +96,7 @@ MEAN_BASELINE_SPECS = {
     },
     'mean_4k': {
         'label': 'Mean baseline (4K samples)',
+        'legend_label': 'Mean baseline 4K',
         'color': '#111827',
         'marker': 'D',
         'linestyle': ':',
@@ -388,7 +394,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
             markersize=8,
             linestyle=series_style['linestyle'],
             linewidth=2.3,
-            label=series_style['label'],
+            label=series_style.get('legend_label', series_style['label']),
         )
 
         min_arr = np.asarray(min_band, dtype=float)

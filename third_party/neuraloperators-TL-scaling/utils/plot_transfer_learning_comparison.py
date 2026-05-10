@@ -31,52 +31,52 @@ SERIES_STYLES = {
     'mixed': {
         'color': '#0f766e',
         'marker': 'o',
-        'label': 'Fine-tuned (Mixed Baseline)',
+        'label': 'Mixed pretrain',
     },
     'k1_5': {
         'color': '#2563eb',
         'marker': 's',
-        'label': 'Fine-tuned (Single-Domain Pretraining)',
+        'label': 'Single-domain pretrain',
     },
     'scratch': {
         'color': '#dc2626',
         'marker': '^',
-        'label': 'Trained from Scratch',
+        'label': 'Scratch',
     },
     'mixed-zero-hard': {
         'color': '#1d4ed8',
         'marker': 's',
-        'label': 'Mixed + Zero-Hard Constraint',
+        'label': 'Zero-mode hard',
     },
     'mixed-zero-soft': {
         'color': '#d97706',
         'marker': 'D',
-        'label': 'Mixed + Zero-Soft Constraint',
+        'label': 'Zero-mode soft',
     },
     'mixed-penalty-pde': {
         'color': '#7c3aed',
         'marker': '^',
-        'label': 'Mixed + PDE Penalty',
+        'label': 'PDE penalty',
     },
     'mixed-bc-off': {
         'color': '#0f766e',
         'marker': 'o',
-        'label': 'Mixed BC Baseline',
+        'label': 'BC baseline',
     },
     'mixed-bc-soft': {
         'color': '#d97706',
         'marker': 'D',
-        'label': 'Mixed + BC Soft Constraint',
+        'label': 'BC soft',
     },
     'mixed-bc-hard': {
         'color': '#1d4ed8',
         'marker': 's',
-        'label': 'Mixed + BC Hard Constraint',
+        'label': 'BC hard',
     },
     'mixed-bc-hard-soft': {
         'color': '#7c3aed',
         'marker': '^',
-        'label': 'Mixed + BC Hard+Soft Constraint',
+        'label': 'BC hard+soft',
     },
 }
 

@@ -520,9 +520,9 @@ def plot_transfer_learning_curve(results: Dict[str, Dict[int, Dict[str, float]]]
     }
     
     labels = {
-        'scratch': 'Training from Scratch',
-        'finetune': 'TL from Pre-trained',
-        'mixed': 'TL from Mixed Pre-trained',
+        'scratch': 'Scratch',
+        'finetune': 'Single-domain pretrain',
+        'mixed': 'Mixed pretrain',
     }
     
     linestyles = {

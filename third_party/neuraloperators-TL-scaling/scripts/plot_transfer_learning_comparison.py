@@ -116,9 +116,9 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     markers = {'mixed': 'o', 'k1_5': 's', 'scratch': '^'}
     colors = {'mixed': '#2ecc71', 'k1_5': '#3498db', 'scratch': '#e74c3c'}
     labels = {
-        'mixed': 'Fine-tuned (Mixed-Domain Pretraining)',
-        'k1_5': 'Fine-tuned (Poisson k∈[1,5] Pretraining)',
-        'scratch': 'Trained from Scratch'
+        'mixed': 'Mixed pretrain',
+        'k1_5': 'Single-domain pretrain',
+        'scratch': 'Scratch'
     }
     
     for errors_dict, key in [(mixed_errors, 'mixed'), (k1_5_errors, 'k1_5'), (scratch_errors, 'scratch')]:
