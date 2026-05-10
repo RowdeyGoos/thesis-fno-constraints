@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """
-Regenerate transfer-learning comparison plots from saved evaluation JSON files.
+Regenerate transfer-learning and OOD plots from saved evaluation JSON files.
 
 This script does not evaluate checkpoints. It only reads existing
-``*_results.json`` files and calls ``utils/plot_transfer_learning_comparison.py``.
+``*_results.json`` files and calls the relevant plotting functions.
 
 Examples:
     python scripts/utils/replot_transfer_learning_plots.py
     python scripts/utils/replot_transfer_learning_plots.py helmholtz
     python scripts/utils/replot_transfer_learning_plots.py constraints-poisson --strict
+    python scripts/utils/replot_transfer_learning_plots.py ood
+    python scripts/utils/replot_transfer_learning_plots.py ood-constraints-poisson
     python scripts/utils/replot_transfer_learning_plots.py --list
 """
 
 import argparse
 import importlib.util
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple, Union
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +40,18 @@ class PlotPreset:
     series: Tuple[SeriesSpec, ...]
 
 
-PRESETS: Dict[str, PlotPreset] = {
+@dataclass(frozen=True)
+class OodPlotPreset:
+    name: str
+    description: str
+    experiment_type: str
+    output_subdir: str
+    output_stem: str
+    results_filename: str
+    module_name: str
+
+
+TRANSFER_PRESETS: Dict[str, PlotPreset] = {
     "poisson": PlotPreset(
         name="poisson",
         description="Poisson k in [1,2.5] baseline transfer comparison",
@@ -116,12 +130,91 @@ PRESETS: Dict[str, PlotPreset] = {
 }
 
 
+OOD_PRESETS: Dict[str, OodPlotPreset] = {
+    "ood-poisson": OodPlotPreset(
+        name="ood-poisson",
+        description="Poisson OOD degradation comparison",
+        experiment_type="poisson",
+        output_subdir="ood_poisson",
+        output_stem="poisson_ood_comparison",
+        results_filename="poisson_ood_results.json",
+        module_name="eval_ood_comparison",
+    ),
+    "ood-advdiff": OodPlotPreset(
+        name="ood-advdiff",
+        description="Advection-Diffusion OOD degradation comparison",
+        experiment_type="advdiff",
+        output_subdir="ood_advdiff",
+        output_stem="advdiff_ood_comparison",
+        results_filename="advdiff_ood_results.json",
+        module_name="eval_ood_comparison",
+    ),
+    "ood-helmholtz": OodPlotPreset(
+        name="ood-helmholtz",
+        description="Helmholtz OOD degradation comparison",
+        experiment_type="helmholtz",
+        output_subdir="ood_helmholtz",
+        output_stem="helmholtz_ood_comparison",
+        results_filename="helmholtz_ood_results.json",
+        module_name="eval_ood_comparison",
+    ),
+    "ood-constraints-poisson": OodPlotPreset(
+        name="ood-constraints-poisson",
+        description="Poisson OOD constraint comparison",
+        experiment_type="poisson",
+        output_subdir="ood_constraints_poisson",
+        output_stem="poisson_ood_constraints_comparison",
+        results_filename="poisson_ood_constraints_results.json",
+        module_name="eval_ood_constraint_comparison",
+    ),
+    "ood-constraints-advdiff": OodPlotPreset(
+        name="ood-constraints-advdiff",
+        description="Advection-Diffusion OOD constraint comparison",
+        experiment_type="advdiff",
+        output_subdir="ood_constraints_advdiff",
+        output_stem="advdiff_ood_constraints_comparison",
+        results_filename="advdiff_ood_constraints_results.json",
+        module_name="eval_ood_constraint_comparison",
+    ),
+    "ood-constraints-helmholtz": OodPlotPreset(
+        name="ood-constraints-helmholtz",
+        description="Helmholtz OOD constraint comparison",
+        experiment_type="helmholtz",
+        output_subdir="ood_constraints_helmholtz",
+        output_stem="helmholtz_ood_constraints_comparison",
+        results_filename="helmholtz_ood_constraints_results.json",
+        module_name="eval_ood_constraint_comparison",
+    ),
+}
+
+
+PRESETS: Dict[str, Union[PlotPreset, OodPlotPreset]] = {
+    **TRANSFER_PRESETS,
+    **OOD_PRESETS,
+}
+
+
 ALIASES = {
     "all": tuple(PRESETS),
+    "transfer": tuple(TRANSFER_PRESETS),
     "baseline": ("poisson", "advdiff", "helmholtz"),
     "baselines": ("poisson", "advdiff", "helmholtz"),
     "constraints": ("constraints-poisson", "constraints-advdiff", "constraints-helmholtz"),
+    "ood": tuple(OOD_PRESETS),
+    "ood-baseline": ("ood-poisson", "ood-advdiff", "ood-helmholtz"),
+    "ood-baselines": ("ood-poisson", "ood-advdiff", "ood-helmholtz"),
+    "ood-constraints": (
+        "ood-constraints-poisson",
+        "ood-constraints-advdiff",
+        "ood-constraints-helmholtz",
+    ),
 }
+
+
+def ensure_repo_on_path() -> None:
+    repo_root = str(REPO_ROOT)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
 
 
 def load_plotter():
@@ -132,6 +225,12 @@ def load_plotter():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_ood_plotter(module_name: str):
+    """Load an OOD plotting module lazily so --list and --dry-run need no plotting deps."""
+    ensure_repo_on_path()
+    return __import__(module_name)
 
 
 def list_presets() -> None:
@@ -173,9 +272,17 @@ def resolve_requested_plots(requested: Sequence[str]) -> List[str]:
     return deduped
 
 
+def is_ood_preset(preset: Union[PlotPreset, OodPlotPreset]) -> bool:
+    return isinstance(preset, OodPlotPreset)
+
+
 def result_paths(preset: PlotPreset, results_root: Path) -> List[Path]:
     base_dir = results_root / preset.output_subdir
     return [base_dir / series_dir / filename for _, series_dir, filename in preset.series]
+
+
+def ood_result_paths(preset: OodPlotPreset, results_root: Path) -> List[Path]:
+    return [results_root / preset.output_subdir / preset.results_filename]
 
 
 def build_series_specs(preset: PlotPreset, results_root: Path, plotter) -> List[Dict[str, str]]:
@@ -190,23 +297,43 @@ def build_series_specs(preset: PlotPreset, results_root: Path, plotter) -> List[
     ]
 
 
-def missing_result_paths(preset: PlotPreset, results_root: Path) -> List[Path]:
+def missing_result_paths(preset: Union[PlotPreset, OodPlotPreset], results_root: Path) -> List[Path]:
+    if is_ood_preset(preset):
+        return [path for path in ood_result_paths(preset, results_root) if not path.exists()]
     return [path for path in result_paths(preset, results_root) if not path.exists()]
 
 
 def print_plan(plot_names: Iterable[str], results_root: Path, output_root: Path) -> None:
     for name in plot_names:
         preset = PRESETS[name]
-        output_dir = output_root / preset.output_subdir
-        output_path = output_dir / f"{preset.output_name}.png"
         print(f"\n{name}:")
-        print(f"  output: {output_path}")
-        for path in result_paths(preset, results_root):
+        output_dir = output_root / preset.output_subdir
+        if is_ood_preset(preset):
+            output_paths = [
+                output_dir / f"{preset.output_stem}.png",
+                output_dir / f"{preset.output_stem}.pdf",
+            ]
+            paths = ood_result_paths(preset, results_root)
+        else:
+            output_paths = [
+                output_dir / f"{preset.output_name}.png",
+                output_dir / f"{preset.output_name}.pdf",
+            ]
+            paths = result_paths(preset, results_root)
+
+        for output_path in output_paths:
+            print(f"  output: {output_path}")
+        for path in paths:
             status = "found" if path.exists() else "missing"
             print(f"  {status}: {path}")
 
 
-def replot_preset(preset: PlotPreset, results_root: Path, output_root: Path, strict: bool) -> bool:
+def replot_transfer_preset(
+    preset: PlotPreset,
+    results_root: Path,
+    output_root: Path,
+    strict: bool,
+) -> bool:
     missing = missing_result_paths(preset, results_root)
     if missing:
         print(f"\nSkipping {preset.name}: missing saved result JSON file(s)")
@@ -230,14 +357,56 @@ def replot_preset(preset: PlotPreset, results_root: Path, output_root: Path, str
     return True
 
 
+def replot_ood_preset(
+    preset: OodPlotPreset,
+    results_root: Path,
+    output_root: Path,
+    strict: bool,
+) -> bool:
+    missing = missing_result_paths(preset, results_root)
+    if missing:
+        print(f"\nSkipping {preset.name}: missing saved result JSON file(s)")
+        for path in missing:
+            print(f"  missing: {path}")
+        if strict:
+            raise FileNotFoundError(f"Missing inputs for {preset.name}")
+        return False
+
+    input_path = ood_result_paths(preset, results_root)[0]
+    output_dir = output_root / preset.output_subdir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(input_path, "r") as f:
+        results = json.load(f)
+
+    plotter = load_ood_plotter(preset.module_name)
+    print(f"\nRegenerating {preset.name} from {input_path}")
+    for suffix in ("png", "pdf"):
+        output_path = output_dir / f"{preset.output_stem}.{suffix}"
+        plotter.plot_ood_degradation(results, preset.experiment_type, str(output_path))
+        print(f"  saved: {output_path}")
+    return True
+
+
+def replot_preset(
+    preset: Union[PlotPreset, OodPlotPreset],
+    results_root: Path,
+    output_root: Path,
+    strict: bool,
+) -> bool:
+    if is_ood_preset(preset):
+        return replot_ood_preset(preset, results_root, output_root, strict)
+    return replot_transfer_preset(preset, results_root, output_root, strict)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Regenerate transfer-learning plots from saved result JSONs."
+        description="Regenerate transfer-learning and OOD plots from saved result JSONs."
     )
     parser.add_argument(
         "plots",
         nargs="*",
-        help="Plot preset(s) to regenerate. Use 'all', 'baseline', or 'constraints' for groups.",
+        help="Plot preset(s) to regenerate. Use 'all', 'transfer', 'ood', or group aliases.",
     )
     parser.add_argument(
         "--results-root",
