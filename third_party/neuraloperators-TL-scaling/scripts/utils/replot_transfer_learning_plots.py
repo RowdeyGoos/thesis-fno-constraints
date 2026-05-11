@@ -49,6 +49,7 @@ class OodPlotPreset:
     output_stem: str
     results_filename: str
     module_name: str
+    separate_budget_plots: bool = False
 
 
 TRANSFER_PRESETS: Dict[str, PlotPreset] = {
@@ -166,6 +167,7 @@ OOD_PRESETS: Dict[str, OodPlotPreset] = {
         output_stem="poisson_ood_constraints_comparison",
         results_filename="poisson_ood_constraints_results.json",
         module_name="eval_ood_constraint_comparison",
+        separate_budget_plots=True,
     ),
     "ood-constraints-advdiff": OodPlotPreset(
         name="ood-constraints-advdiff",
@@ -175,6 +177,7 @@ OOD_PRESETS: Dict[str, OodPlotPreset] = {
         output_stem="advdiff_ood_constraints_comparison",
         results_filename="advdiff_ood_constraints_results.json",
         module_name="eval_ood_constraint_comparison",
+        separate_budget_plots=True,
     ),
     "ood-constraints-helmholtz": OodPlotPreset(
         name="ood-constraints-helmholtz",
@@ -184,6 +187,7 @@ OOD_PRESETS: Dict[str, OodPlotPreset] = {
         output_stem="helmholtz_ood_constraints_comparison",
         results_filename="helmholtz_ood_constraints_results.json",
         module_name="eval_ood_constraint_comparison",
+        separate_budget_plots=True,
     ),
 }
 
@@ -309,10 +313,17 @@ def print_plan(plot_names: Iterable[str], results_root: Path, output_root: Path)
         print(f"\n{name}:")
         output_dir = output_root / preset.output_subdir
         if is_ood_preset(preset):
-            output_paths = [
-                output_dir / f"{preset.output_stem}.png",
-                output_dir / f"{preset.output_stem}.pdf",
-            ]
+            if preset.separate_budget_plots:
+                output_paths = [
+                    output_dir / f"{preset.output_stem}_{budget}.{extension}"
+                    for budget in ('256', '4k')
+                    for extension in ('png', 'pdf')
+                ]
+            else:
+                output_paths = [
+                    output_dir / f"{preset.output_stem}.png",
+                    output_dir / f"{preset.output_stem}.pdf",
+                ]
             paths = ood_result_paths(preset, results_root)
         else:
             output_paths = [
@@ -381,10 +392,15 @@ def replot_ood_preset(
 
     plotter = load_ood_plotter(preset.module_name)
     print(f"\nRegenerating {preset.name} from {input_path}")
-    for suffix in ("png", "pdf"):
-        output_path = output_dir / f"{preset.output_stem}.{suffix}"
-        plotter.plot_ood_degradation(results, preset.experiment_type, str(output_path))
-        print(f"  saved: {output_path}")
+    if preset.separate_budget_plots:
+        saved_paths = plotter.plot_budget_ood_degradation(results, preset.experiment_type, output_dir)
+        for output_path in saved_paths:
+            print(f"  saved: {output_path}")
+    else:
+        for suffix in ("png", "pdf"):
+            output_path = output_dir / f"{preset.output_stem}.{suffix}"
+            plotter.plot_ood_degradation(results, preset.experiment_type, str(output_path))
+            print(f"  saved: {output_path}")
     return True
 
 

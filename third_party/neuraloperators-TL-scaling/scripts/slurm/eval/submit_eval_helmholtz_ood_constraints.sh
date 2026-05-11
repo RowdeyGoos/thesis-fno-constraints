@@ -68,8 +68,10 @@ if [ $status -eq 0 ]; then
     echo ""
     echo "Results saved to: $OUTPUT_DIR/"
     echo "  - JSON:             $OUTPUT_DIR/helmholtz_ood_constraints_results.json"
-    echo "  - Comparison plot:  $OUTPUT_DIR/helmholtz_ood_constraints_comparison.png"
-    echo "  - PDF plot:         $OUTPUT_DIR/helmholtz_ood_constraints_comparison.pdf"
+    echo "  - 256 plot PNG:     $OUTPUT_DIR/helmholtz_ood_constraints_comparison_256.png"
+    echo "  - 256 plot PDF:     $OUTPUT_DIR/helmholtz_ood_constraints_comparison_256.pdf"
+    echo "  - 4K plot PNG:      $OUTPUT_DIR/helmholtz_ood_constraints_comparison_4k.png"
+    echo "  - 4K plot PDF:      $OUTPUT_DIR/helmholtz_ood_constraints_comparison_4k.pdf"
 else
     echo "Evaluation FAILED with exit code $status"
 fi

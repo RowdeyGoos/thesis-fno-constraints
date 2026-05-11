@@ -53,6 +53,36 @@ SERIES_ORDER = [
 ]
 
 
+BUDGET_SERIES_ORDER = {
+    '256': [
+        'mixed_256',
+        'mixed_zero_hard_256',
+        'mixed_zero_soft_256',
+        'mixed_penalty_pde_256',
+        'mean_256',
+    ],
+    '4k': [
+        'mixed_4k',
+        'mixed_zero_hard_4k',
+        'mixed_zero_soft_4k',
+        'mixed_penalty_pde_4k',
+        'mean_4k',
+    ],
+}
+
+
+BUDGET_OUTPUT_SUFFIXES = {
+    '256': '256',
+    '4k': '4k',
+}
+
+
+BUDGET_TITLES = {
+    '256': '256 samples',
+    '4k': '4K samples',
+}
+
+
 SERIES_SPECS = {
     'mixed_256': {
         'label': 'Mixed baseline (256)',
@@ -201,16 +231,24 @@ def build_series_plan(experiment_type: str) -> Dict[str, Dict]:
     return plan
 
 
-def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
+def _legend_label_without_budget(label: str, budget_key: str) -> str:
+    suffix = ' 4K' if budget_key == '4k' else f' {budget_key}'
+    if label.endswith(suffix):
+        return label[:-len(suffix)]
+    return label
+
+
+def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, budget_key: str = None):
     """Plot constraint-aware OOD degradation curves against the OOD bins."""
     experiment_spec = OOD_EXPERIMENTS[experiment_type]
     output_spec = OUTPUT_METADATA[experiment_type]
     bin_keys = experiment_spec['bin_keys']
     x_positions = np.arange(len(bin_keys), dtype=float)
 
-    fig, ax = plt.subplots(figsize=(12, 6.5))
+    series_order = BUDGET_SERIES_ORDER.get(budget_key, [*SERIES_ORDER, *MEAN_BASELINE_ORDER])
+    fig, ax = plt.subplots(figsize=(11, 6.5))
 
-    for series_key in [*SERIES_ORDER, *MEAN_BASELINE_ORDER]:
+    for series_key in series_order:
         series_result = results['series'].get(series_key)
         if not series_result:
             continue
@@ -252,7 +290,10 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
             markersize=7.5,
             linestyle=style['linestyle'],
             linewidth=2.1,
-            label=style.get('legend_label', style['label']),
+            label=_legend_label_without_budget(
+                style.get('legend_label', style['label']),
+                budget_key,
+            ) if budget_key else style.get('legend_label', style['label']),
         )
 
         min_arr = np.asarray(min_band, dtype=float)
@@ -280,9 +321,12 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     format_log_decade_yaxis(ax)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.legend(loc='best', ncol=2, frameon=True, fancybox=True, shadow=True)
+    ax.legend(loc='best', frameon=True, fancybox=True, shadow=True)
+    title = output_spec['title']
+    if budget_key:
+        title += f" ({BUDGET_TITLES[budget_key]})"
     ax.set_title(
-        f"{output_spec['title']}\n{experiment_spec['subtitle']}",
+        f"{title}\n{experiment_spec['subtitle']}",
         fontsize=14,
         fontweight='bold',
         pad=18,
@@ -292,6 +336,18 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     logging.info('OOD constraint comparison plot saved to: %s', output_path)
     plt.close()
+
+
+def plot_budget_ood_degradation(results: Dict, experiment_type: str, output_dir: Path):
+    """Save separate 256-sample and 4K-sample OOD constraint plots."""
+    output_spec = OUTPUT_METADATA[experiment_type]
+    saved_paths = []
+    for budget_key, suffix in BUDGET_OUTPUT_SUFFIXES.items():
+        for extension in ('png', 'pdf'):
+            output_path = output_dir / f"{output_spec['output_stem']}_{suffix}.{extension}"
+            plot_ood_degradation(results, experiment_type, str(output_path), budget_key=budget_key)
+            saved_paths.append(output_path)
+    return saved_paths
 
 
 def print_results_table(results: Dict, experiment_type: str):
@@ -423,18 +479,14 @@ def main():
     save_results_json(results, str(results_path))
     print_results_table(results, args.experiment_type)
 
-    plot_path_png = output_dir / f"{output_spec['output_stem']}.png"
-    plot_ood_degradation(results, args.experiment_type, str(plot_path_png))
-
-    plot_path_pdf = output_dir / f"{output_spec['output_stem']}.pdf"
-    plot_ood_degradation(results, args.experiment_type, str(plot_path_pdf))
+    plot_paths = plot_budget_ood_degradation(results, args.experiment_type, output_dir)
 
     logging.info('')
     logging.info('=' * 80)
     logging.info('OOD constraint evaluation complete')
     logging.info('Results JSON: %s', results_path)
-    logging.info('Plot PNG: %s', plot_path_png)
-    logging.info('Plot PDF: %s', plot_path_pdf)
+    for plot_path in plot_paths:
+        logging.info('Plot: %s', plot_path)
     logging.info('=' * 80)
 
 
