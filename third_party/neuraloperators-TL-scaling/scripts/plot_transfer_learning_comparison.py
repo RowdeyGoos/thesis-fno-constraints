@@ -181,7 +181,7 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
     ax.set_axisbelow(True)
     
     # Legend
-    ax.legend(loc='best', fontsize=12, frameon=True, shadow=True, fancybox=True)
+    ax.legend(loc='best', fontsize=15, frameon=True, shadow=True, fancybox=True)
     
     # Tight layout
     plt.tight_layout()
