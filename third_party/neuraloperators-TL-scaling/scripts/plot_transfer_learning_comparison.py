@@ -164,15 +164,16 @@ def plot_comparison(mixed_errors, k1_5_errors, scratch_errors, output_path, titl
                    alpha=0.9)
     
     # Formatting
-    ax.set_xlabel('Number of Downstream Training Samples', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Test Error (Relative L2)', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Number of Downstream Training Samples', fontsize=18, fontweight='bold')
+    ax.set_ylabel('Test Error (Relative L2)', fontsize=18, fontweight='bold')
     ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
     ax.set_yscale('log', base=10)
     _format_log_decade_yaxis(ax)
     
     xtick_positions = [x_map[s] for s in all_sizes]
     ax.set_xticks(xtick_positions)
-    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=13)
+    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=15)
+    ax.tick_params(axis='y', labelsize=15)
     ax.margins(x=0.05)
     
     # Grid
