@@ -342,9 +342,9 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
                 )
 
     # Formatting
-    ax.set_xlabel('Number of Downstream Training Samples', fontsize=18, fontweight='bold')
-    ax.set_ylabel('Test Error (Relative L2)', fontsize=18, fontweight='bold')
-    ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+    ax.set_xlabel('Number of Downstream Training Samples', fontsize=22, fontweight='bold')
+    ax.set_ylabel('Test Error (Relative L2)', fontsize=22, fontweight='bold')
+    ax.set_title(title, fontsize=22, fontweight='bold', pad=20)
     
     ax.set_yscale('log', base=10)
     _format_log_decade_yaxis(ax)
@@ -360,7 +360,7 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
     
     # Legend
     legend_cols = 1 if len(series_entries) <= 4 else 2
-    ax.legend(loc='best', fontsize=15, frameon=True, shadow=True, fancybox=True, ncol=legend_cols)
+    ax.legend(loc='best', fontsize=18, frameon=True, shadow=True, fancybox=True, ncol=legend_cols)
 
     # Tight layout
     plt.tight_layout()
