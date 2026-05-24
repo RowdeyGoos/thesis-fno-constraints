@@ -33,6 +33,8 @@ from typing import Dict, Iterable, List, Sequence, Tuple, Union
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLOTTER_PATH = REPO_ROOT / "scripts" / "eval" / "plot_transfer_learning_comparison.py"
 ENTRYPOINTS_DIR = REPO_ROOT / "scripts" / "entrypoints"
+DEFAULT_RESULTS_ROOT = Path("results")
+LEGACY_RESULTS_ROOT = Path("third_party/neuraloperators-TL-scaling/results")
 
 
 SeriesSpec = Tuple[str, str, str]
@@ -316,11 +318,40 @@ def missing_result_paths(preset: Union[PlotPreset, OodPlotPreset], results_root:
     return [path for path in result_paths(preset, results_root) if not path.exists()]
 
 
-def print_plan(plot_names: Iterable[str], results_root: Path, output_root: Path) -> None:
+def any_result_paths_exist(preset: Union[PlotPreset, OodPlotPreset], results_root: Path) -> bool:
+    if is_ood_preset(preset):
+        return any(path.exists() for path in ood_result_paths(preset, results_root))
+    return any(path.exists() for path in result_paths(preset, results_root))
+
+
+def resolve_results_root(
+    preset: Union[PlotPreset, OodPlotPreset],
+    candidate_roots: Sequence[Path],
+) -> Path:
+    """Choose the best results root for a preset, including the pre-flatten cluster path."""
+    for root in candidate_roots:
+        if not missing_result_paths(preset, root):
+            return root
+
+    for root in candidate_roots:
+        if any_result_paths_exist(preset, root):
+            return root
+
+    return candidate_roots[0]
+
+
+def print_plan(
+    plot_names: Iterable[str],
+    candidate_roots: Sequence[Path],
+    output_root: Union[Path, None],
+) -> None:
     for name in plot_names:
         preset = PRESETS[name]
+        results_root = resolve_results_root(preset, candidate_roots)
+        preset_output_root = output_root or results_root
         print(f"\n{name}:")
-        output_dir = output_root / preset.output_subdir
+        print(f"  results root: {results_root}")
+        output_dir = preset_output_root / preset.output_subdir
         if is_ood_preset(preset):
             output_paths = [
                 output_dir / f"{preset.output_stem}.png",
@@ -432,8 +463,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--results-root",
         type=Path,
-        default=Path("results"),
-        help="Root directory containing saved result subdirectories.",
+        default=None,
+        help=(
+            "Root directory containing saved result subdirectories. "
+            "Defaults to results/, with fallback to "
+            "third_party/neuraloperators-TL-scaling/results/."
+        ),
     )
     parser.add_argument(
         "--output-root",
@@ -472,17 +507,26 @@ def main() -> int:
         print(exc, file=sys.stderr)
         return 2
 
-    results_root = args.results_root
-    output_root = args.output_root or results_root
+    candidate_roots = (
+        [args.results_root]
+        if args.results_root is not None
+        else [DEFAULT_RESULTS_ROOT, LEGACY_RESULTS_ROOT]
+    )
+    output_root = args.output_root
 
     if args.dry_run:
-        print_plan(plot_names, results_root, output_root)
+        print_plan(plot_names, candidate_roots, output_root)
         return 0
 
     generated = 0
     try:
         for name in plot_names:
-            if replot_preset(PRESETS[name], results_root, output_root, args.strict):
+            preset = PRESETS[name]
+            results_root = resolve_results_root(preset, candidate_roots)
+            preset_output_root = output_root or results_root
+            if results_root == LEGACY_RESULTS_ROOT:
+                print(f"\nUsing legacy results root for {name}: {results_root}")
+            if replot_preset(preset, results_root, preset_output_root, args.strict):
                 generated += 1
     except FileNotFoundError as exc:
         print(exc, file=sys.stderr)
