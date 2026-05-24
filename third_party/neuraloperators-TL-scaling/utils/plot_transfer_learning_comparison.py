@@ -350,8 +350,8 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
     _format_log_decade_yaxis(ax)
     xtick_positions = [x_map[s] for s in all_sizes]
     ax.set_xticks(xtick_positions)
-    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=18)
-    ax.tick_params(axis='y', labelsize=18)
+    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=22)
+    ax.tick_params(axis='y', labelsize=22)
     ax.margins(x=0.05)
     
     # Grid
