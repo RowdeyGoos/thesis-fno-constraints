@@ -144,7 +144,7 @@ def format_ood_bin_tick_label(label: str) -> str:
     return label
 
 
-def _sample_line_display_points(ax, samples_per_segment: int = 30):
+def _sample_line_display_points(ax, samples_per_segment: int = 80):
     """Sample plotted line paths in display coordinates for legend placement."""
     sampled_points = []
     for line in ax.lines:
@@ -225,6 +225,16 @@ def _bbox_overlap_area(bbox, bounds):
     return overlap_width * overlap_height
 
 
+def _points_near_bbox(points, bbox, padding: float):
+    padded_bbox = bbox.expanded(
+        (bbox.width + 2 * padding) / bbox.width,
+        (bbox.height + 2 * padding) / bbox.height,
+    )
+    inside_x = (points[:, 0] >= padded_bbox.x0) & (points[:, 0] <= padded_bbox.x1)
+    inside_y = (points[:, 1] >= padded_bbox.y0) & (points[:, 1] <= padded_bbox.y1)
+    return int(np.count_nonzero(inside_x & inside_y))
+
+
 def place_ood_legend(ax, fontsize: int = 22):
     """Place the legend inside the axes where it overlaps plotted curves least."""
     handles, labels = ax.get_legend_handles_labels()
@@ -265,7 +275,8 @@ def place_ood_legend(ax, fontsize: int = 22):
         if line_points.size:
             inside_x = (line_points[:, 0] >= bbox.x0) & (line_points[:, 0] <= bbox.x1)
             inside_y = (line_points[:, 1] >= bbox.y0) & (line_points[:, 1] <= bbox.y1)
-            score += 4 * int(np.count_nonzero(inside_x & inside_y))
+            score += 20 * int(np.count_nonzero(inside_x & inside_y))
+            score += 4 * _points_near_bbox(line_points, bbox, padding=18)
         if band_points.size:
             inside_x = (band_points[:, 0] >= bbox.x0) & (band_points[:, 0] <= bbox.x1)
             inside_y = (band_points[:, 1] >= bbox.y0) & (band_points[:, 1] <= bbox.y1)
