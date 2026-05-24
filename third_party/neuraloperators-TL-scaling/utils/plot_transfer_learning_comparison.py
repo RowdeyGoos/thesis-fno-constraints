@@ -342,16 +342,16 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
                 )
 
     # Formatting
-    ax.set_xlabel('Number of Downstream Training Samples', fontsize=22, fontweight='bold')
-    ax.set_ylabel('Test Error (Relative L2)', fontsize=22, fontweight='bold')
+    ax.set_xlabel('Number of Downstream Training Samples', fontsize=26, fontweight='bold')
+    ax.set_ylabel('Test Error (Relative L2)', fontsize=26, fontweight='bold')
     ax.set_title(title, fontsize=22, fontweight='bold', pad=20)
     
     ax.set_yscale('log', base=10)
     _format_log_decade_yaxis(ax)
     xtick_positions = [x_map[s] for s in all_sizes]
     ax.set_xticks(xtick_positions)
-    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=15)
-    ax.tick_params(axis='y', labelsize=15)
+    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=18)
+    ax.tick_params(axis='y', labelsize=18)
     ax.margins(x=0.05)
     
     # Grid
@@ -360,7 +360,7 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
     
     # Legend
     legend_cols = 1 if len(series_entries) <= 4 else 2
-    ax.legend(loc='best', fontsize=18, frameon=True, shadow=True, fancybox=True, ncol=legend_cols)
+    ax.legend(loc='best', fontsize=22, frameon=True, shadow=True, fancybox=True, ncol=legend_cols)
 
     # Tight layout
     plt.tight_layout()
