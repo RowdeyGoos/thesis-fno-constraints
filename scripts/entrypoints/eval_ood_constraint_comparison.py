@@ -36,6 +36,7 @@ from eval_ood_comparison import (
     evaluate_series,
     format_ood_bin_tick_label,
     format_log_decade_yaxis,
+    place_ood_legend,
 )
 from eval_transfer_learning import get_reported_metric, save_results_json
 
@@ -333,7 +334,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
     ax.tick_params(axis='y', labelsize=24)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.legend(loc='best', fontsize=22, frameon=True, fancybox=True, shadow=True)
+    place_ood_legend(ax, fontsize=22)
     title = output_spec['title']
     if budget_key:
         title += f" ({BUDGET_TITLES[budget_key]})"

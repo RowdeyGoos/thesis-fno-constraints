@@ -144,6 +144,88 @@ def format_ood_bin_tick_label(label: str) -> str:
     return label
 
 
+def _sample_line_display_points(ax, samples_per_segment: int = 30):
+    """Sample plotted line paths in display coordinates for legend placement."""
+    sampled_points = []
+    for line in ax.lines:
+        label = line.get_label()
+        if not label or label.startswith('_'):
+            continue
+
+        x_data = np.asarray(line.get_xdata(), dtype=float)
+        y_data = np.asarray(line.get_ydata(), dtype=float)
+        finite_mask = np.isfinite(x_data) & np.isfinite(y_data) & (y_data > 0)
+        x_data = x_data[finite_mask]
+        y_data = y_data[finite_mask]
+        if len(x_data) == 0:
+            continue
+
+        display_points = ax.transData.transform(np.column_stack([x_data, y_data]))
+        sampled_points.extend(display_points)
+        for start, end in zip(display_points[:-1], display_points[1:]):
+            weights = np.linspace(0.0, 1.0, samples_per_segment)
+            sampled_points.extend((1.0 - weight) * start + weight * end for weight in weights)
+
+    return np.asarray(sampled_points)
+
+
+def place_ood_legend(ax, fontsize: int = 22):
+    """Place the legend inside the axes where it overlaps plotted curves least."""
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return None
+
+    sampled_points = _sample_line_display_points(ax)
+    candidate_locs = (
+        'upper left',
+        'upper center',
+        'upper right',
+        'center left',
+        'center right',
+        'lower left',
+        'lower center',
+        'lower right',
+    )
+
+    best_loc = candidate_locs[0]
+    best_score = None
+    for loc in candidate_locs:
+        legend = ax.legend(
+            handles,
+            labels,
+            loc=loc,
+            fontsize=fontsize,
+            frameon=True,
+            fancybox=True,
+            shadow=True,
+        )
+        ax.figure.canvas.draw()
+        bbox = legend.get_window_extent(ax.figure.canvas.get_renderer()).expanded(1.04, 1.08)
+        if sampled_points.size:
+            inside_x = (sampled_points[:, 0] >= bbox.x0) & (sampled_points[:, 0] <= bbox.x1)
+            inside_y = (sampled_points[:, 1] >= bbox.y0) & (sampled_points[:, 1] <= bbox.y1)
+            score = int(np.count_nonzero(inside_x & inside_y))
+        else:
+            score = 0
+        legend.remove()
+
+        if best_score is None or score < best_score:
+            best_score = score
+            best_loc = loc
+            if score == 0:
+                break
+
+    return ax.legend(
+        handles,
+        labels,
+        loc=best_loc,
+        fontsize=fontsize,
+        frameon=True,
+        fancybox=True,
+        shadow=True,
+    )
+
+
 OOD_EXPERIMENTS = {
     'poisson': {
         'yaml_config': 'config/operators_poisson.yaml',
@@ -465,7 +547,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     ax.tick_params(axis='y', labelsize=24)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.legend(loc='best', fontsize=22, frameon=True, fancybox=True, shadow=True)
+    place_ood_legend(ax, fontsize=22)
     ax.set_title(
         f"{experiment_spec['title']}\n{experiment_spec['subtitle']}",
         fontsize=26,
