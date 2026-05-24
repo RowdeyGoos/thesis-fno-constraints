@@ -326,15 +326,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
     ax.tick_params(axis='y', labelsize=24)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.legend(
-        loc='center left',
-        bbox_to_anchor=(1.02, 0.5),
-        fontsize=22,
-        frameon=True,
-        fancybox=True,
-        shadow=True,
-        borderaxespad=0.0,
-    )
+    ax.legend(loc='best', fontsize=22, frameon=True, fancybox=True, shadow=True)
     title = output_spec['title']
     if budget_key:
         title += f" ({BUDGET_TITLES[budget_key]})"
@@ -345,7 +337,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
         pad=18,
     )
 
-    fig.tight_layout(rect=(0, 0, 0.78, 1))
+    fig.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     logging.info('OOD constraint comparison plot saved to: %s', output_path)
     plt.close()

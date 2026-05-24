@@ -142,7 +142,7 @@ def format_ood_bin_tick_label(label: str) -> str:
 OOD_EXPERIMENTS = {
     'poisson': {
         'yaml_config': 'config/operators_poisson.yaml',
-        'title': 'Poisson OOD Degradation',
+        'title': 'Poisson OOD Comparison',
         'subtitle': 'Source/pretrain range: k in [1, 5]',
         'range_axis_label': 'Poisson coefficient range',
         'bin_keys': ['k5_7p5', 'k7p5_10', 'k10_12p5', 'k12p5_15'],
@@ -157,7 +157,7 @@ OOD_EXPERIMENTS = {
     },
     'advdiff': {
         'yaml_config': 'config/operators_ad.yaml',
-        'title': 'AdvDiff OOD Degradation',
+        'title': 'AdvDiff OOD Comparison',
         'subtitle': 'Source/pretrain range: adr in [0.2, 1.0]',
         'range_axis_label': 'AdvDiff adr range',
         'bin_keys': ['adr1_1p2', 'adr1p2_1p4', 'adr1p4_1p6', 'adr1p6_1p8'],
@@ -172,7 +172,7 @@ OOD_EXPERIMENTS = {
     },
     'helmholtz': {
         'yaml_config': 'config/operators_helmholtz.yaml',
-        'title': 'Helmholtz OOD Degradation',
+        'title': 'Helmholtz OOD Comparison',
         'subtitle': 'Source/pretrain range: omega in [1, 10]',
         'range_axis_label': 'Helmholtz omega range',
         'bin_keys': ['o10_15', 'o15_20', 'o20_25', 'o25_30'],
@@ -460,15 +460,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     ax.tick_params(axis='y', labelsize=24)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.legend(
-        loc='center left',
-        bbox_to_anchor=(1.02, 0.5),
-        fontsize=22,
-        frameon=True,
-        fancybox=True,
-        shadow=True,
-        borderaxespad=0.0,
-    )
+    ax.legend(loc='best', fontsize=22, frameon=True, fancybox=True, shadow=True)
     ax.set_title(
         f"{experiment_spec['title']}\n{experiment_spec['subtitle']}",
         fontsize=26,
@@ -476,7 +468,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
         pad=18,
     )
 
-    fig.tight_layout(rect=(0, 0, 0.78, 1))
+    fig.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     logging.info('OOD degradation plot saved to: %s', output_path)
     plt.close()
