@@ -128,9 +128,7 @@ def format_log_decade_yaxis(ax):
         return
 
     y_min = 10 ** math.floor(math.log10(min(y_values)))
-    y_max = 10 ** math.ceil(math.log10(max(y_values)))
-    if y_min == y_max:
-        y_max *= 10
+    y_max = max(y_values) * 10 ** 0.08
 
     ax.set_ylim(y_min, y_max)
     ax.yaxis.set_major_locator(mticker.LogLocator(base=10.0, subs=(1.0,)))
