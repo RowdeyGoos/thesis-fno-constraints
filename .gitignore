@@ -167,25 +167,25 @@ Towards Foundation Models for Scientific Machine Learning_ Characterizing Scalin
 Tutorials _ DAIC documentation.pdf
 
 # Local archival backups
-archive/
+/archive/
 
 # Containers and exported images
-containers/
+/containers/
 *.sif
 *.tar
 
 # Generated data, experiment outputs, and scratch space
-data/
-results/
-tmp/
-evaluation_tmp*/
-experiments/
-experiments_*/
+/data/
+/results/
+/tmp/
+/evaluation_tmp*/
+/experiments/
+/experiments_*/
 *.out
 *.err
 
 # Generated docs
-docs/generated/
+/docs/generated/
 
 # Preserved pre-flatten local runtime artifacts
-third_party/neuraloperators-TL-scaling/
+/third_party/neuraloperators-TL-scaling/
