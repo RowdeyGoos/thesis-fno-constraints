@@ -27,6 +27,7 @@ from eval_ood_comparison import (
     OOD_EXPERIMENTS,
     evaluate_mean_baseline_series,
     evaluate_series,
+    format_ood_bin_tick_label,
     format_log_decade_yaxis,
 )
 from eval_transfer_learning import get_reported_metric, save_results_json
@@ -246,7 +247,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
     x_positions = np.arange(len(bin_keys), dtype=float)
 
     series_order = BUDGET_SERIES_ORDER.get(budget_key, [*SERIES_ORDER, *MEAN_BASELINE_ORDER])
-    fig, ax = plt.subplots(figsize=(11, 6.5))
+    fig, ax = plt.subplots(figsize=(18, 9))
 
     for series_key in series_order:
         series_result = results['series'].get(series_key)
@@ -310,7 +311,10 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
             )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels(experiment_spec['bin_labels'], fontsize=24)
+    ax.set_xticklabels(
+        [format_ood_bin_tick_label(label) for label in experiment_spec['bin_labels']],
+        fontsize=24,
+    )
     ax.set_xlabel(
         f"{experiment_spec['range_axis_label']} (increasing OOD distance)",
         fontsize=26,
@@ -322,7 +326,15 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
     ax.tick_params(axis='y', labelsize=24)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.legend(loc='best', fontsize=22, frameon=True, fancybox=True, shadow=True)
+    ax.legend(
+        loc='center left',
+        bbox_to_anchor=(1.02, 0.5),
+        fontsize=22,
+        frameon=True,
+        fancybox=True,
+        shadow=True,
+        borderaxespad=0.0,
+    )
     title = output_spec['title']
     if budget_key:
         title += f" ({BUDGET_TITLES[budget_key]})"
@@ -333,7 +345,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
         pad=18,
     )
 
-    plt.tight_layout()
+    fig.tight_layout(rect=(0, 0, 0.78, 1))
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     logging.info('OOD constraint comparison plot saved to: %s', output_path)
     plt.close()

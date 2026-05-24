@@ -84,21 +84,21 @@ SERIES_SPECS = {
 }
 
 
-MEAN_BASELINE_ORDER = ['mean_256', 'mean_4k']
+MEAN_BASELINE_ORDER = ['mean_4k']
 
 
 MEAN_BASELINE_SPECS = {
     'mean_256': {
-        'label': 'Mean baseline (256 samples)',
-        'legend_label': 'Mean baseline 256',
+        'label': 'Mean baseline',
+        'legend_label': 'Mean baseline',
         'color': '#6b7280',
         'marker': 'D',
         'linestyle': ':',
         'budget_key': '256',
     },
     'mean_4k': {
-        'label': 'Mean baseline (4K samples)',
-        'legend_label': 'Mean baseline 4K',
+        'label': 'Mean baseline',
+        'legend_label': 'Mean baseline',
         'color': '#111827',
         'marker': 'D',
         'linestyle': ':',
@@ -130,6 +130,13 @@ def format_log_decade_yaxis(ax):
     ax.yaxis.set_major_formatter(mticker.LogFormatterMathtext(base=10.0))
     ax.yaxis.set_minor_locator(mticker.LogLocator(base=10.0, subs=range(2, 10)))
     ax.yaxis.set_minor_formatter(mticker.NullFormatter())
+
+
+def format_ood_bin_tick_label(label: str) -> str:
+    """Use compact bin labels because the x-axis title names the parameter."""
+    if ' in ' in label:
+        return label.split(' in ', 1)[1]
+    return label
 
 
 OOD_EXPERIMENTS = {
@@ -376,7 +383,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     bin_keys = experiment_spec['bin_keys']
     x_positions = np.arange(len(bin_keys), dtype=float)
 
-    fig, ax = plt.subplots(figsize=(11, 6))
+    fig, ax = plt.subplots(figsize=(18, 9))
 
     for series_key in ['mixed_256', 'mixed_4k', 'scratch_256', 'scratch_4k', *MEAN_BASELINE_ORDER]:
         series_result = results['series'].get(series_key)
@@ -438,7 +445,10 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
             )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels(experiment_spec['bin_labels'], fontsize=24)
+    ax.set_xticklabels(
+        [format_ood_bin_tick_label(label) for label in experiment_spec['bin_labels']],
+        fontsize=24,
+    )
     ax.set_xlabel(
         f"{experiment_spec['range_axis_label']} (increasing OOD distance)",
         fontsize=26,
@@ -450,7 +460,15 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     ax.tick_params(axis='y', labelsize=24)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.legend(loc='best', fontsize=22, frameon=True, fancybox=True, shadow=True)
+    ax.legend(
+        loc='center left',
+        bbox_to_anchor=(1.02, 0.5),
+        fontsize=22,
+        frameon=True,
+        fancybox=True,
+        shadow=True,
+        borderaxespad=0.0,
+    )
     ax.set_title(
         f"{experiment_spec['title']}\n{experiment_spec['subtitle']}",
         fontsize=26,
@@ -458,7 +476,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
         pad=18,
     )
 
-    plt.tight_layout()
+    fig.tight_layout(rect=(0, 0, 0.78, 1))
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     logging.info('OOD degradation plot saved to: %s', output_path)
     plt.close()
