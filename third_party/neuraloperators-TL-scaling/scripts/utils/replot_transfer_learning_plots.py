@@ -385,6 +385,14 @@ def replot_ood_preset(
         output_path = output_dir / f"{preset.output_stem}.{suffix}"
         plotter.plot_ood_degradation(results, preset.experiment_type, str(output_path))
         print(f"  saved: {output_path}")
+
+    if hasattr(plotter, "plot_budget_ood_degradation"):
+        for output_path in plotter.plot_budget_ood_degradation(
+            results,
+            preset.experiment_type,
+            output_dir,
+        ):
+            print(f"  saved: {output_path}")
     return True
 
 
