@@ -344,14 +344,14 @@ def plot_comparison(series_entries, output_path, title="Transfer Learning Compar
     # Formatting
     ax.set_xlabel('Number of Downstream Training Samples', fontsize=26, fontweight='bold')
     ax.set_ylabel('Test Error (Relative L2)', fontsize=26, fontweight='bold')
-    ax.set_title(title, fontsize=22, fontweight='bold', pad=20)
+    ax.set_title(title, fontsize=26, fontweight='bold', pad=20)
     
     ax.set_yscale('log', base=10)
     _format_log_decade_yaxis(ax)
     xtick_positions = [x_map[s] for s in all_sizes]
     ax.set_xticks(xtick_positions)
-    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=22)
-    ax.tick_params(axis='y', labelsize=22)
+    ax.set_xticklabels([_format_sample_tick(n) for n in all_sizes], fontsize=24)
+    ax.tick_params(axis='y', labelsize=24)
     ax.margins(x=0.05)
     
     # Grid
