@@ -1,15 +1,16 @@
-.PHONY: help build-container transfer-container clean check-container test-container
+# Makefile for neuraloperators-TL-scaling DAIC cluster setup
+
+.PHONY: help build-container transfer-container test-container clean
 
 # Default target
 help:
-	@echo "DAIC Cluster - Make Commands"
-	@echo "=============================="
+	@echo "neuraloperators-TL-scaling - DAIC Cluster Setup"
+	@echo "================================================"
 	@echo ""
 	@echo "Container Management:"
 	@echo "  make build-container      - Build Docker container locally"
 	@echo "  make transfer-container   - Transfer container to DAIC (requires NETID=<your-netid>)"
 	@echo "  make test-container       - Test container locally"
-	@echo "  make check-container      - Check if container files exist"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean               - Remove temporary container files"
@@ -21,7 +22,7 @@ help:
 
 # Build Docker container
 build-container:
-	@echo "Building Docker container..."
+	@echo "Building Docker container for neuraloperators..."
 	bash scripts/container/build_container.sh
 
 # Transfer container to DAIC
@@ -37,17 +38,11 @@ endif
 # Test container locally
 test-container:
 	@echo "Testing container locally..."
-	@docker run --rm thesis-fno:latest python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
-
-# Check if container files exist
-check-container:
-	@echo "Checking container files..."
-	@if [ -f "Dockerfile" ]; then echo "✓ Dockerfile found"; else echo "✗ Dockerfile missing"; fi
-	@if [ -f "apptainer.def" ]; then echo "✓ apptainer.def found"; else echo "✗ apptainer.def missing"; fi
-	@if [ -f "thesis-fno_latest.tar" ]; then echo "✓ Container tar found"; else echo "✗ Container tar not built yet"; fi
+	@docker run --rm neuraloperators:latest python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+	@docker run --rm neuraloperators:latest python -c "import h5py, matplotlib, numpy, scipy, wandb; print('All packages OK')"
 
 # Clean up temporary files
 clean:
 	@echo "Cleaning up temporary files..."
-	@rm -f thesis-fno_latest.tar
+	@rm -f neuraloperators_latest.tar
 	@echo "Done!"

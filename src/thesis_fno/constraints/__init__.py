@@ -1,1 +1,0 @@
-"""Physical constraint implementations"""
