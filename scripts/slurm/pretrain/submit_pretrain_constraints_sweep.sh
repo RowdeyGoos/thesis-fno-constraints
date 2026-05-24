@@ -104,7 +104,7 @@ if [ "$MODE" = "create" ]; then
     ENTITY_ARG=${WANDB_ENTITY:-}
     PROJECT_ARG=${WANDB_PROJECT:-}
 
-    CREATE_CMD="python /workspace/scripts/utils/create_wandb_sweep.py --sweep_yaml=/workspace/${SWEEP_YAML}"
+    CREATE_CMD="python /workspace/scripts/experiments/create_wandb_sweep.py --sweep_yaml=/workspace/${SWEEP_YAML}"
     if [ -n "$ENTITY_ARG" ]; then
         CREATE_CMD="$CREATE_CMD --entity=$ENTITY_ARG"
     fi
@@ -150,7 +150,7 @@ echo "Agents per task: $AGENT_COUNT_PER_TASK"
 
 for i in $(seq 1 "$AGENT_COUNT_PER_TASK"); do
     RUN_NUM="${RUN_PREFIX}-${SWEEP_ID}-${SLURM_ARRAY_JOB_ID:-$SLURM_JOB_ID}-${SLURM_ARRAY_TASK_ID:-0}-a${i}"
-    CMD="python /workspace/train.py \
+    CMD="python /workspace/scripts/entrypoints/train.py \
       --yaml_config=/workspace/${TRAIN_YAML} \
       --config=${TRAIN_CONFIG} \
       --run_num=${RUN_NUM} \

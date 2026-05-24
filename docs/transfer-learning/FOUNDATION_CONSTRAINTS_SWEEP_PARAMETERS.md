@@ -17,7 +17,7 @@ All six sweep files in `config/sweep_constraints_pretrain_*.yaml` share:
 - `method: bayes`
 - `metric.name: best_val_err` with `goal: minimize`
 - `run_cap: 12`
-- `program: train.py`
+- `program: scripts/entrypoints/train.py`
 
 Common fixed training/runtime params in every sweep:
 
@@ -40,7 +40,7 @@ Sweep metadata keys:
 - `name`: W&B sweep name shown in the dashboard.
 - `entity`: W&B account or team that owns the sweep.
 - `project`: W&B project where runs are stored.
-- `program`: training entrypoint that W&B agent executes (`train.py`).
+- `program`: training entrypoint that W&B agent executes (`scripts/entrypoints/train.py`).
 - `method`: search strategy (`bayes` here).
 - `metric.name`: optimization target tracked by W&B (`best_val_err`).
 - `metric.goal`: whether the target should be minimized or maximized.

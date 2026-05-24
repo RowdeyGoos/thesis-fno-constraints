@@ -1,10 +1,10 @@
-# Makefile for neuraloperators-TL-scaling DAIC cluster setup
+# Makefile for thesis-fno-constraints DAIC cluster setup
 
 .PHONY: help build-container transfer-container test-container clean
 
 # Default target
 help:
-	@echo "neuraloperators-TL-scaling - DAIC Cluster Setup"
+	@echo "thesis-fno-constraints - DAIC Cluster Setup"
 	@echo "================================================"
 	@echo ""
 	@echo "Container Management:"

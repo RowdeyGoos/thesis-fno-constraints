@@ -13,8 +13,8 @@ The evaluation system can:
 
 ## Files
 
-- **`eval_transfer_learning.py`**: Main evaluation and plotting script
-- **`scripts/utils/evaluate_transfer_learning.sh`**: Quick helper script for common use cases
+- **`scripts/entrypoints/eval_transfer_learning.py`**: Main evaluation and plotting script
+- **`scripts/eval/evaluate_transfer_learning.sh`**: Quick helper script for common use cases
 - **`EVAL_TRANSFER_LEARNING.md`**: This documentation file
 
 ## Quick Start
@@ -24,7 +24,7 @@ The evaluation system can:
 Evaluate all Poisson transfer learning experiments:
 
 ```bash
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --output_dir results/transfer_learning
@@ -33,7 +33,7 @@ python eval_transfer_learning.py \
 ### Include Mixed-Pretrained Models
 
 ```bash
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --include_mixed \
@@ -44,16 +44,16 @@ python eval_transfer_learning.py \
 
 ```bash
 # Basic evaluation
-bash scripts/utils/evaluate_transfer_learning.sh
+bash scripts/eval/evaluate_transfer_learning.sh
 
 # Include mixed models
-bash scripts/utils/evaluate_transfer_learning.sh --mixed
+bash scripts/eval/evaluate_transfer_learning.sh --mixed
 
 # Regenerate plots without re-evaluating
-bash scripts/utils/evaluate_transfer_learning.sh --skip-eval
+bash scripts/eval/evaluate_transfer_learning.sh --skip-eval
 
 # Different experiment type
-bash scripts/utils/evaluate_transfer_learning.sh --type advdiff
+bash scripts/eval/evaluate_transfer_learning.sh --type advdiff
 ```
 
 ## Command Line Arguments
@@ -147,7 +147,7 @@ The script automatically detects experiments based on config names:
 If you want to evaluate only specific experiments:
 
 ```bash
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --configs poisson-k5_10-finetune-16 \
@@ -167,13 +167,13 @@ The plot follows the paper's style:
 - **Y-axis**: Log scale (relative L2 error)
 - **X-axis**: Log₂ scale with custom labels (16, 64, 256, 1K, 4K, etc.)
 
-To customize the plot appearance, edit the `plot_transfer_learning_curve()` function in `eval_transfer_learning.py`.
+To customize the plot appearance, edit the `plot_transfer_learning_curve()` function in `scripts/entrypoints/eval_transfer_learning.py`.
 
 ## Adding New Experiment Types
 
 To add support for new PDEs (e.g., Helmholtz, Advection-Diffusion):
 
-1. Edit `get_experiment_groups()` in `eval_transfer_learning.py`
+1. Edit `get_experiment_groups()` in `scripts/entrypoints/eval_transfer_learning.py`
 2. Add the config name patterns for your experiments
 3. Update the title generation in `plot_transfer_learning_curve()`
 
@@ -219,8 +219,8 @@ elif experiment_type == 'advdiff':
 
 **Solution**:
 ```bash
-cd /path/to/neuraloperators-TL-scaling
-python eval_transfer_learning.py ...
+cd /path/to/thesis-fno-constraints
+python scripts/entrypoints/eval_transfer_learning.py ...
 ```
 
 ### CUDA out of memory
@@ -243,7 +243,7 @@ Create a script to evaluate different experiment types:
 
 for exp_type in poisson advdiff helmholtz; do
     echo "Evaluating $exp_type..."
-    python eval_transfer_learning.py \
+    python scripts/entrypoints/eval_transfer_learning.py \
         --yaml_config config/operators_${exp_type}.yaml \
         --experiment_type $exp_type \
         --include_mixed \
@@ -257,7 +257,7 @@ To compare single-domain vs. mixed-domain pretraining:
 
 ```bash
 # Generate plot with both
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --include_mixed \
@@ -275,15 +275,15 @@ If you want to modify the plot style without re-evaluating:
 
 ```bash
 # First evaluation (saves results.json)
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --output_dir results/transfer_learning
 
-# Modify plot_transfer_learning_curve() in eval_transfer_learning.py
+# Modify plot_transfer_learning_curve() in scripts/entrypoints/eval_transfer_learning.py
 
 # Regenerate plots from saved results
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --output_dir results/transfer_learning \

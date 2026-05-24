@@ -19,7 +19,7 @@ This document provides a visual overview of the reproduction workflow.
                               ▼
         ┌─────────────────────────────────────────┐
         │  Phase 2: Quick Verification            │
-        │  • Run quick_test.sh                   │
+        │  • Run scripts/workflows/quick_test.sh                   │
         │  • Generate 100 samples                │
         │  • Train 5 epochs                      │
         │  • Verify loss decreases               │

@@ -61,7 +61,7 @@ echo ""
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_helmholtz_zeroshot_scales_ablation.py \
+             python scripts/entrypoints/eval_helmholtz_zeroshot_scales_ablation.py \
                 --helm_yaml config/operators_helmholtz.yaml \
                 --mixed_yaml config/operators_mixed.yaml \
                 --output_dir '"$OUTPUT_DIR"' \

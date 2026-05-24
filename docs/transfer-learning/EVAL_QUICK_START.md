@@ -3,16 +3,16 @@
 ## Files Created
 
 ### 1. Evaluation Scripts
-- **`scripts/eval_all_transfer_learning.sh`** - Bash script to run all evaluations
-- **`utils/plot_transfer_learning_comparison.py`** - Create combined comparison plot
+- **`scripts/eval/eval_all_transfer_learning.sh`** - Bash script to run all evaluations
+- **`scripts/eval/plot_transfer_learning_comparison.py`** - Create combined comparison plot
 - **`scripts/slurm/eval/submit_eval_poisson_transfer.sh`** - SLURM job submission
 
 ### 2. Documentation
 - **`EVALUATION_GUIDE.md`** - Comprehensive evaluation guide
 
 ### 3. Existing Script (Already in Repo)
-- **`eval_transfer_learning.py`** - Main evaluation script (already exists!)
-- **`eval.py`** - Core evaluation using Inferencer class
+- **`scripts/entrypoints/eval_transfer_learning.py`** - Main evaluation script (already exists!)
+- **`scripts/entrypoints/eval.py`** - Core evaluation using Inferencer class
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ This evaluates all models and creates the comparison plot automatically.
 ### Local Execution
 
 ```bash
-bash scripts/eval_all_transfer_learning.sh
+bash scripts/eval/eval_all_transfer_learning.sh
 ```
 
 ## What You Get
@@ -44,9 +44,9 @@ A comparison plot with 3 lines showing test error vs number of training samples:
 
 ### Step 1: Evaluate Each Approach
 
-The script `eval_transfer_learning.py` (which already exists in your repo):
+The script `scripts/entrypoints/eval_transfer_learning.py` (which already exists in your repo):
 1. Finds checkpoints for each config
-2. Runs `eval.py` on test sets
+2. Runs `scripts/entrypoints/eval.py` on test sets
 3. Collects test errors
 4. Saves results to JSON
 
@@ -57,9 +57,9 @@ The script `plot_transfer_learning_comparison.py`:
 2. Creates a single plot comparing all approaches
 3. Prints summary table and improvement percentages
 
-## Verifying `eval.py` Works
+## Verifying `scripts/entrypoints/eval.py` Works
 
-Yes, `eval.py` is the correct tool for evaluation! It:
+Yes, `scripts/entrypoints/eval.py` is the correct tool for evaluation! It:
 
 - ✅ Takes a checkpoint path via `--weights`
 - ✅ Loads model from checkpoint
@@ -67,9 +67,9 @@ Yes, `eval.py` is the correct tool for evaluation! It:
 - ✅ Computes test error (relative L2)
 - ✅ Saves results to `logs_best.txt`
 
-The existing `eval_transfer_learning.py` is a wrapper that:
+The existing `scripts/entrypoints/eval_transfer_learning.py` is a wrapper that:
 - Automatically finds checkpoints
-- Runs `eval.py` for multiple configs
+- Runs `scripts/entrypoints/eval.py` for multiple configs
 - Aggregates results into comparison plots
 
 ## Expected Results
@@ -116,7 +116,7 @@ results/transfer_learning_k1_2.5/
 | Issue | Solution |
 |-------|----------|
 | Checkpoint not found | Check training completed: `ls experiments/expts/<config>/*/checkpoints/` |
-| Evaluation fails | Run manually with `eval.py` to see error |
+| Evaluation fails | Run manually with `scripts/entrypoints/eval.py` to see error |
 | Missing data points | Re-run training for that sample size |
 | Plot empty | Check JSON files have data |
 
@@ -134,7 +134,7 @@ If you prefer more control:
 
 ```bash
 # Evaluate one approach at a time
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_mixed.yaml \
     --experiment_type poisson \
     --configs poisson-k1_2.5-finetune-mixed-16 \
@@ -145,7 +145,7 @@ python eval_transfer_learning.py \
     --experiment_dir experiments \
     --output_dir results/transfer_learning_k1_2.5/mixed
 
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --configs poisson-k1_2.5-finetune-16 \
@@ -156,7 +156,7 @@ python eval_transfer_learning.py \
     --experiment_dir experiments \
     --output_dir results/transfer_learning_k1_2.5/k1_5
 
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --configs poisson-k1_2.5-scratch-16 \
@@ -168,7 +168,7 @@ python eval_transfer_learning.py \
     --output_dir results/transfer_learning_k1_2.5/scratch
 
 # Combine into one plot
-python utils/plot_transfer_learning_comparison.py \
+python scripts/eval/plot_transfer_learning_comparison.py \
     --mixed_results results/transfer_learning_k1_2.5/mixed/results.json \
     --k1_5_results results/transfer_learning_k1_2.5/k1_5/results.json \
     --scratch_results results/transfer_learning_k1_2.5/scratch/results.json \
@@ -177,8 +177,8 @@ python utils/plot_transfer_learning_comparison.py \
 
 ## Summary
 
-✅ **eval.py works** for evaluation (uses Inferencer class)
-✅ **eval_transfer_learning.py exists** (wrapper for batch evaluation)
+✅ **scripts/entrypoints/eval.py works** for evaluation (uses Inferencer class)
+✅ **scripts/entrypoints/eval_transfer_learning.py exists** (wrapper for batch evaluation)
 ✅ **New scripts created** for combined plotting and SLURM submission
 ✅ **Ready to use** - just submit the SLURM job!
 

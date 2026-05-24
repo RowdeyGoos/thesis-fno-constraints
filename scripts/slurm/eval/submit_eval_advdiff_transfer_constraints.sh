@@ -59,7 +59,7 @@ run_eval() {
     shift 2
     local configs=("$@")
     local cmd=(
-        python eval_transfer_learning.py
+        python scripts/entrypoints/eval_transfer_learning.py
         --yaml_config "$yaml_config"
         --experiment_type advdiff
         --configs
@@ -81,7 +81,7 @@ run_eval() {
 
 plot_comparison() {
     local cmd=(
-        python utils/plot_transfer_learning_comparison.py
+        python scripts/eval/plot_transfer_learning_comparison.py
         --series "mixed=results/transfer_learning_constraints_advdiff_adr0.2_0.4/mixed/advdiff_results.json"
         --series "mixed-zero-hard=results/transfer_learning_constraints_advdiff_adr0.2_0.4/mixed-zero-hard/advdiff_results.json"
         --series "mixed-zero-soft=results/transfer_learning_constraints_advdiff_adr0.2_0.4/mixed-zero-soft/advdiff_results.json"

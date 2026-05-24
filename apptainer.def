@@ -3,8 +3,7 @@ From: python:3.10-slim
 
 %files
     requirements.txt /workspace/requirements.txt
-    train.py         /workspace/train.py
-    eval.py          /workspace/eval.py
+    scripts          /workspace/scripts
     models           /workspace/models
     utils            /workspace/utils
     config           /workspace/config

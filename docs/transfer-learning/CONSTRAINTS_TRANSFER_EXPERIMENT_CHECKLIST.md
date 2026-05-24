@@ -18,7 +18,7 @@ Repo ground truth for this checklist:
 - Standard mixed sweep docs: `docs/transfer-learning/FOUNDATION_CONSTRAINTS_EXPERIMENT_RUNBOOK.md`
 - BC-conditioned mixed presets: `config/operators_mixed_bc.yaml`
 - BC walkthrough: `docs/transfer-learning/BC_MIXED_PRETRAIN_SOFT_HARD_WALKTHROUGH.md`
-- Mixed transfer helper: `scripts/utils/update_mixed_checkpoint_path.sh`
+- Mixed transfer helper: `scripts/maintenance/update_mixed_checkpoint_path.sh`
 - Downstream configs: `config/operators_poisson.yaml`, `config/operators_ad.yaml`, `config/operators_helmholtz.yaml`
 
 ## 1. Scope and gating
@@ -53,8 +53,8 @@ Exhaustive transfer scale if every predefined fixed variant is pushed downstream
 Suggested smoke commands:
 
 ```bash
-bash scripts/utils/submit_constraints_sanity_sweep.sh
-MODES="off soft hard hard+soft" bash scripts/utils/run_local_smoke_train_eval_bc_constraints.sh
+bash scripts/experiments/submit_constraints_sanity_sweep.sh
+MODES="off soft hard hard+soft" bash scripts/workflows/run_local_smoke_train_eval_bc_constraints.sh
 ```
 
 Seeded downstream runs are now available as an opt-in path and do not change legacy pretraining behavior unless you pass the new flags.
@@ -69,7 +69,7 @@ Recommended paper-style downstream flags:
 Example direct launch for one seeded downstream run:
 
 ```bash
-python train.py \
+python scripts/entrypoints/train.py \
   --yaml_config config/operators_poisson.yaml \
   --config poisson-k1_2.5-finetune-mixed-256 \
   --run_num transfer-finetune-mixed-256-seed3 \
@@ -82,7 +82,7 @@ python train.py \
 Example multi-seed evaluation after runs finish:
 
 ```bash
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
   --yaml_config config/operators_poisson.yaml \
   --experiment_type poisson \
   --configs poisson-k1_2.5-finetune-mixed-256 \
@@ -108,7 +108,7 @@ sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh
 
 ### 3.2 Zero-mode-only track
 
-- [ ] Optional helper comparison submitted: `bash scripts/utils/submit_constraints_zero_mode_only_compare.sh`
+- [ ] Optional helper comparison submitted: `bash scripts/experiments/submit_constraints_zero_mode_only_compare.sh`
 - [ ] Run hard zero-only baseline: `mixed-scale-all-constraints-zero-hard-only`
 - [ ] Run soft zero-only sweep: `config/sweep_constraints_pretrain_zero_soft_only.yaml`
 - [ ] Select zero-only soft candidate
@@ -157,8 +157,8 @@ If running the strict staged protocol only, track just the winner-side final con
 
 ### 4.1 BC dataset preparation
 
-- [ ] Generate BC datasets: `bash run_gen_data_bc.sh`
-- [ ] Build mixed BC dataset: `bash run_build_mixed_bc.sh`
+- [ ] Generate BC datasets: `bash scripts/workflows/run_gen_data_bc.sh`
+- [ ] Build mixed BC dataset: `bash scripts/workflows/run_build_mixed_bc.sh`
 - [ ] Run BC dataset sanity checks
 
 ### 4.2 Fixed BC mode comparison
@@ -173,10 +173,10 @@ If running the strict staged protocol only, track just the winner-side final con
 Convenience entry points:
 
 ```bash
-bash scripts/utils/submit_bc_constraints_mode_off.sh
-bash scripts/utils/submit_bc_constraints_mode_soft.sh
-bash scripts/utils/submit_bc_constraints_mode_hard.sh
-bash scripts/utils/submit_bc_constraints_mode_hard_soft.sh
+bash scripts/experiments/submit_bc_constraints_mode_off.sh
+bash scripts/experiments/submit_bc_constraints_mode_soft.sh
+bash scripts/experiments/submit_bc_constraints_mode_hard.sh
+bash scripts/experiments/submit_bc_constraints_mode_hard_soft.sh
 ```
 
 ### 4.3 BC soft sweep
@@ -228,7 +228,7 @@ Do this once for every selected mixed-pretraining checkpoint that should be eval
 Default helper:
 
 ```bash
-bash scripts/utils/update_mixed_checkpoint_path.sh <JOBID>
+bash scripts/maintenance/update_mixed_checkpoint_path.sh <JOBID>
 ```
 
 Override example for constrained or BC-conditioned pretraining:
@@ -236,7 +236,7 @@ Override example for constrained or BC-conditioned pretraining:
 ```bash
 PRETRAIN_CONFIG_NAME=<CONFIG_NAME> \
 PRETRAIN_RUN_PREFIX=<RUN_PREFIX> \
-bash scripts/utils/update_mixed_checkpoint_path.sh <JOBID>
+bash scripts/maintenance/update_mixed_checkpoint_path.sh <JOBID>
 ```
 
 ## 7. Zero-shot preview tracker
@@ -265,7 +265,7 @@ They will pick up the current mixed-pretraining checkpoint path from the downstr
 Convenience bundle script for multiple standard mixed checkpoints:
 
 ```bash
-bash scripts/utils/run_mixed_zeroshot_bundle.sh \
+bash scripts/eval/run_mixed_zeroshot_bundle.sh \
   mixed-scale-all:pretrain-mixed:<JOBID> \
   mixed-scale-all-constraints-al-hard:pretrain-mixed-al-hard:<JOBID>
 ```
@@ -273,9 +273,9 @@ bash scripts/utils/run_mixed_zeroshot_bundle.sh \
 Suggested zero-shot preview commands:
 
 ```bash
-python eval.py --yaml_config config/operators_poisson.yaml --config poisson-k1_2.5-zeroshot-mixed --run_num zeroshot-preview-poisson-<tag> --root_dir experiments
-python eval.py --yaml_config config/operators_ad.yaml --config ad-adr0p2_0p4-zeroshot-mixed --run_num zeroshot-preview-advdiff-<tag> --root_dir experiments
-python eval.py --yaml_config config/operators_helmholtz.yaml --config helm-o1_5-zeroshot-mixed --run_num zeroshot-preview-helmholtz-<tag> --root_dir experiments
+python scripts/entrypoints/eval.py --yaml_config config/operators_poisson.yaml --config poisson-k1_2.5-zeroshot-mixed --run_num zeroshot-preview-poisson-<tag> --root_dir experiments
+python scripts/entrypoints/eval.py --yaml_config config/operators_ad.yaml --config ad-adr0p2_0p4-zeroshot-mixed --run_num zeroshot-preview-advdiff-<tag> --root_dir experiments
+python scripts/entrypoints/eval.py --yaml_config config/operators_helmholtz.yaml --config helm-o1_5-zeroshot-mixed --run_num zeroshot-preview-helmholtz-<tag> --root_dir experiments
 ```
 
 What to record:

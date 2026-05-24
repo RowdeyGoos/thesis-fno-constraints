@@ -49,7 +49,7 @@ We'll generate a small Poisson dataset for quick verification:
 mkdir -p data/test_poisson
 
 # Generate minimal dataset (100 train, 20 val, 20 test samples)
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 100 \
     --nval 20 \
     --ntest 20 \
@@ -81,7 +81,7 @@ The FNO requires input normalization. We'll compute median-based scales from the
 
 ```bash
 # Compute scales for the test dataset
-python utils/compute_scales.py \
+python scripts/data/compute_scales.py \
     --datapath data/test_poisson \
     --filename poissons_train_k1_5_100.h5
 
@@ -96,7 +96,7 @@ python utils/compute_scales.py \
 
 For more options:
 ```bash
-python utils/compute_scales.py --help
+python scripts/data/compute_scales.py --help
 ```
 
 ### Step 4: Create Test Configuration
@@ -182,7 +182,7 @@ EOF
 
 ```bash
 # Single GPU test (no distributed training)
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson_test.yaml \
     --config poisson-test \
     --run_num test_run \
@@ -223,7 +223,7 @@ Once the minimal test works, proceed to full-scale reproduction:
 mkdir -p data/poisson_full
 
 # Generate 32k train, 4k val, 4k test samples
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 32768 \
     --nval 4096 \
     --ntest 4096 \
@@ -235,7 +235,7 @@ python utils/gen_data_poisson.py \
     --e2 5
 
 # Compute normalization scales for the training data
-python utils/compute_scales.py \
+python scripts/data/compute_scales.py \
     --datapath data/poisson_full \
     --filename poissons_train_k1_5_32768.h5
 
@@ -253,7 +253,7 @@ python utils/compute_scales.py \
 ```bash
 mkdir -p data/advdiff_full
 
-python utils/gen_data_advdiff.py \
+python scripts/data/gen_data_advdiff.py \
     --ntrain 32768 \
     --nval 4096 \
     --ntest 4096 \
@@ -265,7 +265,7 @@ python utils/gen_data_advdiff.py \
     --adr2 1.0
 
 # Compute normalization scales
-python utils/compute_scales.py \
+python scripts/data/compute_scales.py \
     --datapath data/advdiff_full \
     --filename advdiff_train_adr0.2_1.0_32768.h5
 ```
@@ -275,7 +275,7 @@ python utils/compute_scales.py \
 ```bash
 mkdir -p data/helmholtz_full
 
-python utils/gen_data_helmholtz.py \
+python scripts/data/gen_data_helmholtz.py \
     --ntrain 32768 \
     --nval 4096 \
     --ntest 4096 \
@@ -287,7 +287,7 @@ python utils/gen_data_helmholtz.py \
     --o2 10
 
 # Compute normalization scales
-python utils/compute_scales.py \
+python scripts/data/compute_scales.py \
     --datapath data/helmholtz_full \
     --filename helmholtz_train_o1_10_32768.h5
 ```
@@ -325,8 +325,8 @@ export MASTER_PORT=29500
 
 # Run with 4 GPUs
 srun -l -n 4 --cpus-per-task=10 --gpus-per-node 4 \
-    bash -c "source export_DDP_vars.sh && \
-    python train.py \
+    bash -c "source scripts/workflows/export_DDP_vars.sh && \
+    python scripts/entrypoints/train.py \
         --yaml_config=config/operators_poisson.yaml \
         --config=poisson-scale-k1_5 \
         --run_num=run_0 \
@@ -350,7 +350,7 @@ sbatch scripts/slurm/pretrain/submit_pretrain_array_ddp.sh
 
 ```bash
 # Run evaluation on test set
-python eval.py \
+python scripts/entrypoints/eval.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k1_5 \
     --run_num run_0 \
@@ -398,21 +398,21 @@ Then run experiments:
 
 ```bash
 # Full data (32k samples)
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k1_5 \
     --run_num scale_full \
     --root_dir ./results
 
 # 50% data (16k samples)
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k1_5-subsample2 \
     --run_num scale_50pct \
     --root_dir ./results
 
 # 25% data (8k samples)
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k1_5-subsample4 \
     --run_num scale_25pct \
@@ -425,21 +425,21 @@ For more control, generate separate datasets:
 
 ```bash
 # 4k training samples
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 4096 --nval 512 --ntest 1024 \
     --ng 144 --n 128 --sparse \
     --datapath data/poisson_4k \
     --e1 1 --e2 5
 
 # 8k training samples
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 8192 --nval 1024 --ntest 1024 \
     --ng 144 --n 128 --sparse \
     --datapath data/poisson_8k \
     --e1 1 --e2 5
 
 # 16k training samples
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 16384 --nval 2048 --ntest 2048 \
     --ng 144 --n 128 --sparse \
     --datapath data/poisson_16k \
@@ -507,7 +507,7 @@ Generate the downstream dataset for Poisson k∈[5,10]:
 mkdir -p data/poisson
 
 # Generate full dataset (32k training samples)
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 32768 \
     --nval 4096 \
     --ntest 4096 \
@@ -521,7 +521,7 @@ python utils/gen_data_poisson.py \
 # Output files will be named: _train_k5_10_32k.h5, _val_k5_10_4k.h5, _test_k5_10_4k.h5
 
 # Compute normalization scales
-python utils/compute_scales.py \
+python scripts/data/compute_scales.py \
     --datapath data/poisson \
     --filename _train_k5_10_32k.h5
 ```
@@ -532,10 +532,10 @@ Update the config and script with your actual pretraining job ID:
 
 ```bash
 # Replace JOBID with your actual pretraining job ID (e.g., 12345)
-bash scripts/utils/update_checkpoint_path.sh <JOBID>
+bash scripts/maintenance/update_checkpoint_path.sh <JOBID>
 
 # Example:
-bash scripts/utils/update_checkpoint_path.sh 12345
+bash scripts/maintenance/update_checkpoint_path.sh 12345
 ```
 
 This automatically updates:
@@ -657,7 +657,7 @@ poisson-k5_10-finetune-custom: &poisson_k5_10_ft_custom
 
 ```bash
 # Fine-tune with 1024 samples
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-k5_10-finetune-custom \
     --run_num finetune-1k \
@@ -727,7 +727,7 @@ export MASTER_ADDR=localhost
 export MASTER_PORT=29500
 
 # Use single GPU for debugging
-python train.py ... # without srun
+python scripts/entrypoints/train.py ... # without srun
 ```
 
 ---
@@ -796,21 +796,21 @@ Ensure you have generated the three pretraining datasets:
 
 ```bash
 # Poisson k∈[1,5] (32k samples)
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 32768 --nval 4096 --ntest 4096 \
     --ng 144 --n 128 --sparse \
     --datapath data/poisson \
     --e1 1 --e2 5
 
 # Advection-Diffusion αdr∈[0.2,1.0] (32k samples)
-python utils/gen_data_advdiff.py \
+python scripts/data/gen_data_advdiff.py \
     --ntrain 32768 --nval 4096 --ntest 4096 \
     --ng 144 --n 128 --sparse \
     --datapath data/advdiff \
     --adr1 0.2 --adr2 1.0
 
 # Helmholtz ω∈[1,10] (32k samples)
-python utils/gen_data_helmholtz.py \
+python scripts/data/gen_data_helmholtz.py \
     --ntrain 32768 --nval 4096 --ntest 4096 \
     --ng 144 --n 128 --sparse \
     --datapath data/helmholtz \
@@ -826,7 +826,7 @@ Combine the three PDE datasets into a unified mixed dataset with zero-padding:
 mkdir -p data/mixed
 
 # Create training set
-python utils/create_mixed_dataset.py \
+python scripts/data/create_mixed_dataset.py \
     --poisson_path data/poisson/_train_k1_5_32k.h5 \
     --advdiff_path data/advdiff/_train_adr0p2_1_32k.h5 \
     --helmholtz_path data/helmholtz/_train_o1_10_32k.h5 \
@@ -834,7 +834,7 @@ python utils/create_mixed_dataset.py \
     --samples_per_system 10922
 
 # Create validation set
-python utils/create_mixed_dataset.py \
+python scripts/data/create_mixed_dataset.py \
     --poisson_path data/poisson/_val_k1_5_4k.h5 \
     --advdiff_path data/advdiff/_val_adr0p2_1_4k.h5 \
     --helmholtz_path data/helmholtz/_val_o1_10_4k.h5 \
@@ -842,7 +842,7 @@ python utils/create_mixed_dataset.py \
     --samples_per_system 1365
 
 # Create test set
-python utils/create_mixed_dataset.py \
+python scripts/data/create_mixed_dataset.py \
     --poisson_path data/poisson/_test_k1_5_4k.h5 \
     --advdiff_path data/advdiff/_test_adr0p2_1_4k.h5 \
     --helmholtz_path data/helmholtz/_test_o1_10_4k.h5 \
@@ -853,7 +853,7 @@ python utils/create_mixed_dataset.py \
 ### Step 3: Compute Normalization Scales
 
 ```bash
-python utils/compute_scales.py \
+python scripts/data/compute_scales.py \
     --datapath data/mixed \
     --filename _train_mixed_32k.h5
 ```
@@ -880,7 +880,7 @@ After mixed pretraining completes, update the checkpoint paths for fine-tuning:
 
 ```bash
 # Update checkpoint paths with your mixed pretraining job ID
-bash scripts/utils/update_checkpoint_path.sh 67890
+bash scripts/maintenance/update_checkpoint_path.sh 67890
 
 # This updates config/operators_poisson.yaml to point to the correct checkpoint
 ```

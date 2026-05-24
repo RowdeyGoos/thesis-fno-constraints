@@ -121,7 +121,7 @@ mkdir -p experiments
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/config/operators_poisson.yaml \
     --config=$config_name \
     --run_num=transfer-${exp_desc}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \

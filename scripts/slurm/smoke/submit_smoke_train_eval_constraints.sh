@@ -86,7 +86,7 @@ ROOT_DIR="${ROOT_DIR:-experiments}"
 echo "YAML config:  ${YAML_CONFIG}"
 echo "Config name:  ${CONFIG_NAME}"
 
-TRAIN_CMD="python /workspace/train.py \
+TRAIN_CMD="python /workspace/scripts/entrypoints/train.py \
   --yaml_config=/workspace/${YAML_CONFIG} \
   --config=${CONFIG_NAME} \
   --run_num=${RUN_TAG}-train \
@@ -109,7 +109,7 @@ fi
 
 echo "Using checkpoint: ${CKPT_PATH}"
 
-EVAL_CMD="python /workspace/eval.py \
+EVAL_CMD="python /workspace/scripts/entrypoints/eval.py \
   --yaml_config=/workspace/${YAML_CONFIG} \
   --config=${CONFIG_NAME} \
   --run_num=${RUN_TAG}-eval \

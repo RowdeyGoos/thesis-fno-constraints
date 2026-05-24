@@ -62,7 +62,7 @@ MIXED_SCALES="${MIXED_SCALES:-data/bc/mixed/_train_mixed_32k_bc_scales.npy}"
 if [ ! -f "$MIXED_TRAIN" ]; then
     echo "Error: mixed BC training dataset not found at: $MIXED_TRAIN"
     echo "Build it first (from repo root) with:"
-    echo "  bash run_build_mixed_bc.sh"
+    echo "  bash scripts/workflows/run_build_mixed_bc.sh"
     exit 2
 fi
 
@@ -82,7 +82,7 @@ mkdir -p "$ROOT_DIR"
 # Bind directories
 BIND="--bind $(pwd):/workspace"
 
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/${CONFIG_FILE} \
     --config=${CONFIG_NAME} \
     --run_num=${RUN_NAME}-${SLURM_JOB_ID}-0 \

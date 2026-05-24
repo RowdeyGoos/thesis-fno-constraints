@@ -64,7 +64,7 @@ sbatch scripts/slurm/smoke/submit_smoke_train_eval_constraints.sh
 Optional W&B sweep plumbing sanity check (recommended if sweep dashboards look empty):
 
 ```bash
-bash scripts/utils/submit_constraints_sanity_sweep.sh
+bash scripts/experiments/submit_constraints_sanity_sweep.sh
 ```
 
 Pass criteria:
@@ -82,7 +82,7 @@ Use this if you want to compare hard vs soft zero-mode in isolation before
 introducing PDE residual constraints.
 
 ```bash
-bash scripts/utils/submit_constraints_zero_mode_only_compare.sh
+bash scripts/experiments/submit_constraints_zero_mode_only_compare.sh
 ```
 
 This submits:
@@ -93,7 +93,7 @@ This submits:
 Ranking command for the soft sweep:
 
 ```bash
-python scripts/utils/select_constraints_candidate.py \
+python scripts/experiments/select_constraints_candidate.py \
   --sweep_root experiments/sweeps/<SOFT_SWEEP_ID> \
   --top_k 5 \
   --output_json results/constraints/<SOFT_SWEEP_ID>_ranking.json
@@ -114,20 +114,20 @@ Run two sweeps.
 Recommended (single command):
 
 ```bash
-bash scripts/utils/submit_constraints_stage_a.sh
+bash scripts/experiments/submit_constraints_stage_a.sh
 ```
 
 Equivalent per-sweep commands:
 
 ```bash
-bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_penalty_pde_only.yaml
-bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_pde_only.yaml
+bash scripts/experiments/submit_constraints_sweep.sh config/sweep_constraints_pretrain_penalty_pde_only.yaml
+bash scripts/experiments/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_pde_only.yaml
 ```
 
 ### A3) Rank candidates
 
 ```bash
-python scripts/utils/select_constraints_candidate.py \
+python scripts/experiments/select_constraints_candidate.py \
   --sweep_root experiments/sweeps/<SWEEP_ID> \
   --top_k 5 \
   --output_json results/constraints/<SWEEP_ID>_ranking.json
@@ -152,14 +152,14 @@ Run two sweeps.
 Recommended (single command):
 
 ```bash
-bash scripts/utils/submit_constraints_stage_b.sh
+bash scripts/experiments/submit_constraints_stage_b.sh
 ```
 
 Equivalent per-sweep commands:
 
 ```bash
-bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_penalty_hard.yaml
-bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_hard.yaml
+bash scripts/experiments/submit_constraints_sweep.sh config/sweep_constraints_pretrain_penalty_hard.yaml
+bash scripts/experiments/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_hard.yaml
 ```
 
 What to look for:
@@ -181,13 +181,13 @@ Run one new soft sweep (hard baseline already exists from Stage B for same PDE m
 If `PDE_WINNER_HARD=penalty`:
 
 ```bash
-bash scripts/utils/submit_constraints_stage_c.sh penalty
+bash scripts/experiments/submit_constraints_stage_c.sh penalty
 ```
 
 If `PDE_WINNER_HARD=augmented_lagrangian`:
 
 ```bash
-bash scripts/utils/submit_constraints_stage_c.sh al
+bash scripts/experiments/submit_constraints_stage_c.sh al
 ```
 
 What to look for:
@@ -249,7 +249,7 @@ Command:
 ```bash
 PRETRAIN_CONFIG_NAME=<WINNING_PRETRAIN_CONFIG> \
 PRETRAIN_RUN_PREFIX=<WINNING_RUN_PREFIX> \
-bash scripts/utils/update_mixed_checkpoint_path.sh <PRETRAIN_JOBID>
+bash scripts/maintenance/update_mixed_checkpoint_path.sh <PRETRAIN_JOBID>
 ```
 
 Sanity check:

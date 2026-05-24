@@ -19,7 +19,7 @@
 # Submit from project root: sbatch scripts/slurm/pretrain/submit_pretrain_array_single_gpu.sh
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling Pretraining Array Job (Container, Single GPU)"
+echo "Starting thesis-fno-constraints Pretraining Array Job (Container, Single GPU)"
 echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node list: $SLURM_NODELIST"
@@ -90,7 +90,7 @@ mkdir -p "$SCRATCH"
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command (inside container, paths under /workspace)
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/$config_file \
     --config=$config_name \
     --run_num=${run_base}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \

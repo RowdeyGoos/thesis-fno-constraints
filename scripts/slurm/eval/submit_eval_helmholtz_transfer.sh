@@ -64,7 +64,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_transfer_learning.py \
+             python scripts/entrypoints/eval_transfer_learning.py \
                 --yaml_config config/operators_helmholtz.yaml \
                 --experiment_type helmholtz \
                 --configs helm-o1_5-zeroshot-mixed \
@@ -88,7 +88,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_transfer_learning.py \
+             python scripts/entrypoints/eval_transfer_learning.py \
                 --yaml_config config/operators_helmholtz.yaml \
                 --experiment_type helmholtz \
                 --configs helm-o1_5-zeroshot \
@@ -112,7 +112,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_transfer_learning.py \
+             python scripts/entrypoints/eval_transfer_learning.py \
                 --yaml_config config/operators_helmholtz.yaml \
                 --experiment_type helmholtz \
                 --configs helm-o1_5-scratch-zeroshot \
@@ -136,7 +136,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python utils/plot_transfer_learning_comparison.py \
+             python scripts/eval/plot_transfer_learning_comparison.py \
                 --mixed_results results/transfer_learning_helmholtz_o1_5/mixed/helmholtz_results.json \
                 --k1_5_results results/transfer_learning_helmholtz_o1_5/helmholtz/helmholtz_results.json \
                 --scratch_results results/transfer_learning_helmholtz_o1_5/scratch/helmholtz_results.json \

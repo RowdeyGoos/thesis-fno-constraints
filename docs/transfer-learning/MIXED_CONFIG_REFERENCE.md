@@ -65,11 +65,11 @@ Helmholtz:  [k,   0,   k,   0,  0, omega]
 ### 1) Create mixed pretraining datasets
 
 ```bash
-python utils/create_mixed_dataset.py   --poisson_path data/poisson/_train_k1_5_32k.h5   --advdiff_path data/advdiff/_train_adr0.2_1_32k.h5   --helmholtz_path data/helmholtz/_train_o1_10_32k.h5   --output_path data/mixed/_train_mixed_32k.h5
+python scripts/data/create_mixed_dataset.py   --poisson_path data/poisson/_train_k1_5_32k.h5   --advdiff_path data/advdiff/_train_adr0.2_1_32k.h5   --helmholtz_path data/helmholtz/_train_o1_10_32k.h5   --output_path data/mixed/_train_mixed_32k.h5
 
-python utils/create_mixed_dataset.py   --poisson_path data/poisson/_val_k1_5_4k.h5   --advdiff_path data/advdiff/_val_adr0.2_1_4k.h5   --helmholtz_path data/helmholtz/_val_o1_10_4k.h5   --output_path data/mixed/_val_mixed_4k.h5
+python scripts/data/create_mixed_dataset.py   --poisson_path data/poisson/_val_k1_5_4k.h5   --advdiff_path data/advdiff/_val_adr0.2_1_4k.h5   --helmholtz_path data/helmholtz/_val_o1_10_4k.h5   --output_path data/mixed/_val_mixed_4k.h5
 
-python utils/create_mixed_dataset.py   --poisson_path data/poisson/_test_k1_5_4k.h5   --advdiff_path data/advdiff/_test_adr0.2_1_4k.h5   --helmholtz_path data/helmholtz/_test_o1_10_4k.h5   --output_path data/mixed/_test_mixed_4k.h5
+python scripts/data/create_mixed_dataset.py   --poisson_path data/poisson/_test_k1_5_4k.h5   --advdiff_path data/advdiff/_test_adr0.2_1_4k.h5   --helmholtz_path data/helmholtz/_test_o1_10_4k.h5   --output_path data/mixed/_test_mixed_4k.h5
 ```
 
 ### 2) Pretrain
@@ -81,7 +81,7 @@ sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh
 ### 3) Update checkpoint path in configs
 
 ```bash
-bash scripts/utils/update_mixed_checkpoint_path.sh <job_id>
+bash scripts/maintenance/update_mixed_checkpoint_path.sh <job_id>
 ```
 
 ### 4) Fine-tune
@@ -93,7 +93,7 @@ sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array
 ### 5) Evaluate
 
 ```bash
-python eval_transfer_learning.py   --yaml_config config/operators_mixed.yaml   --experiment_type poisson   --include_mixed
+python scripts/entrypoints/eval_transfer_learning.py   --yaml_config config/operators_mixed.yaml   --experiment_type poisson   --include_mixed
 ```
 
 ## Config Snippets (Current)

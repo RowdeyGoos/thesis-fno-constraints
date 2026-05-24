@@ -39,7 +39,7 @@ Quick checks:
 ls containers/neuraloperators.sif
 ls config/operators_mixed_bc.yaml
 ls config/sweep_constraints_pretrain_bc_soft.yaml
-ls run_gen_data_bc.sh run_build_mixed_bc.sh
+ls scripts/workflows/run_gen_data_bc.sh scripts/workflows/run_build_mixed_bc.sh
 ```
 
 ---
@@ -51,7 +51,7 @@ Use this first to catch config/runtime issues before full generation and long pr
 Local smoke:
 
 ```bash
-MODES="off soft hard hard+soft" bash scripts/utils/run_local_smoke_train_eval_bc_constraints.sh
+MODES="off soft hard hard+soft" bash scripts/workflows/run_local_smoke_train_eval_bc_constraints.sh
 ```
 
 SLURM smoke:
@@ -74,7 +74,7 @@ Pass criteria:
 Recommended (single command):
 
 ```bash
-bash run_gen_data_bc.sh
+bash scripts/workflows/run_gen_data_bc.sh
 ```
 
 This generates:
@@ -83,7 +83,7 @@ This generates:
 - AdvDiff BC datasets in `data_root/advdiff`
 - Helmholtz BC datasets in `data_root/helmholtz`
 
-Important knobs in `run_gen_data_bc.sh`:
+Important knobs in `scripts/workflows/run_gen_data_bc.sh`:
 
 - split sizes: `ntrain`, `nval`, `ntest`
 - grid/source controls: `n`, `ng`
@@ -100,9 +100,9 @@ Pass criteria:
 Optional sanity checks:
 
 ```bash
-python3 scripts/utils/check_bc_dataset_sanity.py --input data/poisson --glob "*_bc.h5"
-python3 scripts/utils/check_bc_dataset_sanity.py --input data/advdiff --glob "*_bc.h5"
-python3 scripts/utils/check_bc_dataset_sanity.py --input data/helmholtz --glob "*_bc.h5"
+python3 scripts/data/check_bc_dataset_sanity.py --input data/poisson --glob "*_bc.h5"
+python3 scripts/data/check_bc_dataset_sanity.py --input data/advdiff --glob "*_bc.h5"
+python3 scripts/data/check_bc_dataset_sanity.py --input data/helmholtz --glob "*_bc.h5"
 ```
 
 ---
@@ -112,7 +112,7 @@ python3 scripts/utils/check_bc_dataset_sanity.py --input data/helmholtz --glob "
 Recommended (single command):
 
 ```bash
-bash run_build_mixed_bc.sh
+bash scripts/workflows/run_build_mixed_bc.sh
 ```
 
 This builds:
@@ -125,7 +125,7 @@ This builds:
 Pass criteria:
 
 - All 4 files above exist.
-- Mixed dataset sanity check passes if enabled in `run_build_mixed_bc.sh`.
+- Mixed dataset sanity check passes if enabled in `scripts/workflows/run_build_mixed_bc.sh`.
 
 ---
 
@@ -134,10 +134,10 @@ Pass criteria:
 Run the four BC modes with separate submit scripts:
 
 ```bash
-bash scripts/utils/submit_bc_constraints_mode_off.sh
-bash scripts/utils/submit_bc_constraints_mode_soft.sh
-bash scripts/utils/submit_bc_constraints_mode_hard.sh
-bash scripts/utils/submit_bc_constraints_mode_hard_soft.sh
+bash scripts/experiments/submit_bc_constraints_mode_off.sh
+bash scripts/experiments/submit_bc_constraints_mode_soft.sh
+bash scripts/experiments/submit_bc_constraints_mode_hard.sh
+bash scripts/experiments/submit_bc_constraints_mode_hard_soft.sh
 ```
 
 This submits:
@@ -150,7 +150,7 @@ This submits:
 Soft-vs-hard only:
 
 ```bash
-bash scripts/utils/submit_bc_constraints_soft_hard_compare.sh
+bash scripts/experiments/submit_bc_constraints_soft_hard_compare.sh
 ```
 
 Single-run template:
@@ -183,13 +183,13 @@ Decision output of Stage 3:
 Run BC soft sweep:
 
 ```bash
-bash scripts/utils/submit_bc_constraints_stage_soft.sh
+bash scripts/experiments/submit_bc_constraints_stage_soft.sh
 ```
 
 Equivalent:
 
 ```bash
-bash scripts/utils/submit_bc_constraints_sweep.sh config/sweep_constraints_pretrain_bc_soft.yaml
+bash scripts/experiments/submit_bc_constraints_sweep.sh config/sweep_constraints_pretrain_bc_soft.yaml
 ```
 
 Default sweep targets:
@@ -207,7 +207,7 @@ Fixed during sweep:
 Rank candidates:
 
 ```bash
-python scripts/utils/select_constraints_candidate.py \
+python scripts/experiments/select_constraints_candidate.py \
   --sweep_root experiments/sweeps/<SWEEP_ID> \
   --top_k 5 \
   --output_json results/constraints/<SWEEP_ID>_ranking.json
@@ -236,7 +236,7 @@ Run final pretraining jobs for:
 Then run eval:
 
 ```bash
-python3 eval.py \
+python3 scripts/entrypoints/eval.py \
   --yaml_config config/operators_mixed_bc.yaml \
   --config <CONFIG_NAME> \
   --run_num <EVAL_RUN_NAME> \
@@ -263,15 +263,15 @@ Recommended rule:
 - BC smoke:
   - `sbatch scripts/slurm/smoke/submit_smoke_train_eval_bc_constraints.sh`
 - Submit BC mode `off`:
-  - `bash scripts/utils/submit_bc_constraints_mode_off.sh`
+  - `bash scripts/experiments/submit_bc_constraints_mode_off.sh`
 - Submit BC mode `soft`:
-  - `bash scripts/utils/submit_bc_constraints_mode_soft.sh`
+  - `bash scripts/experiments/submit_bc_constraints_mode_soft.sh`
 - Submit BC mode `hard`:
-  - `bash scripts/utils/submit_bc_constraints_mode_hard.sh`
+  - `bash scripts/experiments/submit_bc_constraints_mode_hard.sh`
 - Submit BC mode `hard+soft`:
-  - `bash scripts/utils/submit_bc_constraints_mode_hard_soft.sh`
+  - `bash scripts/experiments/submit_bc_constraints_mode_hard_soft.sh`
 - Submit BC soft sweep:
-  - `bash scripts/utils/submit_bc_constraints_stage_soft.sh`
+  - `bash scripts/experiments/submit_bc_constraints_stage_soft.sh`
 
 ---
 

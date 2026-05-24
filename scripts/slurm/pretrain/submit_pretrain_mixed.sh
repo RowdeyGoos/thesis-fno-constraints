@@ -72,7 +72,7 @@ MIXED_TRAIN="data/mixed/_train_mixed_32k.h5"
 if [ ! -f "$MIXED_TRAIN" ]; then
     echo "Error: Mixed training dataset not found at: $MIXED_TRAIN"
     echo "Please create mixed dataset first using:"
-    echo "  python utils/create_mixed_dataset.py \\"
+    echo "  python scripts/data/create_mixed_dataset.py \\"
     echo "    --poisson_path data/poisson/_train_k1_5_32k.h5 \\"
     echo "    --advdiff_path data/advdiff/_train_adr0.2_1_32k.h5 \\"
     echo "    --helmholtz_path data/helmholtz/_train_o1_10_32k.h5 \\"
@@ -92,7 +92,7 @@ mkdir -p experiments
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
     --run_num=${RUN_NAME}-${SLURM_JOB_ID}-0 \

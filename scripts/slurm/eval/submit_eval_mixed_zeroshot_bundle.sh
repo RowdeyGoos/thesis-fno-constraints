@@ -157,7 +157,7 @@ if "${CONTAINER_BIN}" exec --nv --bind "${WORKDIR}:/workspace" "$CONTAINER_PATH"
         declare -a specs=()
         read -r -a specs <<< "${ZERO_SHOT_SPECS_STR}"
 
-        cmd=(bash scripts/utils/run_mixed_zeroshot_bundle.sh --root-dir "${ROOT_DIR}")
+        cmd=(bash scripts/eval/run_mixed_zeroshot_bundle.sh --root-dir "${ROOT_DIR}")
         if [[ -n "${SUMMARY_FILE}" ]]; then
             cmd+=(--summary-file "${SUMMARY_FILE}")
         fi

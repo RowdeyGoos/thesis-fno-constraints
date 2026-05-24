@@ -1,4 +1,4 @@
-# DAIC Cluster Setup for neuraloperators-TL-scaling
+# DAIC Cluster Setup for thesis-fno-constraints
 
 This repository contains scripts and configurations for running the neuraloperators transfer-learning project on TU Delft's DAIC cluster.
 
@@ -164,12 +164,12 @@ Before running training, ensure your data is properly configured:
 1. **Generate data** (if needed):
    ```bash
    # On DAIC or locally
-   python utils/gen_data_poisson.py --help
+   python scripts/data/gen_data_poisson.py --help
    ```
 
 2. **Generate normalization scales:**
    ```bash
-   python generate_scales.py --data_path /path/to/data
+   python scripts/data/compute_scales.py --help
    ```
 
 3. **Update config files** (`config/operators_*.yaml`):

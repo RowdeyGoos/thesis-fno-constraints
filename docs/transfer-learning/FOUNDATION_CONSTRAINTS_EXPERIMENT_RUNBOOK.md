@@ -54,18 +54,18 @@ Recommended helper scripts:
 
 ```bash
 # Optional sanity sweep to validate W&B/SLURM sweep logging:
-bash scripts/utils/submit_constraints_sanity_sweep.sh
+bash scripts/experiments/submit_constraints_sanity_sweep.sh
 
 # Optional zero-mode-only comparison (hard single run + soft sweep, PDE off):
-bash scripts/utils/submit_constraints_zero_mode_only_compare.sh
+bash scripts/experiments/submit_constraints_zero_mode_only_compare.sh
 
 # One sweep (create + wait for SWEEP_ID + submit agents)
-bash scripts/utils/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_hard.yaml
+bash scripts/experiments/submit_constraints_sweep.sh config/sweep_constraints_pretrain_al_hard.yaml
 
 # Whole stages
-bash scripts/utils/submit_constraints_stage_a.sh
-bash scripts/utils/submit_constraints_stage_b.sh
-bash scripts/utils/submit_constraints_stage_c.sh penalty   # or: al
+bash scripts/experiments/submit_constraints_stage_a.sh
+bash scripts/experiments/submit_constraints_stage_b.sh
+bash scripts/experiments/submit_constraints_stage_c.sh penalty   # or: al
 ```
 
 ### 2.1 Create sweep ID
@@ -123,7 +123,7 @@ Then run final 500-epoch confirmation with 2 seeds.
 You can rank local sweep outputs with:
 
 ```bash
-python scripts/utils/select_constraints_candidate.py \
+python scripts/experiments/select_constraints_candidate.py \
   --sweep_root experiments/sweeps/<SWEEP_ID> \
   --top_k 5 \
   --output_json results/constraints/<SWEEP_ID>_ranking.json
@@ -167,7 +167,7 @@ After choosing a final mixed pretraining run, update all mixed-transfer weights 
 Using:
 
 ```bash
-bash scripts/utils/update_mixed_checkpoint_path.sh <JOBID>
+bash scripts/maintenance/update_mixed_checkpoint_path.sh <JOBID>
 ```
 
 For constrained pretraining names, override defaults:
@@ -175,7 +175,7 @@ For constrained pretraining names, override defaults:
 ```bash
 PRETRAIN_CONFIG_NAME=mixed-scale-all-constraints-al-hard \
 PRETRAIN_RUN_PREFIX=pretrain-mixed-al-hard \
-bash scripts/utils/update_mixed_checkpoint_path.sh <JOBID>
+bash scripts/maintenance/update_mixed_checkpoint_path.sh <JOBID>
 ```
 
 ---

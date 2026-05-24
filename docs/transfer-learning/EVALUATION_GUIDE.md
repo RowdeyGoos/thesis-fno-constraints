@@ -38,7 +38,7 @@ Evaluate each approach separately:
 
 ```bash
 # 1. Mixed-pretrained
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_mixed.yaml \
     --experiment_type poisson \
     --configs poisson-k1_2.5-finetune-mixed-16 \
@@ -50,7 +50,7 @@ python eval_transfer_learning.py \
     --output_dir results/transfer_learning_k1_2.5/mixed
 
 # 2. k1_5-pretrained
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --configs poisson-k1_2.5-finetune-16 \
@@ -62,7 +62,7 @@ python eval_transfer_learning.py \
     --output_dir results/transfer_learning_k1_2.5/k1_5
 
 # 3. From-scratch
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_poisson.yaml \
     --experiment_type poisson \
     --configs poisson-k1_2.5-scratch-16 \
@@ -74,7 +74,7 @@ python eval_transfer_learning.py \
     --output_dir results/transfer_learning_k1_2.5/scratch
 
 # 4. Generate combined plot
-python utils/plot_transfer_learning_comparison.py \
+python scripts/eval/plot_transfer_learning_comparison.py \
     --mixed_results results/transfer_learning_k1_2.5/mixed/results.json \
     --k1_5_results results/transfer_learning_k1_2.5/k1_5/results.json \
     --scratch_results results/transfer_learning_k1_2.5/scratch/results.json \
@@ -85,17 +85,17 @@ python utils/plot_transfer_learning_comparison.py \
 ### Option 3: Bash Script (Local)
 
 ```bash
-bash scripts/eval_all_transfer_learning.sh
+bash scripts/eval/eval_all_transfer_learning.sh
 ```
 
 ## Understanding the Evaluation Process
 
-### What `eval_transfer_learning.py` Does
+### What `scripts/entrypoints/eval_transfer_learning.py` Does
 
 For each model configuration:
 1. **Finds checkpoint**: Locates `ckpt_best.tar` in the experiment directory
 2. **Loads model**: Restores model weights from checkpoint
-3. **Runs inference**: Evaluates on test set using `eval.py`
+3. **Runs inference**: Evaluates on test set using `scripts/entrypoints/eval.py`
 4. **Computes metrics**: Calculates test error (relative L2 norm)
 5. **Saves results**: Stores metrics in JSON format
 
@@ -208,7 +208,7 @@ ls experiments/expts/poisson-k1_2.5-finetune-mixed-16/*/checkpoints/
 **Debug:**
 ```bash
 # Run evaluation manually for that specific config
-python eval.py \
+python scripts/entrypoints/eval.py \
     --yaml_config config/operators_mixed.yaml \
     --config poisson-k1_2.5-finetune-mixed-16 \
     --weights experiments/expts/.../checkpoints/ckpt_best.tar \
@@ -236,7 +236,7 @@ Common issues:
 ### Evaluate Specific Configs Only
 
 ```bash
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_mixed.yaml \
     --configs poisson-k1_2.5-finetune-mixed-16 poisson-k1_2.5-finetune-mixed-64 \
     --output_dir results/mixed_subset
@@ -245,7 +245,7 @@ python eval_transfer_learning.py \
 ### Use Existing Results (Skip Re-evaluation)
 
 ```bash
-python eval_transfer_learning.py \
+python scripts/entrypoints/eval_transfer_learning.py \
     --yaml_config config/operators_mixed.yaml \
     --experiment_type mixed_k1_2.5 \
     --results_file results/transfer_learning_k1_2.5/mixed/results.json
@@ -254,7 +254,7 @@ python eval_transfer_learning.py \
 ### Custom Plot Title
 
 ```bash
-python utils/plot_transfer_learning_comparison.py \
+python scripts/eval/plot_transfer_learning_comparison.py \
     --mixed_results results/transfer_learning_k1_2.5/mixed/results.json \
     --k1_5_results results/transfer_learning_k1_2.5/k1_5/results.json \
     --scratch_results results/transfer_learning_k1_2.5/scratch/results.json \

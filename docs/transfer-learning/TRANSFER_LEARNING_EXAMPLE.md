@@ -45,7 +45,7 @@ poisson-finetune:
 # Generate source domain data (if not already done)
 mkdir -p data/poisson_k1_5
 
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 32768 \
     --nval 4096 \
     --ntest 4096 \
@@ -56,12 +56,12 @@ python utils/gen_data_poisson.py \
     --e1 1 \
     --e2 5
 
-python compute_scales.py \
+python scripts/data/compute_scales.py \
     data/poisson_k1_5/poissons_train_k1_5_32768.h5 \
     data/poisson_k1_5/poissons_train_k1_5_32768_scales.npy
 
 # Pre-train model
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k1_5 \
     --run_num pretrain_k1_5 \
@@ -77,7 +77,7 @@ python train.py \
 ```bash
 mkdir -p data/poisson_k5_10
 
-python utils/gen_data_poisson.py \
+python scripts/data/gen_data_poisson.py \
     --ntrain 32768 \
     --nval 4096 \
     --ntest 4096 \
@@ -88,7 +88,7 @@ python utils/gen_data_poisson.py \
     --e1 5 \
     --e2 10
 
-python compute_scales.py \
+python scripts/data/compute_scales.py \
     data/poisson_k5_10/poissons_train_k5_10_32768.h5 \
     data/poisson_k5_10/poissons_train_k5_10_32768_scales.npy
 ```
@@ -152,28 +152,28 @@ poisson-scale-k5_10-fromscratch-sub8:
 
 ```bash
 # Full data (100%)
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10 \
     --run_num fromscratch_100pct \
     --root_dir ./results
 
 # 50% data
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-fromscratch-sub2 \
     --run_num fromscratch_50pct \
     --root_dir ./results
 
 # 25% data
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-fromscratch-sub4 \
     --run_num fromscratch_25pct \
     --root_dir ./results
 
 # 12.5% data
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-fromscratch-sub8 \
     --run_num fromscratch_12pct \
@@ -184,28 +184,28 @@ python train.py \
 
 ```bash
 # Full data (100%)
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-pretrained \
     --run_num pretrained_100pct \
     --root_dir ./results
 
 # 50% data
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-pretrained-sub2 \
     --run_num pretrained_50pct \
     --root_dir ./results
 
 # 25% data
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-pretrained-sub4 \
     --run_num pretrained_25pct \
     --root_dir ./results
 
 # 12.5% data
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-pretrained-sub8 \
     --run_num pretrained_12pct \
@@ -221,7 +221,7 @@ Loading IC weights ./results/expts/poisson-scale-k1_5/pretrain_k1_5/checkpoints/
 
 ```bash
 # Evaluate from-scratch model
-python eval.py \
+python scripts/entrypoints/eval.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-fromscratch-sub4 \
     --run_num fromscratch_25pct \
@@ -229,7 +229,7 @@ python eval.py \
     --weights ./results/expts/poisson-scale-k5_10-fromscratch-sub4/fromscratch_25pct/checkpoints/ckpt_best.tar
 
 # Evaluate pre-trained model
-python eval.py \
+python scripts/entrypoints/eval.py \
     --yaml_config config/operators_poisson.yaml \
     --config poisson-scale-k5_10-pretrained-sub4 \
     --run_num pretrained_25pct \

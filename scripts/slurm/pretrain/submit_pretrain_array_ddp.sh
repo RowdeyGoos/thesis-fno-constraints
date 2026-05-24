@@ -18,7 +18,7 @@
 # Submit from project root: sbatch scripts/slurm/pretrain/submit_pretrain_array_ddp.sh
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling Pretraining Array Job (Container, DDP)"
+echo "Starting thesis-fno-constraints Pretraining Array Job (Container, DDP)"
 echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node list: $SLURM_NODELIST"
@@ -101,7 +101,7 @@ mkdir -p "$SCRATCH"
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command (inside container, paths under /workspace)
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/$config_file \
     --config=$config_name \
     --run_num=${run_base}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \
@@ -119,7 +119,7 @@ srun -l -n $ngpu --cpus-per-task=$SLURM_CPUS_PER_TASK --gpus-per-node=$ngpu \
                  export TMPDIR="/workspace/${job_tmp}" && \
                  mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
                  echo "Rank: $SLURM_PROCID, Local rank: $SLURM_LOCALID, World size: $SLURM_NTASKS" && \
-                 source export_DDP_vars.sh && \
+                 source scripts/workflows/export_DDP_vars.sh && \
                  '"$CMD"
 
 status=$?

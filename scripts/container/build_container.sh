@@ -4,7 +4,7 @@
 set -e  # Exit on error
 
 echo "=========================================="
-echo "Building neuraloperators-TL-scaling Container"
+echo "Building thesis-fno-constraints Container"
 echo "=========================================="
 
 # Navigate to project root

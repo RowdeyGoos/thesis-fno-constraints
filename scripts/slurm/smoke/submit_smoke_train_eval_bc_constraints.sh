@@ -69,7 +69,7 @@ mkdir -p experiments
 
 BIND="--bind ${WORKDIR}:/workspace"
 
-BC_SMOKE_CMD='cd /workspace && bash scripts/utils/run_local_smoke_train_eval_bc_constraints.sh'
+BC_SMOKE_CMD='cd /workspace && bash scripts/workflows/run_local_smoke_train_eval_bc_constraints.sh'
 
 echo "Running BC smoke train+eval pipeline..."
 echo "Command: ${BC_SMOKE_CMD}"

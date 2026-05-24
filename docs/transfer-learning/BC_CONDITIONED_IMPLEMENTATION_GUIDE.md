@@ -97,12 +97,12 @@ flowchart LR
 ### Core BC data generation
 - `utils/bc_sampling.py`
 - `utils/fd_bc_utils.py`
-- `utils/gen_data_poisson_bc.py`
-- `utils/gen_data_advdiff_bc.py`
-- `utils/gen_data_helmholtz_bc.py`
+- `scripts/data/gen_data_poisson_bc.py`
+- `scripts/data/gen_data_advdiff_bc.py`
+- `scripts/data/gen_data_helmholtz_bc.py`
 
 ### Dataset assembly and loading
-- `utils/create_mixed_dataset.py`
+- `scripts/data/create_mixed_dataset.py`
 - `utils/data_utils.py`
 
 ### Training / inference integration
@@ -115,8 +115,8 @@ flowchart LR
 - `config/operators_local_smoke_bc.yaml`
 
 ### Smoke tooling
-- `scripts/utils/check_bc_dataset_sanity.py`
-- `scripts/utils/run_local_smoke_train_eval_bc_constraints.sh`
+- `scripts/data/check_bc_dataset_sanity.py`
+- `scripts/workflows/run_local_smoke_train_eval_bc_constraints.sh`
 
 ## 3) Data contract
 
@@ -178,7 +178,7 @@ Implementation details:
 
 ## 4.3 Per-system generators
 
-### Poisson BC (`utils/gen_data_poisson_bc.py`)
+### Poisson BC (`scripts/data/gen_data_poisson_bc.py`)
 
 - Samples diffusion tensor via random rotation/eigenvalue draw.
 - Scales diffusion by `diff_coef_scale` (default `0.01`) to match existing conventions.
@@ -186,7 +186,7 @@ Implementation details:
 - Solves with FD Dirichlet solver (`vx=vy=omega=0`).
 - Writes `tensor=[k11,k12,k22]`.
 
-### AdvDiff BC (`utils/gen_data_advdiff_bc.py`)
+### AdvDiff BC (`scripts/data/gen_data_advdiff_bc.py`)
 
 - Samples diffusion tensor + velocity direction.
 - Preserves existing ADR/lambda semantics by loading `utils/lambda.npy` and `utils/ads.npy` and mapping sampled ADR to nearest lambda.
@@ -196,7 +196,7 @@ Implementation details:
 - Solves FD Dirichlet system with `vx, vy`.
 - Writes `tensor=[k11,k12,k22,vx,vy]`.
 
-### Helmholtz BC (`utils/gen_data_helmholtz_bc.py`)
+### Helmholtz BC (`scripts/data/gen_data_helmholtz_bc.py`)
 
 - Samples integer `omega` in `[o1,o2]`.
 - Uses isotropic diffusion `k11=k22=diff_coef_scale`, `k12=0`.
@@ -206,7 +206,7 @@ Implementation details:
 
 ## 5) Mixed BC dataset assembly
 
-`utils/create_mixed_dataset.py` now supports `--require_bc`.
+`scripts/data/create_mixed_dataset.py` now supports `--require_bc`.
 
 When enabled:
 
@@ -359,7 +359,7 @@ This enables warm-start from legacy mixed checkpoints (`in_dim=7`) into BC model
 Use:
 
 ```bash
-python scripts/utils/check_bc_dataset_sanity.py --input data/local_smoke_bc/poisson --glob "*.h5"
+python scripts/data/check_bc_dataset_sanity.py --input data/local_smoke_bc/poisson --glob "*.h5"
 ```
 
 Checks:
@@ -375,7 +375,7 @@ Checks:
 Use:
 
 ```bash
-bash scripts/utils/run_local_smoke_train_eval_bc_constraints.sh
+bash scripts/workflows/run_local_smoke_train_eval_bc_constraints.sh
 ```
 
 It performs:

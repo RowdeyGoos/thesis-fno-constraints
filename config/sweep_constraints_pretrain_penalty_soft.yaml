@@ -1,7 +1,7 @@
 name: constraints-pretrain-penalty-soft
 entity: rowdey_goos-tu-delft
 project: neuraloperators
-program: train.py
+program: scripts/entrypoints/train.py
 method: bayes
 metric:
   name: best_val_err

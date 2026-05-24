@@ -63,7 +63,7 @@ Downstream mixed-finetune configs also keep `in_dim: 7` and use converted downst
 
 ## Implementation files
 
-1. `utils/create_mixed_dataset.py`
+1. `scripts/data/create_mixed_dataset.py`
 2. `config/operators_mixed.yaml`
 3. `scripts/slurm/pretrain/submit_pretrain_mixed.sh`
 4. `scripts/slurm/finetune/*/*mixed*.sh`

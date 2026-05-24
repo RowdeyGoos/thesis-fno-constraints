@@ -22,13 +22,13 @@ Convert Poisson tensors from 3 to 6 components with zero padding:
 Batch convert all `k in [1.0, 2.5]` Poisson splits:
 
 ```bash
-bash scripts/utils/convert_k1_2.5_to_mixed_format.sh
+bash scripts/data/convert_k1_2.5_to_mixed_format.sh
 ```
 
 Or convert one file:
 
 ```bash
-python utils/convert_poisson_to_mixed_format.py   --input_path data/poisson/_train_k1.0_2.5_32k.h5   --in_place
+python scripts/data/convert_poisson_to_mixed_format.py   --input_path data/poisson/_train_k1.0_2.5_32k.h5   --in_place
 ```
 
 ## Before vs After
@@ -50,7 +50,7 @@ After:
 3. Update mixed checkpoint path:
 
 ```bash
-bash scripts/utils/update_mixed_checkpoint_path.sh <mixed_pretrain_job_id>
+bash scripts/maintenance/update_mixed_checkpoint_path.sh <mixed_pretrain_job_id>
 ```
 
 4. Run mixed fine-tuning:

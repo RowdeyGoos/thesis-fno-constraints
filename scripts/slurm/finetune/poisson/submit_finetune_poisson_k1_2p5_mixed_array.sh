@@ -22,7 +22,7 @@
 #
 # Usage:
 #   # Update checkpoint path after pretraining
-#   bash scripts/utils/update_checkpoint_path.sh <mixed_pretrain_job_id>
+#   bash scripts/maintenance/update_checkpoint_path.sh <mixed_pretrain_job_id>
 #   
 #   # Submit fine-tuning jobs
 #   sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
@@ -93,7 +93,7 @@ echo ""
 CHECKPOINT_LINE=$(grep -A 20 "^$CONFIG_NAME:" "$CONFIG_FILE" | grep "weights:" | head -n 1)
 if [[ "$CHECKPOINT_LINE" == *"JOBID"* ]]; then
     echo "ERROR: Checkpoint path contains placeholder 'JOBID'!"
-    echo "Please run: bash scripts/utils/update_checkpoint_path.sh <mixed_pretrain_job_id>"
+    echo "Please run: bash scripts/maintenance/update_checkpoint_path.sh <mixed_pretrain_job_id>"
     echo "Found line: $CHECKPOINT_LINE"
     exit 1
 fi
@@ -108,7 +108,7 @@ mkdir -p experiments
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
     --run_num=${RUN_NAME}-${SEED_RUN_SUFFIX}-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TASK_ID} \

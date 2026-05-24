@@ -46,13 +46,13 @@ Test with varying amounts of downstream data: **16, 64, 256, 1k, and 4k samples*
 - Automatic checkpoint verification
 
 ### 3. Helper Script
-**File**: `scripts/utils/update_checkpoint_path.sh`
+**File**: `scripts/maintenance/update_checkpoint_path.sh`
 
 **Purpose**: Update checkpoint paths in configs and scripts after pretraining completes
 
 **Usage**:
 ```bash
-bash scripts/utils/update_checkpoint_path.sh <PRETRAIN_JOBID>
+bash scripts/maintenance/update_checkpoint_path.sh <PRETRAIN_JOBID>
 ```
 
 ### 4. Documentation Updates
@@ -110,14 +110,14 @@ Uses the `subsample` parameter to control training data size:
 ### Step 1: Generate Data
 ```bash
 # Source domain (k1_5) - for pretraining
-python utils/gen_data_poisson.py --ntrain 32768 --nval 4096 --ntest 4096 \
+python scripts/data/gen_data_poisson.py --ntrain 32768 --nval 4096 --ntest 4096 \
     --ng 144 --n 128 --sparse --datapath data/poisson --e1 1 --e2 5
-python utils/compute_scales.py --datapath data/poisson --filename _train_k1_5_32k.h5
+python scripts/data/compute_scales.py --datapath data/poisson --filename _train_k1_5_32k.h5
 
 # Target domain (k5_10) - for transfer learning
-python utils/gen_data_poisson.py --ntrain 32768 --nval 4096 --ntest 4096 \
+python scripts/data/gen_data_poisson.py --ntrain 32768 --nval 4096 --ntest 4096 \
     --ng 144 --n 128 --sparse --datapath data/poisson --e1 5 --e2 10
-python utils/compute_scales.py --datapath data/poisson --filename _train_k5_10_32k.h5
+python scripts/data/compute_scales.py --datapath data/poisson --filename _train_k5_10_32k.h5
 ```
 
 ### Step 2: Pretrain
@@ -128,7 +128,7 @@ sbatch scripts/slurm/pretrain/submit_pretrain_array_single_gpu.sh
 
 ### Step 3: Update Checkpoint Path
 ```bash
-bash scripts/utils/update_checkpoint_path.sh 12345
+bash scripts/maintenance/update_checkpoint_path.sh 12345
 ```
 
 ### Step 4: Run Transfer Learning Experiments

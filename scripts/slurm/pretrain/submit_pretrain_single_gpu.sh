@@ -13,7 +13,7 @@
 #SBATCH --mem=8G
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling (single GPU, container)"
+echo "Starting thesis-fno-constraints (single GPU, container)"
 echo "Job ID:      $SLURM_JOB_ID"
 echo "Node list:   $SLURM_NODELIST"
 echo "Submit dir:  $SLURM_SUBMIT_DIR"
@@ -68,7 +68,7 @@ mkdir -p "$SCRATCH"
 BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 # Python command to run inside the container
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/$CONFIG_FILE \
     --config=$CONFIG_NAME \
     --run_num=${RUN_BASE}-${SLURM_JOB_ID} \

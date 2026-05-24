@@ -14,7 +14,7 @@
 # Submit from project root: sbatch scripts/slurm/legacy/submit_pretrain_venv.sh
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling Training (venv)"
+echo "Starting thesis-fno-constraints Training (venv)"
 echo "Job ID: $SLURM_JOB_ID"
 echo "Node: $SLURM_NODELIST"
 echo "=========================================="
@@ -52,7 +52,7 @@ echo ""
 
 # Run training
 echo "Starting training..."
-python train.py \
+python scripts/entrypoints/train.py \
     --yaml_config "$CONFIG_FILE" \
     --config "$RUN_NAME" \
     --run_num "${RUN_NAME}-${SLURM_JOB_ID}"

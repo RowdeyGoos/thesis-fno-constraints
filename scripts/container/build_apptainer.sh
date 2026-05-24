@@ -5,7 +5,7 @@
 set -e
 
 echo "=========================================="
-echo "Building Apptainer Container for neuraloperators-TL-scaling"
+echo "Building Apptainer Container for thesis-fno-constraints"
 echo "=========================================="
 
 # Navigate to project root

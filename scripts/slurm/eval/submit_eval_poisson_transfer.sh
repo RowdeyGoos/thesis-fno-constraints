@@ -64,7 +64,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_transfer_learning.py \
+             python scripts/entrypoints/eval_transfer_learning.py \
                 --yaml_config config/operators_poisson.yaml \
                 --experiment_type poisson \
                 --configs poisson-k1_2.5-zeroshot-mixed \
@@ -88,7 +88,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_transfer_learning.py \
+             python scripts/entrypoints/eval_transfer_learning.py \
                 --yaml_config config/operators_poisson.yaml \
                 --experiment_type poisson \
                 --configs poisson-k1_2.5-zeroshot \
@@ -112,7 +112,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_transfer_learning.py \
+             python scripts/entrypoints/eval_transfer_learning.py \
                 --yaml_config config/operators_poisson.yaml \
                 --experiment_type poisson \
                 --configs poisson-k1_2.5-scratch-zeroshot \
@@ -136,7 +136,7 @@ echo "----------------------------------------------"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python utils/plot_transfer_learning_comparison.py \
+             python scripts/eval/plot_transfer_learning_comparison.py \
                 --mixed_results results/transfer_learning_k1_2.5/mixed/poisson_results.json \
                 --k1_5_results results/transfer_learning_k1_2.5/k1_5/poisson_results.json \
                 --scratch_results results/transfer_learning_k1_2.5/scratch/poisson_results.json \

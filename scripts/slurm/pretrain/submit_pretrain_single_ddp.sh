@@ -13,7 +13,7 @@
 #SBATCH --mem=8G
 
 echo "=========================================="
-echo "Starting neuraloperators-TL-scaling DDP (Container, Slurm-managed)"
+echo "Starting thesis-fno-constraints DDP (Container, Slurm-managed)"
 echo "Job ID:      $SLURM_JOB_ID"
 echo "Node list:   $SLURM_NODELIST"
 echo "Submit dir:  $SLURM_SUBMIT_DIR"
@@ -62,7 +62,7 @@ trap cleanup_tmp_dir EXIT
 
 # -------- DDP + experiment config --------
 export MASTER_ADDR=$(hostname)   # same as original repo script
-export MASTER_PORT=29500         # matches export_DDP_vars.sh
+export MASTER_PORT=29500         # matches scripts/workflows/export_DDP_vars.sh
 
 ngpu=$SLURM_NTASKS               # == 2
 
@@ -75,7 +75,7 @@ SCRATCH="$SLURM_SUBMIT_DIR/experiments"
 mkdir -p "$SCRATCH"
 
 # Python command (inside container, paths under /workspace)
-CMD="python /workspace/train.py \
+CMD="python /workspace/scripts/entrypoints/train.py \
     --yaml_config=/workspace/config/operators_poisson.yaml \
     --config=$CONFIG_NAME \
     --run_num=${RUN_BASE}-${SLURM_JOB_ID} \
@@ -97,7 +97,7 @@ srun -l -n $ngpu --cpus-per-task=$SLURM_CPUS_PER_TASK --gpus-per-node=$ngpu \
                  export TMPDIR="/workspace/${job_tmp}" && \
                  mkdir -p wandb wandb/cache wandb/tmp tmp experiments "$TMPDIR" && \
                  echo "Rank: $SLURM_PROCID, Local rank: $SLURM_LOCALID, World size: $SLURM_NTASKS" && \
-                 source export_DDP_vars.sh && \
+                 source scripts/workflows/export_DDP_vars.sh && \
                  '"$CMD"
 
 status=$?

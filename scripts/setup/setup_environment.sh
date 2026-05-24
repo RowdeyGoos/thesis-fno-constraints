@@ -4,7 +4,7 @@
 set -e
 
 echo "=========================================="
-echo "Setting up neuraloperators-TL-scaling Environment on DAIC"
+echo "Setting up thesis-fno-constraints Environment on DAIC"
 echo "=========================================="
 
 # Load required modules

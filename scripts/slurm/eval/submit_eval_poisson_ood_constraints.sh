@@ -51,7 +51,7 @@ BIND="--bind $SLURM_SUBMIT_DIR:/workspace"
 
 apptainer exec --nv $BIND "$CONTAINER_PATH" \
     bash -c 'cd /workspace && \
-             python eval_ood_constraint_comparison.py \
+             python scripts/entrypoints/eval_ood_constraint_comparison.py \
                 --experiment_type poisson \
                 --experiment_dir experiments \
                 --output_dir results/ood_constraints_poisson \
