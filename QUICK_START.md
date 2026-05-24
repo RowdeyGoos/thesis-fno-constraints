@@ -16,7 +16,7 @@ This directory contains the code for reproducing results from:
 Run the automated quick test to verify everything works:
 
 ```bash
-cd third_party/neuraloperators-TL-scaling
+cd <repo-root>
 chmod +x quick_test.sh
 ./quick_test.sh
 ```

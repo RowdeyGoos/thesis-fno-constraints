@@ -22,7 +22,7 @@ fi
 
 if [ ! -f "${PROJECT_DIR}/run_gen_data_bc.sh" ]; then
     echo "Error: expected project root with run_gen_data_bc.sh, got: ${PROJECT_DIR}"
-    echo "Submit from third_party/neuraloperators-TL-scaling or set SLURM_SUBMIT_DIR accordingly."
+    echo "Submit from the repository root or set SLURM_SUBMIT_DIR accordingly."
     exit 1
 fi
 
@@ -71,7 +71,7 @@ else
 fi
 
 if [ -n "$CONTAINER_BIN" ]; then
-    CONTAINER_PATH="${CONTAINER_PATH:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/containers/neuraloperators.sif}"
+    CONTAINER_PATH="${CONTAINER_PATH:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/containers/neuraloperators.sif}"
 
     if [ ! -f "$CONTAINER_PATH" ]; then
         echo "Error: container not found at $CONTAINER_PATH"

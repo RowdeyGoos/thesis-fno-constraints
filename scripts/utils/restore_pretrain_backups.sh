@@ -23,8 +23,8 @@
 
 set -euo pipefail
 
-SRC_REPO="${SRC_REPO:-/tudelft.net/staff-umbrella/MscThesisRGoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling}"
-DST_REPO="${DST_REPO:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling}"
+SRC_REPO="${SRC_REPO:-/tudelft.net/staff-umbrella/MscThesisRGoos/thesis-fno-constraints}"
+DST_REPO="${DST_REPO:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints}"
 
 SRC_EXP="${SRC_REPO}/experiments"
 DST_EXP="${DST_REPO}/experiments"

@@ -30,7 +30,7 @@ You should evaluate these questions in order:
 Run from:
 
 ```bash
-cd third_party/neuraloperators-TL-scaling
+cd <repo-root>
 ```
 
 Quick checks:

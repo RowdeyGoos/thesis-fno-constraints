@@ -1,6 +1,5 @@
 #!/bin/bash
-# Build Docker container for neuraloperators-TL-scaling project
-# This is separate from the main thesis project to avoid dependency conflicts
+# Build Docker container for the flattened neuraloperators project
 
 set -e  # Exit on error
 

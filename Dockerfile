@@ -1,5 +1,4 @@
-# Dockerfile for neuraloperators-TL-scaling third party project
-# Separate from main thesis project to avoid dependency conflicts
+# Dockerfile for the flattened neuraloperators transfer-learning project
 
 FROM pytorch/pytorch:1.12.0-cuda11.3-cudnn8-runtime
 

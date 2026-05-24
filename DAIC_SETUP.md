@@ -1,10 +1,10 @@
 # DAIC Cluster Setup for neuraloperators-TL-scaling
 
-This directory contains scripts and configurations for running the neuraloperators-TL-scaling project on TU Delft's DAIC cluster. **This setup is separate from the main thesis project to avoid dependency conflicts.**
+This repository contains scripts and configurations for running the neuraloperators transfer-learning project on TU Delft's DAIC cluster.
 
 ## 🔑 Key Differences from Main Project
 
-| Aspect | Main Thesis Project | neuraloperators-TL-scaling |
+| Aspect | Archived Root Scaffold | Active Neuraloperators Project |
 |--------|---------------------|---------------------------|
 | PyTorch Version | 2.1.0 | 1.12.0 |
 | CUDA Version | 11.8 | 11.3 |
@@ -15,7 +15,7 @@ This directory contains scripts and configurations for running the neuraloperato
 ## 📁 Directory Structure
 
 ```
-third_party/neuraloperators-TL-scaling/
+./
 ├── scripts/
 │   ├── container/
 │   │   ├── build_container.sh         # Build Docker container
@@ -40,7 +40,7 @@ third_party/neuraloperators-TL-scaling/
 
 1. **Build container locally:**
    ```bash
-   cd third_party/neuraloperators-TL-scaling
+   cd <repo-root>
    make build-container
    # or: bash scripts/container/build_container.sh
    ```
@@ -61,7 +61,7 @@ third_party/neuraloperators-TL-scaling/
 
 4. **Navigate to project and submit job:**
    ```bash
-   cd ~/thesis-fno-constraints/third_party/neuraloperators-TL-scaling
+   cd ~/thesis-fno-constraints
    sbatch scripts/slurm/pretrain/submit_pretrain_single_ddp.sh
    ```
 
@@ -69,7 +69,7 @@ third_party/neuraloperators-TL-scaling/
 
 1. **On DAIC - Setup environment:**
    ```bash
-   cd ~/thesis-fno-constraints/third_party/neuraloperators-TL-scaling
+   cd ~/thesis-fno-constraints
    bash scripts/setup/setup_environment.sh
    ```
 
@@ -285,21 +285,15 @@ module load cuda/11.3.1  # if exact version not available
 ## 📚 Additional Resources
 
 - [Original Project README](README.md)
-- [Original Project Documentation](README_LOCAL_TESTING.md)
+- [Archived Local Testing Notes](archive/root-scaffold/docs/generated/README_LOCAL_TESTING.md)
 - [DAIC User Guide](https://doc.dhpc.tudelft.nl/)
 - [Apptainer Documentation](https://apptainer.org/docs/)
 - [SLURM Documentation](https://slurm.schedmd.com/)
 
-## 🔗 Integration with Main Thesis Project
+## 🔗 Results Layout
 
-While this third_party project is kept separate to avoid dependency conflicts, you can reference results from both projects:
+The flattened project writes active experiment outputs under the repository root:
 
 ```bash
-# Main thesis project results
-~/thesis-fno-constraints/experiments/runs/
-
-# neuraloperators results
-~/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/experiments/
+~/thesis-fno-constraints/experiments/
 ```
-
-For comparative analysis, copy results to a common location or use symbolic links.

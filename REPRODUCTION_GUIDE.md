@@ -25,7 +25,7 @@ Let's start with a minimal example to verify everything works correctly.
 #### Option A: Using pip (Local/Development)
 
 ```bash
-cd third_party/neuraloperators-TL-scaling
+cd <repo-root>
 
 # Create virtual environment
 python -m venv venv
@@ -716,7 +716,7 @@ valid_batch_size: 64
 **3. Import Errors:**
 ```bash
 # Ensure you're in the correct directory
-cd third_party/neuraloperators-TL-scaling
+cd <repo-root>
 export PYTHONPATH=$(pwd):$PYTHONPATH
 ```
 

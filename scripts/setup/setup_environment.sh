@@ -1,6 +1,5 @@
 #!/bin/bash
-# Setup Python virtual environment for neuraloperators-TL-scaling on DAIC
-# Separate from main thesis environment to avoid dependency conflicts
+# Setup Python virtual environment for the flattened neuraloperators project on DAIC
 
 set -e
 
@@ -50,7 +49,7 @@ elif [ -f "../../requirements.txt" ]; then
     PROJECT_DIR="$(cd ../.. && pwd)"
 else
     echo "Warning: requirements.txt not found. Assuming you'll install dependencies manually."
-    PROJECT_DIR="~/neuraloperators-TL-scaling"
+    PROJECT_DIR="~/thesis-fno-constraints"
 fi
 
 # Install project requirements

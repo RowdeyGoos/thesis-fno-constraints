@@ -80,7 +80,7 @@ else
 fi
 
 if [ -n "$CONTAINER_BIN" ]; then
-    CONTAINER_PATH="${CONTAINER_PATH:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/containers/neuraloperators.sif}"
+    CONTAINER_PATH="${CONTAINER_PATH:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/containers/neuraloperators.sif}"
 
     if [ ! -f "$CONTAINER_PATH" ]; then
         echo "Error: container not found at $CONTAINER_PATH"

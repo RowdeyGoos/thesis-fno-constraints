@@ -158,3 +158,34 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Local Codex/session state
+.codex
+
+# Local papers/reference PDFs kept outside version control
+Towards Foundation Models for Scientific Machine Learning_ Characterizing Scaling and Transfer Behavior.pdf
+Tutorials _ DAIC documentation.pdf
+
+# Local archival backups
+archive/
+
+# Containers and exported images
+containers/
+*.sif
+*.tar
+
+# Generated data, experiment outputs, and scratch space
+data/
+results/
+tmp/
+evaluation_tmp*/
+experiments/
+experiments_*/
+*.out
+*.err
+
+# Generated docs
+docs/generated/
+
+# Preserved pre-flatten local runtime artifacts
+third_party/neuraloperators-TL-scaling/

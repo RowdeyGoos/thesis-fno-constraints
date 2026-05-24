@@ -37,7 +37,7 @@ echo "Array Task ID: ${SLURM_ARRAY_TASK_ID:-0}"
 echo "Node: ${SLURM_NODELIST:-local}"
 echo "=========================================="
 
-CONTAINER_PATH=${CONTAINER_PATH:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/third_party/neuraloperators-TL-scaling/containers/neuraloperators.sif}
+CONTAINER_PATH=${CONTAINER_PATH:-/tudelft.net/staff-bulk/ewi/insy/PRLab/Students/rgoos/thesis-fno-constraints/containers/neuraloperators.sif}
 
 if [ ! -f "$CONTAINER_PATH" ]; then
     echo "Error: Container not found at $CONTAINER_PATH"

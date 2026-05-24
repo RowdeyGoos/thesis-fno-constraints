@@ -32,7 +32,7 @@ Then you run final 500-epoch mixed pretraining and downstream transfer evaluatio
 Run from:
 
 ```bash
-cd third_party/neuraloperators-TL-scaling
+cd <repo-root>
 ```
 
 Quick checks:
