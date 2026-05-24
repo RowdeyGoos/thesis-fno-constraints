@@ -169,13 +169,72 @@ def _sample_line_display_points(ax, samples_per_segment: int = 30):
     return np.asarray(sampled_points)
 
 
+def _sample_collection_display_points(ax, grid_size: int = 8):
+    """Sample filled collections so legends avoid uncertainty bands too."""
+    sampled_points = []
+    for collection in ax.collections:
+        transform = collection.get_transform()
+        for path in collection.get_paths():
+            vertices = path.vertices
+            if len(vertices) == 0:
+                continue
+
+            display_vertices = transform.transform(vertices)
+            sampled_points.extend(display_vertices)
+
+            x_min, y_min = np.min(vertices, axis=0)
+            x_max, y_max = np.max(vertices, axis=0)
+            if not (np.isfinite([x_min, y_min, x_max, y_max]).all() and x_min < x_max and y_min < y_max):
+                continue
+
+            x_grid = np.linspace(x_min, x_max, grid_size)
+            y_grid = np.linspace(y_min, y_max, grid_size)
+            grid_points = np.column_stack([
+                np.repeat(x_grid, len(y_grid)),
+                np.tile(y_grid, len(x_grid)),
+            ])
+            inside_points = grid_points[path.contains_points(grid_points)]
+            if len(inside_points):
+                sampled_points.extend(transform.transform(inside_points))
+
+    return np.asarray(sampled_points)
+
+
+def _collection_display_bboxes(ax):
+    """Return display-space bounding boxes for filled collections."""
+    bboxes = []
+    for collection in ax.collections:
+        transform = collection.get_transform()
+        for path in collection.get_paths():
+            vertices = path.vertices
+            if len(vertices) == 0:
+                continue
+
+            display_vertices = transform.transform(vertices)
+            x_min, y_min = np.min(display_vertices, axis=0)
+            x_max, y_max = np.max(display_vertices, axis=0)
+            if np.isfinite([x_min, y_min, x_max, y_max]).all() and x_min < x_max and y_min < y_max:
+                bboxes.append((x_min, y_min, x_max, y_max))
+    return bboxes
+
+
+def _bbox_overlap_area(bbox, bounds):
+    x_min, y_min, x_max, y_max = bounds
+    overlap_width = max(0.0, min(bbox.x1, x_max) - max(bbox.x0, x_min))
+    overlap_height = max(0.0, min(bbox.y1, y_max) - max(bbox.y0, y_min))
+    return overlap_width * overlap_height
+
+
 def place_ood_legend(ax, fontsize: int = 22):
     """Place the legend inside the axes where it overlaps plotted curves least."""
     handles, labels = ax.get_legend_handles_labels()
     if not handles:
         return None
 
-    sampled_points = _sample_line_display_points(ax)
+    legend_cols = 2 if len(labels) >= 5 else 1
+    line_points = _sample_line_display_points(ax)
+    band_points = _sample_collection_display_points(ax)
+    band_bboxes = _collection_display_bboxes(ax)
     candidate_locs = (
         'upper left',
         'upper center',
@@ -198,22 +257,26 @@ def place_ood_legend(ax, fontsize: int = 22):
             frameon=True,
             fancybox=True,
             shadow=True,
+            ncol=legend_cols,
         )
         ax.figure.canvas.draw()
         bbox = legend.get_window_extent(ax.figure.canvas.get_renderer()).expanded(1.04, 1.08)
-        if sampled_points.size:
-            inside_x = (sampled_points[:, 0] >= bbox.x0) & (sampled_points[:, 0] <= bbox.x1)
-            inside_y = (sampled_points[:, 1] >= bbox.y0) & (sampled_points[:, 1] <= bbox.y1)
-            score = int(np.count_nonzero(inside_x & inside_y))
-        else:
-            score = 0
+        score = 0
+        if line_points.size:
+            inside_x = (line_points[:, 0] >= bbox.x0) & (line_points[:, 0] <= bbox.x1)
+            inside_y = (line_points[:, 1] >= bbox.y0) & (line_points[:, 1] <= bbox.y1)
+            score += 4 * int(np.count_nonzero(inside_x & inside_y))
+        if band_points.size:
+            inside_x = (band_points[:, 0] >= bbox.x0) & (band_points[:, 0] <= bbox.x1)
+            inside_y = (band_points[:, 1] >= bbox.y0) & (band_points[:, 1] <= bbox.y1)
+            score += int(np.count_nonzero(inside_x & inside_y))
+        for band_bbox in band_bboxes:
+            score += 0.02 * _bbox_overlap_area(bbox, band_bbox)
         legend.remove()
 
         if best_score is None or score < best_score:
             best_score = score
             best_loc = loc
-            if score == 0:
-                break
 
     return ax.legend(
         handles,
@@ -223,6 +286,7 @@ def place_ood_legend(ax, fontsize: int = 22):
         frameon=True,
         fancybox=True,
         shadow=True,
+        ncol=legend_cols,
     )
 
 
