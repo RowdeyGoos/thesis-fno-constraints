@@ -96,16 +96,16 @@ MEAN_BASELINE_ORDER = ['mean_4k']
 
 MEAN_BASELINE_SPECS = {
     'mean_256': {
-        'label': 'Mean baseline',
-        'legend_label': 'Mean baseline',
+        'label': 'Mean predictor',
+        'legend_label': 'Mean predictor',
         'color': '#6b7280',
         'marker': 'D',
         'linestyle': ':',
         'budget_key': '256',
     },
     'mean_4k': {
-        'label': 'Mean baseline',
-        'legend_label': 'Mean baseline',
+        'label': 'Mean predictor',
+        'legend_label': 'Mean predictor',
         'color': '#111827',
         'marker': 'D',
         'linestyle': ':',
