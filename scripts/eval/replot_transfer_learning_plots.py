@@ -239,6 +239,10 @@ def load_plotter():
 
 def load_ood_plotter(module_name: str):
     """Load an OOD plotting module lazily so --list and --dry-run need no plotting deps."""
+    entrypoints_dir = str(ENTRYPOINTS_DIR)
+    if entrypoints_dir not in sys.path:
+        sys.path.insert(0, entrypoints_dir)
+
     module_path = ENTRYPOINTS_DIR / f"{module_name}.py"
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     if spec is None or spec.loader is None:
