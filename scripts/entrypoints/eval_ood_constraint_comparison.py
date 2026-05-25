@@ -334,7 +334,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
     ax.tick_params(axis='y', labelsize=32)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    place_ood_legend(ax, fontsize=26)
+    place_ood_legend(ax, fontsize=24)
     title = output_spec['title']
     if budget_key:
         title += f" ({BUDGET_TITLES[budget_key]})"

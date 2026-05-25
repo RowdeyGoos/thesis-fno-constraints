@@ -241,7 +241,7 @@ def place_ood_legend(ax, fontsize: int = 22):
     if not handles:
         return None
 
-    legend_cols = 3 if len(labels) >= 5 else 1
+    legend_col_options = (2, 3) if len(labels) >= 5 else (1,)
     line_points = _sample_line_display_points(ax)
     band_points = _sample_collection_display_points(ax)
     band_bboxes = _collection_display_bboxes(ax)
@@ -257,39 +257,42 @@ def place_ood_legend(ax, fontsize: int = 22):
     )
 
     best_loc = candidate_locs[0]
+    best_cols = legend_col_options[0]
     best_score = None
-    for loc in candidate_locs:
-        legend = ax.legend(
-            handles,
-            labels,
-            loc=loc,
-            fontsize=fontsize,
-            frameon=True,
-            fancybox=True,
-            shadow=True,
-            ncol=legend_cols,
-            columnspacing=1.0,
-            handletextpad=0.5,
-        )
-        ax.figure.canvas.draw()
-        bbox = legend.get_window_extent(ax.figure.canvas.get_renderer()).expanded(1.04, 1.08)
-        score = 0
-        if line_points.size:
-            inside_x = (line_points[:, 0] >= bbox.x0) & (line_points[:, 0] <= bbox.x1)
-            inside_y = (line_points[:, 1] >= bbox.y0) & (line_points[:, 1] <= bbox.y1)
-            score += 20 * int(np.count_nonzero(inside_x & inside_y))
-            score += 4 * _points_near_bbox(line_points, bbox, padding=18)
-        if band_points.size:
-            inside_x = (band_points[:, 0] >= bbox.x0) & (band_points[:, 0] <= bbox.x1)
-            inside_y = (band_points[:, 1] >= bbox.y0) & (band_points[:, 1] <= bbox.y1)
-            score += int(np.count_nonzero(inside_x & inside_y))
-        for band_bbox in band_bboxes:
-            score += 0.02 * _bbox_overlap_area(bbox, band_bbox)
-        legend.remove()
+    for legend_cols in legend_col_options:
+        for loc in candidate_locs:
+            legend = ax.legend(
+                handles,
+                labels,
+                loc=loc,
+                fontsize=fontsize,
+                frameon=True,
+                fancybox=True,
+                shadow=True,
+                ncol=legend_cols,
+                columnspacing=1.0,
+                handletextpad=0.5,
+            )
+            ax.figure.canvas.draw()
+            bbox = legend.get_window_extent(ax.figure.canvas.get_renderer()).expanded(1.04, 1.08)
+            score = 0
+            if line_points.size:
+                inside_x = (line_points[:, 0] >= bbox.x0) & (line_points[:, 0] <= bbox.x1)
+                inside_y = (line_points[:, 1] >= bbox.y0) & (line_points[:, 1] <= bbox.y1)
+                score += 20 * int(np.count_nonzero(inside_x & inside_y))
+                score += 4 * _points_near_bbox(line_points, bbox, padding=18)
+            if band_points.size:
+                inside_x = (band_points[:, 0] >= bbox.x0) & (band_points[:, 0] <= bbox.x1)
+                inside_y = (band_points[:, 1] >= bbox.y0) & (band_points[:, 1] <= bbox.y1)
+                score += int(np.count_nonzero(inside_x & inside_y))
+            for band_bbox in band_bboxes:
+                score += 0.02 * _bbox_overlap_area(bbox, band_bbox)
+            legend.remove()
 
-        if best_score is None or score < best_score:
-            best_score = score
-            best_loc = loc
+            if best_score is None or score < best_score:
+                best_score = score
+                best_loc = loc
+                best_cols = legend_cols
 
     return ax.legend(
         handles,
@@ -299,7 +302,7 @@ def place_ood_legend(ax, fontsize: int = 22):
         frameon=True,
         fancybox=True,
         shadow=True,
-        ncol=legend_cols,
+        ncol=best_cols,
         columnspacing=1.0,
         handletextpad=0.5,
     )
@@ -626,7 +629,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     ax.tick_params(axis='y', labelsize=32)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    place_ood_legend(ax, fontsize=26)
+    place_ood_legend(ax, fontsize=24)
     ax.set_title(
         f"{experiment_spec['title']}\n{experiment_spec['subtitle']}",
         fontsize=34,
