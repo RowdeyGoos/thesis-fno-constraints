@@ -127,7 +127,7 @@ def format_log_decade_yaxis(ax):
     if not y_values:
         return
 
-    y_min = 10 ** math.floor(math.log10(min(y_values)))
+    y_min = (10 ** math.floor(math.log10(min(y_values)))) / 2.0
     y_max = max(y_values) * 10 ** 0.08
 
     ax.set_ylim(y_min, y_max)
