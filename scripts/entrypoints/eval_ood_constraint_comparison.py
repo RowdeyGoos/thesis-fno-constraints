@@ -255,7 +255,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str, 
     x_positions = np.arange(len(bin_keys), dtype=float)
 
     series_order = BUDGET_SERIES_ORDER.get(budget_key, [*SERIES_ORDER, *MEAN_BASELINE_ORDER])
-    fig, ax = plt.subplots(figsize=(18, 9))
+    fig, ax = plt.subplots(figsize=(15, 8))
 
     for series_key in series_order:
         series_result = results['series'].get(series_key)

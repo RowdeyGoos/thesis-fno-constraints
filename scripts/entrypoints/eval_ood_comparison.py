@@ -545,7 +545,7 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     bin_keys = experiment_spec['bin_keys']
     x_positions = np.arange(len(bin_keys), dtype=float)
 
-    fig, ax = plt.subplots(figsize=(18, 9))
+    fig, ax = plt.subplots(figsize=(15, 8))
 
     for series_key in ['mixed_256', 'mixed_4k', 'scratch_256', 'scratch_4k', *MEAN_BASELINE_ORDER]:
         series_result = results['series'].get(series_key)
