@@ -245,22 +245,28 @@ def place_ood_legend(ax, fontsize: int = 22):
     line_points = _sample_line_display_points(ax)
     band_points = _sample_collection_display_points(ax)
     band_bboxes = _collection_display_bboxes(ax)
-    candidate_locs = (
-        'upper left',
-        'upper center',
-        'upper right',
-        'center left',
-        'center right',
-        'lower left',
-        'lower center',
-        'lower right',
+    candidate_specs = (
+        ('upper left', None),
+        ('upper center', None),
+        ('upper right', None),
+        ('center left', None),
+        ('center', None),
+        ('center right', None),
+        ('center', (0.5, 0.66)),
+        ('center', (0.5, 0.74)),
+        ('lower left', None),
+        ('lower center', None),
+        ('lower right', None),
     )
 
-    best_loc = candidate_locs[0]
+    best_loc, best_anchor = candidate_specs[0]
     best_cols = legend_col_options[0]
     best_score = None
     for legend_cols in legend_col_options:
-        for loc in candidate_locs:
+        for loc, anchor in candidate_specs:
+            legend_kwargs = {}
+            if anchor is not None:
+                legend_kwargs['bbox_to_anchor'] = anchor
             legend = ax.legend(
                 handles,
                 labels,
@@ -272,28 +278,33 @@ def place_ood_legend(ax, fontsize: int = 22):
                 ncol=legend_cols,
                 columnspacing=1.0,
                 handletextpad=0.5,
+                **legend_kwargs,
             )
             ax.figure.canvas.draw()
-            bbox = legend.get_window_extent(ax.figure.canvas.get_renderer()).expanded(1.04, 1.08)
+            bbox = legend.get_window_extent(ax.figure.canvas.get_renderer()).expanded(1.04, 1.18)
             score = 0
             if line_points.size:
                 inside_x = (line_points[:, 0] >= bbox.x0) & (line_points[:, 0] <= bbox.x1)
                 inside_y = (line_points[:, 1] >= bbox.y0) & (line_points[:, 1] <= bbox.y1)
                 score += 20 * int(np.count_nonzero(inside_x & inside_y))
-                score += 4 * _points_near_bbox(line_points, bbox, padding=18)
+                score += 4 * _points_near_bbox(line_points, bbox, padding=42)
             if band_points.size:
                 inside_x = (band_points[:, 0] >= bbox.x0) & (band_points[:, 0] <= bbox.x1)
                 inside_y = (band_points[:, 1] >= bbox.y0) & (band_points[:, 1] <= bbox.y1)
                 score += int(np.count_nonzero(inside_x & inside_y))
             for band_bbox in band_bboxes:
-                score += 0.02 * _bbox_overlap_area(bbox, band_bbox)
+                score += 0.06 * _bbox_overlap_area(bbox, band_bbox)
             legend.remove()
 
             if best_score is None or score < best_score:
                 best_score = score
                 best_loc = loc
+                best_anchor = anchor
                 best_cols = legend_cols
 
+    legend_kwargs = {}
+    if best_anchor is not None:
+        legend_kwargs['bbox_to_anchor'] = best_anchor
     return ax.legend(
         handles,
         labels,
@@ -305,6 +316,7 @@ def place_ood_legend(ax, fontsize: int = 22):
         ncol=best_cols,
         columnspacing=1.0,
         handletextpad=0.5,
+        **legend_kwargs,
     )
 
 
