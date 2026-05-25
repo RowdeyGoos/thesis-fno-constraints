@@ -241,7 +241,7 @@ def place_ood_legend(ax, fontsize: int = 22):
     if not handles:
         return None
 
-    legend_cols = 2 if len(labels) >= 5 else 1
+    legend_cols = 3 if len(labels) >= 5 else 1
     line_points = _sample_line_display_points(ax)
     band_points = _sample_collection_display_points(ax)
     band_bboxes = _collection_display_bboxes(ax)
@@ -268,6 +268,8 @@ def place_ood_legend(ax, fontsize: int = 22):
             fancybox=True,
             shadow=True,
             ncol=legend_cols,
+            columnspacing=1.0,
+            handletextpad=0.5,
         )
         ax.figure.canvas.draw()
         bbox = legend.get_window_extent(ax.figure.canvas.get_renderer()).expanded(1.04, 1.08)
@@ -298,6 +300,8 @@ def place_ood_legend(ax, fontsize: int = 22):
         fancybox=True,
         shadow=True,
         ncol=legend_cols,
+        columnspacing=1.0,
+        handletextpad=0.5,
     )
 
 
@@ -609,23 +613,23 @@ def plot_ood_degradation(results: Dict, experiment_type: str, output_path: str):
     ax.set_xticks(x_positions)
     ax.set_xticklabels(
         [format_ood_bin_tick_label(label) for label in experiment_spec['bin_labels']],
-        fontsize=28,
+        fontsize=32,
     )
     ax.set_xlabel(
         f"{experiment_spec['range_axis_label']} (increasing OOD distance)",
-        fontsize=30,
+        fontsize=34,
         fontweight='bold',
     )
-    ax.set_ylabel('Test error (relative L2)', fontsize=30, fontweight='bold')
+    ax.set_ylabel('Test error (relative L2)', fontsize=34, fontweight='bold')
     ax.set_yscale('log', base=10)
     format_log_decade_yaxis(ax)
-    ax.tick_params(axis='y', labelsize=28)
+    ax.tick_params(axis='y', labelsize=32)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.7)
     ax.set_axisbelow(True)
-    place_ood_legend(ax, fontsize=22)
+    place_ood_legend(ax, fontsize=26)
     ax.set_title(
         f"{experiment_spec['title']}\n{experiment_spec['subtitle']}",
-        fontsize=30,
+        fontsize=34,
         fontweight='bold',
         pad=18,
     )
