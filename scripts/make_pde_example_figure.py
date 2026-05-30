@@ -57,7 +57,7 @@ PDE_SPECS: tuple[PDESpec, ...] = (
     ),
     PDESpec(
         key="advdiff",
-        name="Advection-diffusion",
+        name="Advection–Diffusion",
         equation=r"$-\nabla\!\cdot(K\nabla u)+v\!\cdot\nabla u=f$",
         generator=REPO_ROOT / "scripts" / "data" / "gen_data_advdiff.py",
         generated_dirname="advdiff",
@@ -221,7 +221,9 @@ def solve_advdiff(source: np.ndarray, ikx: np.ndarray, iky: np.ndarray, ikx2: np
     velocity = random_velocity()
     lams = np.load(REPO_ROOT / "utils" / "lambda.npy")
     ads = np.load(REPO_ROOT / "utils" / "ads.npy")
-    target_ratio = 0.2 + np.random.random() * (1.0 - 0.2)
+    # Bias the compact visualization pool toward transport-dominated cases so
+    # the selected example is visually distinct from the Poisson solution.
+    target_ratio = 0.55 + np.random.random() * (1.0 - 0.55)
     lam = float(lams[np.argmin(np.abs(np.mean(ads, axis=1) - target_ratio))])
 
     diff_factor = ikx2 * k_mat[0, 0] + iky2 * k_mat[1, 1] + 2.0 * ikx * iky * k_mat[0, 1]
@@ -337,7 +339,7 @@ def _as_float_array(array: np.ndarray) -> np.ndarray:
     return array
 
 
-def load_fields(h5_path: Path) -> tuple[np.ndarray, np.ndarray]:
+def load_dataset(h5_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
     with h5py.File(h5_path, "r") as handle:
         if "fields" not in handle:
             raise KeyError(f"{h5_path} does not contain a 'fields' dataset")
@@ -349,7 +351,12 @@ def load_fields(h5_path: Path) -> tuple[np.ndarray, np.ndarray]:
 
         solutions = np.asarray(fields[:, 1], dtype=np.float64)
         sources = np.asarray(fields[:, 0], dtype=np.float64)
-    return sources, solutions
+        tensor = (
+            np.asarray(handle["tensor"], dtype=np.float64)
+            if "tensor" in handle
+            else None
+        )
+    return sources, solutions, tensor
 
 
 def candidate_indices(sources: np.ndarray, solutions: np.ndarray, limit: int = 24) -> np.ndarray:
@@ -379,53 +386,178 @@ def normalized_source(field: np.ndarray) -> np.ndarray:
 
 def source_distance(a: np.ndarray, b: np.ndarray) -> float:
     if a.shape != b.shape:
-        raise ValueError(f"Cannot compare source fields with shapes {a.shape} and {b.shape}")
+        raise ValueError(
+            f"Cannot compare source fields with shapes {a.shape} and {b.shape}"
+        )
     return float(np.mean((normalized_source(a) - normalized_source(b)) ** 2))
+
+
+def score01(values: np.ndarray) -> np.ndarray:
+    values = np.asarray(values, dtype=np.float64)
+    values = np.where(np.isfinite(values), values, np.nan)
+    if np.all(np.isnan(values)):
+        return np.zeros_like(values)
+    lo = np.nanpercentile(values, 5.0)
+    hi = np.nanpercentile(values, 95.0)
+    if not np.isfinite(lo) or not np.isfinite(hi) or np.isclose(lo, hi):
+        lo = np.nanmin(values)
+        hi = np.nanmax(values)
+    if np.isclose(lo, hi):
+        return np.zeros_like(values)
+    return np.clip((values - lo) / (hi - lo), 0.0, 1.0)
+
+
+def robust_amplitude_batch(fields: np.ndarray) -> np.ndarray:
+    high = np.percentile(fields, 98.0, axis=(1, 2))
+    low = np.percentile(fields, 2.0, axis=(1, 2))
+    return high - low
+
+
+def centroid_distance(field: np.ndarray) -> float:
+    weights = np.abs(field)
+    total = float(np.sum(weights))
+    if total <= 1.0e-12:
+        return 0.0
+    yy, xx = np.indices(field.shape)
+    cx = float(np.sum(xx * weights) / total) / max(field.shape[1] - 1, 1)
+    cy = float(np.sum(yy * weights) / total) / max(field.shape[0] - 1, 1)
+    return float(np.hypot(cx - 0.5, cy - 0.5) / np.sqrt(0.5))
+
+
+def anisotropy(field: np.ndarray) -> float:
+    weights = np.abs(field)
+    total = float(np.sum(weights))
+    if total <= 1.0e-12:
+        return 0.0
+    yy, xx = np.indices(field.shape)
+    x = xx / max(field.shape[1] - 1, 1)
+    y = yy / max(field.shape[0] - 1, 1)
+    mx = float(np.sum(x * weights) / total)
+    my = float(np.sum(y * weights) / total)
+    dx = x - mx
+    dy = y - my
+    cov_xx = float(np.sum(weights * dx * dx) / total)
+    cov_yy = float(np.sum(weights * dy * dy) / total)
+    cov_xy = float(np.sum(weights * dx * dy) / total)
+    eigvals = np.linalg.eigvalsh(np.array([[cov_xx, cov_xy], [cov_xy, cov_yy]]))
+    if eigvals[1] <= 1.0e-12:
+        return 0.0
+    return float(1.0 - eigvals[0] / eigvals[1])
+
+
+def skewness_abs(field: np.ndarray) -> float:
+    centered = field - np.mean(field)
+    std = float(np.std(centered))
+    if std <= 1.0e-12:
+        return 0.0
+    return float(abs(np.mean((centered / std) ** 3)))
+
+
+def zero_crossing_fraction(field: np.ndarray) -> float:
+    horizontal = field[:, 1:] * field[:, :-1] < 0
+    vertical = field[1:, :] * field[:-1, :] < 0
+    return float((np.mean(horizontal) + np.mean(vertical)) * 0.5)
+
+
+def gradient_energy(field: np.ndarray) -> float:
+    gy, gx = np.gradient(field)
+    denom = float(np.mean(field**2)) + 1.0e-12
+    return float((np.mean(gx**2) + np.mean(gy**2)) / denom)
+
+
+def choose_common_matched_index(
+    loaded: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray | None]],
+) -> int | None:
+    source_arrays = {key: value[0] for key, value in loaded.items()}
+    poisson_sources = source_arrays["poisson"]
+    matched_sources = all(
+        sources.shape == poisson_sources.shape
+        and np.allclose(sources, poisson_sources, rtol=0.0, atol=1.0e-6)
+        for sources in source_arrays.values()
+    )
+    if not matched_sources:
+        return None
+
+    poisson_solutions = loaded["poisson"][1]
+    advdiff_solutions = loaded["advdiff"][1]
+    helmholtz_solutions = loaded["helmholtz"][1]
+    advdiff_tensor = loaded["advdiff"][2]
+    helmholtz_tensor = loaded["helmholtz"][2]
+
+    finite = np.ones(poisson_sources.shape[0], dtype=bool)
+    for sources, solutions, _ in loaded.values():
+        finite &= np.isfinite(sources).all(axis=(1, 2))
+        finite &= np.isfinite(solutions).all(axis=(1, 2))
+
+    source_score = score01(robust_amplitude_batch(poisson_sources))
+    poisson_score = score01(robust_amplitude_batch(poisson_solutions))
+
+    adv_shape = np.array(
+        [
+            0.45 * centroid_distance(field)
+            + 0.35 * anisotropy(field)
+            + 0.20 * min(skewness_abs(field), 3.0) / 3.0
+            for field in advdiff_solutions
+        ]
+    )
+    adv_score = score01(adv_shape)
+    if advdiff_tensor is not None and advdiff_tensor.shape[1] >= 5:
+        adv_mag = np.linalg.norm(advdiff_tensor[:, 3:5], axis=1)
+        diff_mag = np.linalg.norm(advdiff_tensor[:, :3], axis=1)
+        adv_ratio = np.log1p(adv_mag / (diff_mag + 1.0e-12))
+        adv_score = 0.55 * adv_score + 0.45 * score01(adv_ratio)
+
+    helm_crossings = np.array(
+        [zero_crossing_fraction(field) for field in helmholtz_solutions]
+    )
+    helm_gradients = np.array(
+        [gradient_energy(field) for field in helmholtz_solutions]
+    )
+    helm_oscillation = helm_crossings + 0.15 * score01(helm_gradients)
+    helm_score = score01(helm_oscillation)
+    if helmholtz_tensor is not None and helmholtz_tensor.shape[1] >= 2:
+        helm_score = 0.7 * helm_score + 0.3 * score01(helmholtz_tensor[:, 1])
+
+    combined = (
+        0.18 * source_score
+        + 0.16 * poisson_score
+        + 0.40 * adv_score
+        + 0.26 * helm_score
+    )
+    candidates = np.flatnonzero(finite)
+    if candidates.size == 0:
+        return None
+    return int(candidates[np.argmax(combined[candidates])])
 
 
 def choose_representative_samples(
     dataset_paths: dict[str, Path],
 ) -> dict[str, tuple[int, np.ndarray, np.ndarray]]:
     loaded = {
-        key: load_fields(path)
+        key: load_dataset(path)
         for key, path in dataset_paths.items()
     }
-    source_arrays = {key: value[0] for key, value in loaded.items()}
-    poisson_sources = source_arrays["poisson"]
-
-    matched_sources = all(
-        sources.shape == poisson_sources.shape
-        and np.allclose(sources, poisson_sources, rtol=0.0, atol=1.0e-6)
-        for sources in source_arrays.values()
-    )
-    if matched_sources:
-        scores = np.zeros(poisson_sources.shape[0], dtype=np.float64)
-        valid = np.ones(poisson_sources.shape[0], dtype=bool)
-        for _, (sources, solutions) in loaded.items():
-            sol_variance = np.var(solutions, axis=(1, 2))
-            src_variance = np.var(sources, axis=(1, 2))
-            finite = np.isfinite(sol_variance) & np.isfinite(src_variance)
-            informative = finite & (sol_variance > 1.0e-12) & (src_variance > 1.0e-12)
-            valid &= informative
-            median_var = np.median(sol_variance[informative])
-            scores += np.abs(sol_variance - median_var) / (abs(median_var) + 1.0e-12)
-        candidates = np.flatnonzero(valid)
-        if candidates.size > 0:
-            idx = int(candidates[np.argmin(scores[candidates])])
-            return {
-                key: (idx, _as_float_array(sources[idx]), _as_float_array(solutions[idx]))
-                for key, (sources, solutions) in loaded.items()
-            }
+    common_idx = choose_common_matched_index(loaded)
+    if common_idx is not None:
+        return {
+            key: (
+                common_idx,
+                _as_float_array(sources[common_idx]),
+                _as_float_array(solutions[common_idx]),
+            )
+            for key, (sources, solutions, _) in loaded.items()
+        }
 
     candidates = {
         key: candidate_indices(sources, solutions)
-        for key, (sources, solutions) in loaded.items()
+        for key, (sources, solutions, _) in loaded.items()
     }
 
     best_score = float("inf")
     best_indices: dict[str, int] | None = None
-    advdiff_sources, _ = loaded["advdiff"]
-    helmholtz_sources, _ = loaded["helmholtz"]
+    poisson_sources, _, _ = loaded["poisson"]
+    advdiff_sources, _, _ = loaded["advdiff"]
+    helmholtz_sources, _, _ = loaded["helmholtz"]
 
     for p_idx in candidates["poisson"]:
         p_source = poisson_sources[p_idx]
@@ -455,7 +587,7 @@ def choose_representative_samples(
 
     samples: dict[str, tuple[int, np.ndarray, np.ndarray]] = {}
     for key, idx in best_indices.items():
-        sources, solutions = loaded[key]
+        sources, solutions, _ = loaded[key]
         samples[key] = (
             idx,
             _as_float_array(sources[idx]),
@@ -502,6 +634,28 @@ def style_axis(ax: plt.Axes) -> None:
         spine.set_color("0.72")
 
 
+def add_row_header(fig: plt.Figure, y: float, label: str) -> None:
+    fig.text(
+        0.5,
+        y,
+        label,
+        ha="center",
+        va="center",
+        fontsize=8.3,
+        color="0.2",
+    )
+    for x0, x1 in ((0.07, 0.365), (0.635, 0.93)):
+        line = plt.Line2D(
+            [x0, x1],
+            [y, y],
+            transform=fig.transFigure,
+            color="0.82",
+            linewidth=0.45,
+            solid_capstyle="butt",
+        )
+        fig.add_artist(line)
+
+
 def plot_combined_figure(
     samples: dict[str, tuple[int, np.ndarray, np.ndarray]],
     figure_dir: Path,
@@ -511,22 +665,22 @@ def plot_combined_figure(
         {
             "font.family": "serif",
             "font.size": 9,
-            "axes.titlesize": 10,
+            "axes.titlesize": 9,
             "figure.titlesize": 10,
             "mathtext.fontset": "dejavuserif",
         }
     )
 
-    fig = plt.figure(figsize=(6.35, 4.2), constrained_layout=False)
+    fig = plt.figure(figsize=(6.35, 3.55), constrained_layout=False)
     grid = fig.add_gridspec(
         2,
         3,
-        left=0.03,
+        left=0.035,
         right=0.995,
-        bottom=0.04,
-        top=0.73,
-        hspace=0.22,
-        wspace=0.08,
+        bottom=0.045,
+        top=0.755,
+        hspace=0.18,
+        wspace=0.075,
     )
     axes = np.array(
         [
@@ -539,37 +693,26 @@ def plot_combined_figure(
     source_norm = shared_symmetric_norm(
         [samples[spec.key][1] for spec in PDE_SPECS]
     )
-    solution_norm = shared_symmetric_norm(
-        [samples[spec.key][2] for spec in PDE_SPECS]
-    )
+    # Solution panels use independent symmetric normalization. The figure is
+    # for operator intuition, so visibility matters more than amplitude comparison.
+    solution_norms = {
+        spec.key: norm_for_field(samples[spec.key][2])
+        for spec in PDE_SPECS
+    }
 
-    fig.text(
-        0.5,
-        0.765,
-        r"Forcing field $f(x)$",
-        ha="center",
-        va="center",
-        fontsize=9,
-        color="0.2",
-    )
-    fig.text(
-        0.5,
-        0.385,
-        r"Solution field $u(x)$",
-        ha="center",
-        va="center",
-        fontsize=9,
-        color="0.2",
-    )
+    top_row = axes[0, 1].get_position()
+    bottom_row = axes[1, 1].get_position()
+    add_row_header(fig, top_row.y1 + 0.027, r"Forcing field $f(x)$")
+    add_row_header(fig, 0.5 * (top_row.y0 + bottom_row.y1), r"Solution field $u(x)$")
 
     for col, spec in enumerate(PDE_SPECS):
         _, source, solution = samples[spec.key]
         col_box = axes[0, col].get_position()
         col_center = 0.5 * (col_box.x0 + col_box.x1)
-        fig.text(col_center, 0.955, spec.name, ha="center", va="top", fontsize=11)
-        fig.text(col_center, 0.895, spec.equation, ha="center", va="top", fontsize=11)
+        fig.text(col_center, 0.94, spec.name, ha="center", va="top", fontsize=10.5)
+        fig.text(col_center, 0.872, spec.equation, ha="center", va="top", fontsize=10)
         for row, (field, norm) in enumerate(
-            ((source, source_norm), (solution, solution_norm))
+            ((source, source_norm), (solution, solution_norms[spec.key]))
         ):
             ax = axes[row, col]
             ax.imshow(
