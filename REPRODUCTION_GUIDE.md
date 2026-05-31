@@ -2,6 +2,22 @@
 
 This guide provides step-by-step instructions to reproduce results from "Towards Foundation Models for Scientific Machine Learning: Characterizing Scaling and Transfer Behavior of Neural Operators" by Subramanian et al. (2023).
 
+For thesis-specific mixed-pretraining, constraint, boundary-conditioned, and
+evaluation workflows, use the active documentation index at
+`docs/transfer-learning/README.md`. The older visual workflow notes are
+archived at `docs/archive/WORKFLOW.md`.
+
+Baseline reproduction follows this order:
+
+1. Set up the Python or DAIC/container environment.
+2. Run the local quick verification workflow.
+3. Generate Poisson, Advection-Diffusion, and Helmholtz datasets.
+4. Compute normalization scales for each training split.
+5. Train FNO baselines for each PDE system.
+6. Evaluate checkpoints and compare against the expected paper-scale results.
+7. Run scaling and transfer-learning extensions only after the baseline is
+   verified.
+
 ## 📋 Overview
 
 The paper investigates:

@@ -1,27 +1,32 @@
-# Transfer Learning Docs
+# Transfer Learning And Constraint Docs
 
-This folder contains transfer-learning and evaluation documentation that was
-previously spread across the repository root.
+This directory contains the active thesis-specific documentation for transfer
+learning, mixed-PDE pretraining, constraint experiments, boundary-conditioned
+experiments, and evaluation.
 
-## Recommended reading order
+## Start Here
 
-1. `TRANSFER_LEARNING_SETUP.md`
-2. `K1_2.5_TRANSFER_LEARNING_SETUP.md`
-3. `K1_2.5_TRANSFER_LEARNING.md`
-4. `EVAL_QUICK_START.md`
-5. `EVALUATION_GUIDE.md`
-6. `EVAL_TRANSFER_LEARNING.md`
-7. `TRANSFER_LEARNING_EXAMPLE.md`
+1. [TRANSFER_LEARNING.md](TRANSFER_LEARNING.md) - downstream transfer-learning
+   workflows and checkpoint handoff.
+2. [MIXED_DATASETS.md](MIXED_DATASETS.md) - mixed-format data contracts,
+   conversion, and mixed pretraining setup.
+3. [CONSTRAINTS.md](CONSTRAINTS.md) - zero-mode and PDE residual constraints,
+   sweeps, and strict foundation-model protocol.
+4. [BC_CONDITIONED.md](BC_CONDITIONED.md) - boundary-conditioned data,
+   training, and BC enforcement experiments.
+5. [EVALUATION.md](EVALUATION.md) - batch evaluation, plotting, output
+   structure, and troubleshooting.
 
-## Reference docs
+## Active References
 
-- `CONVERT_POISSON_FORMAT.md`
-- `BLOCK_A_CONSTRAINTS.md`
-- `FOUNDATION_CONSTRAINTS_EXPERIMENT_RUNBOOK.md`
-- `FOUNDATION_CONSTRAINTS_EXPERIMENT_WALKTHROUGH.md`
-- `FOUNDATION_CONSTRAINTS_SWEEP_PARAMETERS.md`
-- `MIXED_CONFIG_REFERENCE.md`
-- `MIXED_DATASET_EXPLANATION.md`
-- `MODEL_PARAMETERS.md`
-- `BC_CONDITIONED_IMPLEMENTATION_GUIDE.md`
-- `BC_MIXED_PRETRAIN_SOFT_HARD_WALKTHROUGH.md`
+- [CONSTRAINTS_TRANSFER_EXPERIMENT_CHECKLIST.md](CONSTRAINTS_TRANSFER_EXPERIMENT_CHECKLIST.md)
+  - experiment tracking checklist for constrained pretraining and downstream
+  transfer bundles.
+- [MODEL_PARAMETERS.md](MODEL_PARAMETERS.md) - FNO parameter-count reference.
+
+## Archived Originals
+
+Superseded setup notes and development summaries were moved to
+[archive/](archive/) after their useful content was merged into the active
+guides. Keep the archive for provenance, but link new docs to the active files
+above.

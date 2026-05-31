@@ -15,9 +15,9 @@ Assumption for this study:
 Repo ground truth for this checklist:
 
 - Standard mixed constrained presets: `config/operators_mixed.yaml`
-- Standard mixed sweep docs: `docs/transfer-learning/FOUNDATION_CONSTRAINTS_EXPERIMENT_RUNBOOK.md`
+- Standard mixed constraint docs: `docs/transfer-learning/CONSTRAINTS.md`
 - BC-conditioned mixed presets: `config/operators_mixed_bc.yaml`
-- BC walkthrough: `docs/transfer-learning/BC_MIXED_PRETRAIN_SOFT_HARD_WALKTHROUGH.md`
+- BC-conditioned docs: `docs/transfer-learning/BC_CONDITIONED.md`
 - Mixed transfer helper: `scripts/maintenance/update_mixed_checkpoint_path.sh`
 - Downstream configs: `config/operators_poisson.yaml`, `config/operators_ad.yaml`, `config/operators_helmholtz.yaml`
 
