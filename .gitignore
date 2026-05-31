@@ -189,3 +189,6 @@ Tutorials _ DAIC documentation.pdf
 
 # Preserved pre-flatten local runtime artifacts
 /third_party/neuraloperators-TL-scaling/
+
+# Generated figures
+/figures/
