@@ -1,0 +1,46 @@
+name: constraints-sanity-smoke
+entity: rowdey_goos-tu-delft
+project: neuraloperators
+program: scripts/entrypoints/train.py
+method: grid
+metric:
+  name: best_val_err
+  goal: minimize
+parameters:
+  # Keep runtime very short and deterministic.
+  max_epochs:
+    value: 2
+  checkpoint_selection_metric:
+    value: val_err
+  plot_figs:
+    value: !!bool False
+  save_checkpoint:
+    value: !!bool True
+  log_to_wandb:
+    value: !!bool True
+  log_to_screen:
+    value: !!bool True
+  num_data_workers:
+    value: 0
+
+  # Tiny data budget on real Poisson data.
+  subsample:
+    value: 4096
+  batch_size:
+    value: 8
+  valid_batch_size:
+    value: 8
+
+  # Disable constraints for pure pipeline sanity check.
+  constraint_zero_mode_enable:
+    value: !!bool False
+  constraint_zero_mode_enforcement:
+    value: off
+  constraint_pde_enable:
+    value: !!bool False
+  constraint_pde_weight:
+    value: 0.0
+
+  # Small 2-point sweep so we can verify that sweep plumbing works.
+  lr:
+    values: [5.0e-4, 1.0e-3]

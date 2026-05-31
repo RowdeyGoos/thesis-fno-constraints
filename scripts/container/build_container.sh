@@ -1,51 +1,61 @@
 #!/bin/bash
-# Build Apptainer/Singularity container locally
-# This should be run on your local machine with Docker installed
+# Build Docker container for the flattened neuraloperators project
 
 set -e  # Exit on error
 
 echo "=========================================="
-echo "Building FNO Training Container"
+echo "Building thesis-fno-constraints Container"
 echo "=========================================="
 
-# Configuration
-IMAGE_NAME="thesis-fno"
-VERSION="latest"
-DOCKERFILE="Dockerfile"
-APPTAINER_DEF="apptainer.def"
+# Navigate to project root
+cd "$(dirname "$0")/../.."
 
-# Check if Docker is available
-if ! command -v docker &> /dev/null; then
-    echo "Error: Docker is not installed or not in PATH"
-    echo "Please install Docker first: https://docs.docker.com/get-docker/"
+# Check if Dockerfile exists
+if [ ! -f "Dockerfile" ]; then
+    echo "Error: Dockerfile not found in current directory"
     exit 1
 fi
 
-echo ""
-echo "Step 1: Building Docker image..."
-docker build -t ${IMAGE_NAME}:${VERSION} -f ${DOCKERFILE} .
+# Build Docker image
+echo "Building Docker image (this may take a few minutes)..."
+docker build -t neuraloperators:latest .
 
-echo ""
-echo "Step 2: Saving Docker image to tar..."
-docker save ${IMAGE_NAME}:${VERSION} -o ${IMAGE_NAME}_${VERSION}.tar
-
-echo ""
-echo "=========================================="
-echo "Build complete!"
-echo "=========================================="
-echo ""
-echo "Docker image: ${IMAGE_NAME}:${VERSION}"
-echo "Tar file: ${IMAGE_NAME}_${VERSION}.tar"
-echo ""
-echo "Next steps:"
-echo "1. Test locally:"
-echo "   docker run -it --gpus all ${IMAGE_NAME}:${VERSION}"
-echo ""
-echo "2. Transfer to DAIC:"
-echo "   scp ${IMAGE_NAME}_${VERSION}.tar <netid>@login.daic.tudelft.nl:~/"
-echo ""
-echo "3. On DAIC, convert to Apptainer:"
-echo "   apptainer build ${IMAGE_NAME}.sif docker-archive://${IMAGE_NAME}_${VERSION}.tar"
-echo ""
-echo "Or use the convenience script:"
-echo "   bash scripts/transfer_container.sh"
+# Check build success
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "✓ Container built successfully!"
+    echo ""
+    echo "Container details:"
+    docker images neuraloperators:latest
+    echo ""
+    
+    # Export to tar file for transfer
+    echo "Exporting container to tar file..."
+    docker save neuraloperators:latest -o neuraloperators_latest.tar
+    
+    if [ $? -eq 0 ]; then
+        echo "✓ Container exported to neuraloperators_latest.tar"
+        echo ""
+        echo "File size:"
+        ls -lh neuraloperators_latest.tar
+        echo ""
+        echo "=========================================="
+        echo "Next Steps:"
+        echo "=========================================="
+        echo "1. Test locally (optional):"
+        echo "   docker run --rm neuraloperators:latest python -c 'import torch; print(torch.__version__)'"
+        echo ""
+        echo "2. Transfer to DAIC:"
+        echo "   bash scripts/container/transfer_container.sh <your-netid>"
+        echo ""
+        echo "3. Or use Makefile:"
+        echo "   make transfer-container NETID=<your-netid>"
+        echo ""
+    else
+        echo "✗ Error exporting container"
+        exit 1
+    fi
+else
+    echo "✗ Container build failed"
+    exit 1
+fi

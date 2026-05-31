@@ -1,0 +1,55 @@
+name: constraints-pretrain-al-pde-only-conservative
+entity: rowdey_goos-tu-delft
+project: neuraloperators
+program: scripts/entrypoints/train.py
+method: bayes
+metric:
+  name: best_val_err
+  goal: minimize
+run_cap: 12
+parameters:
+  # Train mixed foundation model with strict-FM proxy budget.
+  max_epochs:
+    value: 150
+  checkpoint_selection_metric:
+    value: val_err
+  plot_figs:
+    value: !!bool False
+  save_checkpoint:
+    value: !!bool True
+  log_to_wandb:
+    value: !!bool True
+
+  # Zero-mode: fully off.
+  constraint_zero_mode_enable:
+    value: !!bool False
+  constraint_zero_mode_enforcement:
+    value: off
+  constraint_zero_mode_mode:
+    value: gauge_aware
+  constraint_zero_mode_omega_tol:
+    value: 1.0e-8
+  constraint_zero_mode_weight:
+    value: 0.0
+  constraint_zero_mode_warmup_fraction:
+    value: 0.0
+
+  # PDE constraint: augmented Lagrangian (conservative ranges).
+  constraint_pde_enable:
+    value: !!bool True
+  constraint_pde_method:
+    value: augmented_lagrangian
+  constraint_pde_weight:
+    distribution: log_uniform_values
+    min: 0.001
+    max: 0.08
+  constraint_pde_warmup_fraction:
+    values: [0.1, 0.2, 0.3]
+  constraint_pde_al_rho:
+    values: [0.1, 0.25, 0.5]
+  constraint_pde_al_lambda0:
+    value: 0.0
+  constraint_pde_al_dual_clip:
+    value: 1.0e3
+  constraint_pde_relative_norm:
+    value: !!bool True

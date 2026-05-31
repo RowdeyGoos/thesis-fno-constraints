@@ -1,60 +1,35 @@
 #!/bin/bash
-# Build Apptainer image directly (requires Apptainer/Singularity installed)
-# This can be run on a system with Apptainer, or on DAIC itself
+# Build Apptainer/Singularity container directly (alternative to Docker build)
+# Only use this if you have Apptainer installed locally
 
-set -e  # Exit on error
+set -e
 
 echo "=========================================="
-echo "Building Apptainer Container"
+echo "Building Apptainer Container for thesis-fno-constraints"
 echo "=========================================="
 
-IMAGE_NAME="thesis-fno"
-DEF_FILE="apptainer.def"
-OUTPUT_FILE="${IMAGE_NAME}.sif"
+# Navigate to project root
+cd "$(dirname "$0")/../.."
 
-# Check if Apptainer is available
-if ! command -v apptainer &> /dev/null; then
-    echo "Error: Apptainer is not installed or not in PATH"
-    echo "Please install Apptainer or use Docker build method"
+# Check if apptainer.def exists
+if [ ! -f "apptainer.def" ]; then
+    echo "Error: apptainer.def not found"
     exit 1
 fi
 
-# Check if definition file exists
-if [ ! -f "$DEF_FILE" ]; then
-    echo "Error: $DEF_FILE not found"
-    exit 1
-fi
+# Build with Apptainer
+echo "Building Apptainer container..."
+apptainer build --fakeroot neuraloperators.sif apptainer.def
 
-echo ""
-echo "Building from: $DEF_FILE"
-echo "Output: $OUTPUT_FILE"
-echo ""
-
-# Build the container
-# Note: Building requires sudo/fakeroot on most systems
-if [ "$EUID" -eq 0 ]; then
-    # Running as root
-    apptainer build --force $OUTPUT_FILE $DEF_FILE
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "✓ Apptainer container built successfully!"
+    echo ""
+    ls -lh neuraloperators.sif
+    echo ""
+    echo "Test the container:"
+    echo "  apptainer exec neuraloperators.sif python -c 'import torch; print(torch.__version__)'"
 else
-    # Try with fakeroot (if available), otherwise prompt for sudo
-    if apptainer build --help | grep -q "fakeroot"; then
-        echo "Using fakeroot for build..."
-        apptainer build --fakeroot --force $OUTPUT_FILE $DEF_FILE
-    else
-        echo "Note: Building may require sudo privileges"
-        sudo apptainer build --force $OUTPUT_FILE $DEF_FILE
-    fi
+    echo "✗ Build failed"
+    exit 1
 fi
-
-echo ""
-echo "=========================================="
-echo "Build complete!"
-echo "=========================================="
-echo ""
-echo "Container: $OUTPUT_FILE"
-echo ""
-echo "Test the container:"
-echo "  apptainer exec $OUTPUT_FILE python -c 'import torch; print(torch.__version__)'"
-echo ""
-echo "Run training:"
-echo "  apptainer exec --nv $OUTPUT_FILE python scripts/train.py --config configs/training/default.yaml"

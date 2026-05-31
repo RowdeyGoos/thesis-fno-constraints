@@ -1,62 +1,53 @@
-# Git
-.git
-.gitignore
+# Docker ignore file for neuraloperators-TL-scaling
 
-# Python
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Data directories
+data/
+data_local/
+*.h5
+*.npy
+
+# Experiment outputs
+experiments/
+experiments_local/
+runs/
+logs/
+
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-*.egg-info/
-dist/
+
+# Distribution / packaging
 build/
-*.egg
+dist/
+*.egg-info/
 
-# Virtual environments
-venv/
-env/
-ENV/
-
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Data (don't include in image)
-data/raw/
-data/processed/
-
-# Experiments (don't include in image)
-experiments/logs/
-experiments/runs/
-models/checkpoints/
+# Git
+.git/
+.gitignore
 
 # Documentation
 *.md
 !README.md
-docs/
 
-# Notebooks
-notebooks/
-*.ipynb
-
-# Tests
-tests/
-.pytest_cache/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Docker
-Dockerfile
-.dockerignore
+# Container files
 *.tar
 *.sif
 
-# Misc
+# Temporary files
+*.tmp
 *.log
-.env

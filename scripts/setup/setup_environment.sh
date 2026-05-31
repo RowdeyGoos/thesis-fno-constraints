@@ -1,55 +1,77 @@
 #!/bin/bash
-# Setup script for DAIC cluster environment
-# Run this once to set up your environment
+# Setup Python virtual environment for the flattened neuraloperators project on DAIC
+
+set -e
 
 echo "=========================================="
-echo "Setting up environment for DAIC cluster"
+echo "Setting up thesis-fno-constraints Environment on DAIC"
 echo "=========================================="
 
 # Load required modules
+echo "Loading modules..."
 module purge
 module load python/3.10
-module load cuda/11.8
-module load cudnn/8.6
+module load cuda/11.3
+module load cudnn/8.2
 
 # Create virtual environment
-VENV_DIR=~/venv/thesis-fno
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating virtual environment..."
-    python -m venv $VENV_DIR
-else
+VENV_DIR=~/venv/neuraloperators
+if [ -d "$VENV_DIR" ]; then
     echo "Virtual environment already exists at $VENV_DIR"
+    read -p "Remove and recreate? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf "$VENV_DIR"
+    else
+        echo "Exiting..."
+        exit 0
+    fi
 fi
 
-# Activate virtual environment
-source $VENV_DIR/bin/activate
+echo "Creating virtual environment at $VENV_DIR..."
+python -m venv "$VENV_DIR"
+
+# Activate environment
+source "$VENV_DIR/bin/activate"
 
 # Upgrade pip
-pip install --upgrade pip
+echo "Upgrading pip..."
+pip install --upgrade pip setuptools wheel
 
-# Install PyTorch with CUDA support
-echo "Installing PyTorch with CUDA 11.8 support..."
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# Install PyTorch 1.12.0 with CUDA 11.3 support
+echo "Installing PyTorch 1.12.0 with CUDA 11.3..."
+pip install torch==1.12.0+cu113 torchvision==0.13.0+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 
-# Install project dependencies
-echo "Installing project dependencies..."
-pip install -e ".[dev,notebooks]"
+# Navigate to project directory (if we're in it)
+if [ -f "requirements.txt" ]; then
+    PROJECT_DIR=$(pwd)
+elif [ -f "../../requirements.txt" ]; then
+    PROJECT_DIR="$(cd ../.. && pwd)"
+else
+    echo "Warning: requirements.txt not found. Assuming you'll install dependencies manually."
+    PROJECT_DIR="~/thesis-fno-constraints"
+fi
 
-# Create necessary directories
-mkdir -p experiments/logs
-mkdir -p experiments/runs
-mkdir -p experiments/configs_used
-mkdir -p data/raw
-mkdir -p data/processed
-mkdir -p models/checkpoints
+# Install project requirements
+if [ -f "$PROJECT_DIR/requirements.txt" ]; then
+    echo "Installing project dependencies from requirements.txt..."
+    # Skip torch and torchvision since we already installed specific versions
+    grep -v "^torch" "$PROJECT_DIR/requirements.txt" | grep -v "^torchvision" | pip install -r /dev/stdin
+fi
 
+echo ""
 echo "=========================================="
-echo "Environment setup complete!"
+echo "✓ Setup Complete!"
 echo "=========================================="
 echo ""
-echo "To activate the environment in the future, run:"
-echo "  module load python/3.10 cuda/11.8 cudnn/8.6"
+echo "Virtual environment created at: $VENV_DIR"
+echo ""
+echo "To activate the environment:"
 echo "  source $VENV_DIR/bin/activate"
 echo ""
-echo "To submit a job, use:"
-echo "  sbatch scripts/submit_job.sh"
+echo "Or add to your ~/.bashrc:"
+echo "  alias neuralop-env='source $VENV_DIR/bin/activate'"
+echo ""
+echo "Test PyTorch installation:"
+python -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+echo ""

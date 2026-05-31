@@ -1,0 +1,256 @@
+default: &DEFAULT
+  num_data_workers: 6
+  # model
+  model: 'fno'
+  depth: 5
+  in_dim: 2
+  out_dim: 1
+  dropout: 0
+  # data/domain
+  Lx: !!float 1.0
+  Ly: !!float 1.0
+  nx: 256
+  ny: 256
+  # optimization
+  loss_style: 'mean'
+  loss_func: 'mse'
+  checkpoint_selection_metric: 'val_loss'  # options: val_loss, val_err
+  optimizer: 'adam'
+  scheduler: 'none'
+  lr: !!float 1.0
+  max_epochs: 500
+  max_cosine_lr_epochs: 500
+  batch_size: 25
+  # misc
+  log_to_screen: !!bool True
+  save_checkpoint: !!bool False
+  seed: 0
+  plot_figs: !!bool False
+  pack_data: !!bool False
+  # Weights & Biases
+  entity: 'rowdey_goos-tu-delft'
+  project: 'neuraloperators'
+  log_to_wandb: !!bool False
+  distill: !!bool False
+  subsample: 1
+  # constraint defaults (all off for baseline comparability)
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'  # off | hard | soft
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool False
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.1
+  constraint_pde_eps: 1.0e-8
+  constraint_pde_relative_norm: !!bool True
+  constraint_pde_method: 'penalty'  # options: penalty, augmented_lagrangian
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+  constraint_diffusion_tensor_order: 'k11_k12_k22'
+
+# ==============================================================================
+# MIXED DATASET PRETRAINING CONFIGS
+# ==============================================================================
+# These configs are for multi-task learning experiments (Figure 6a in paper)
+# Training on combined Poisson + Advection-Diffusion + Helmholtz datasets
+
+# Base config for mixed dataset experiments
+mixed-pretrain-base: &mixed_pretrain_base
+  <<: *DEFAULT
+  batch_size: 128
+  valid_batch_size: 128
+  nx: 128
+  ny: 128
+  log_to_wandb: !!bool True
+  save_checkpoint: !!bool True
+  max_epochs: 500
+  scheduler: 'cosine'
+  plot_figs: !!bool True
+  loss_style: 'sum'
+  system: 'mixed'
+  
+  model: 'fno'
+  layers: [64, 64, 64, 64, 64]
+  modes1: [65, 65, 65, 65]
+  modes2: [65, 65, 65, 65]
+  fc_dim: 128
+  
+  in_dim: 7  # 1 (source) + 6 (tensor expanded) = 7 input channels
+  out_dim: 1
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  
+  optimizer: 'adam'
+  lr: 1E-3
+  pack_data: !!bool False
+
+# Mixed dataset pretraining (combines Poisson k∈[1,5] + AdvDiff αdr∈[0.2,1] + Helmholtz ω∈[1,10])
+mixed-scale-all: &mixed_scale_all
+  <<: *mixed_pretrain_base
+  train_path:    'data/mixed/_train_mixed_32k.h5'
+  val_path:      'data/mixed/_val_mixed_4k.h5'
+  test_path:     'data/mixed/_test_mixed_4k.h5'
+  scales_path:   'data/mixed/_train_mixed_32k_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+
+# Constrained mixed-pretraining presets for strict-FM experiments.
+# These are intended as "locked" final runs after sweep-based tuning.
+mixed-scale-all-constraints-penalty-hard:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool True
+  constraint_zero_mode_enforcement: 'hard'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool True
+  constraint_pde_method: 'penalty'
+  constraint_pde_weight: 0.1
+  constraint_pde_warmup_fraction: 0.1
+
+mixed-scale-all-constraints-al-hard:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool True
+  constraint_zero_mode_enforcement: 'hard'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool True
+  constraint_pde_method: 'augmented_lagrangian'
+  constraint_pde_weight: 0.1
+  constraint_pde_warmup_fraction: 0.1
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+
+mixed-scale-all-constraints-penalty-soft:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'soft'
+  constraint_zero_mode_weight: 0.1
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool True
+  constraint_pde_method: 'penalty'
+  constraint_pde_weight: 0.1
+  constraint_pde_warmup_fraction: 0.1
+
+mixed-scale-all-constraints-al-soft:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'soft'
+  constraint_zero_mode_weight: 0.1
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool True
+  constraint_pde_method: 'augmented_lagrangian'
+  constraint_pde_weight: 0.1
+  constraint_pde_warmup_fraction: 0.1
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+
+# PDE-only constrained pretraining baselines (zero-mode fully disabled).
+mixed-scale-all-constraints-penalty-pde-only:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool True
+  constraint_pde_method: 'penalty'
+  constraint_pde_weight: 0.04
+  constraint_pde_warmup_fraction: 0.0
+
+mixed-scale-all-constraints-al-pde-only-conservative:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool True
+  constraint_pde_method: 'augmented_lagrangian'
+  constraint_pde_weight: 0.002
+  constraint_pde_warmup_fraction: 0.1
+  constraint_pde_al_rho: 0.5
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e3
+
+# Zero-mode-only constrained pretraining baselines (PDE residual disabled).
+mixed-scale-all-constraints-zero-hard-only:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool True
+  constraint_zero_mode_enforcement: 'hard'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_pde_enable: !!bool False
+  constraint_pde_method: 'penalty'
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.0
+
+mixed-scale-all-constraints-zero-soft-only:
+  <<: *mixed_scale_all
+  checkpoint_selection_metric: 'val_err'
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'soft'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_zero_mode_weight: 0.004
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_pde_enable: !!bool False
+  constraint_pde_method: 'penalty'
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.0
+
+# ==============================================================================
+# NOTES
+# ==============================================================================
+# 
+# Mixed Dataset Structure:
+# - The mixed dataset combines three PDE systems with zero-padding
+# - Tensor layout: [k11, k12, k22, vx, vy, omega]
+#   * Poisson:    [k11, k12, k22,  0,  0,     0]
+#   * AdvDiff:    [k11, k12, k22, vx, vy,     0]
+#   * Helmholtz:  [k,   0,   k,   0,  0, omega]
+# - When loaded, PDESolns expands tensor to spatial channels: 1 + 6 = 7 channels
+#
+# Fine-tuning Strategy:
+# - The mixed-pretrained model has 7 input channels
+# - When fine-tuning on Poisson (normally 4 channels), we keep in_dim: 7
+# - The extra channels will receive zero-padded values for Poisson data
+# - This maintains compatibility with the pretrained weights
+#
+# Workflow:
+# 1. Create mixed datasets:
+#    python scripts/data/create_mixed_dataset.py --poisson_path ... --advdiff_path ... --helmholtz_path ...
+# 2. Pretrain on mixed dataset:
+#    sbatch scripts/slurm/pretrain/submit_pretrain_mixed.sh
+# 3. Update checkpoint paths:
+#    bash scripts/maintenance/update_mixed_checkpoint_path.sh <job_id>
+# 4. Fine-tune on downstream tasks (Poisson k∈[1,2.5] SYS-1):
+#    sbatch scripts/slurm/finetune/poisson/submit_finetune_poisson_k1_2p5_mixed_array.sh
+# 5. Evaluate and compare:
+#    python scripts/entrypoints/eval_transfer_learning.py --include_mixed
+#

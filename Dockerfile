@@ -1,6 +1,6 @@
-# Dockerfile for FNO Training
-# Base image with CUDA support
-FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+# Dockerfile for the flattened neuraloperators transfer-learning project
+
+FROM pytorch/pytorch:1.12.0-cuda11.3-cudnn8-runtime
 
 # Set working directory
 WORKDIR /workspace
@@ -8,40 +8,21 @@ WORKDIR /workspace
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
-    vim \
     wget \
-    build-essential \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Copy requirements and install Python dependencies
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-COPY pyproject.toml .
-COPY README.md .
+# Copy project files
+COPY . /workspace/
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy source code
-COPY src/ ./src/
-COPY configs/ ./configs/
-COPY scripts/ ./scripts/
-
-# Install the package
-RUN pip install -e .
-
-# Create directories for data and experiments
-RUN mkdir -p /workspace/data/raw \
-    /workspace/data/processed \
-    /workspace/experiments/logs \
-    /workspace/experiments/runs \
-    /workspace/models/checkpoints
-
-# Set environment variables
+# Set Python path
+ENV PYTHONPATH=/workspace:$PYTHONPATH
 ENV PYTHONUNBUFFERED=1
-ENV CUDA_VISIBLE_DEVICES=0
 
 # Default command
 CMD ["/bin/bash"]

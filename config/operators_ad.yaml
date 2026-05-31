@@ -1,0 +1,529 @@
+default: &DEFAULT
+  num_data_workers: 2
+  # model
+  model: 'fno'
+  depth: 5
+  in_dim: 2
+  out_dim: 1
+  dropout: 0
+  # data/domain
+  Lx: !!float 1.0
+  Ly: !!float 1.0
+  nx: 256
+  ny: 256
+  # optimization
+  loss_style: 'mean'
+  loss_func: 'mse'
+  checkpoint_selection_metric: 'val_loss'  # options: val_loss, val_err
+  optimizer: 'adam'
+  scheduler: 'none'
+  lr: !!float 1.0
+  max_epochs: 500
+  max_cosine_lr_epochs: 500
+  batch_size: 25
+  # misc
+  log_to_screen: !!bool True
+  save_checkpoint: !!bool False
+  seed: 0
+  plot_figs: !!bool False
+  pack_data: !!bool False
+  # Weights & Biases
+  entity: 'rowdey_goos-tu-delft'
+  project: 'neuraloperators'
+  log_to_wandb: !!bool False
+  distill: !!bool False
+  subsample: 1
+  # constraint defaults (all off for baseline comparability)
+  constraint_zero_mode_enable: !!bool False
+  constraint_zero_mode_enforcement: 'off'  # off | hard | soft
+  constraint_zero_mode_weight: 0.0
+  constraint_zero_mode_warmup_fraction: 0.0
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+  constraint_pde_enable: !!bool False
+  constraint_pde_weight: 0.0
+  constraint_pde_warmup_fraction: 0.1
+  constraint_pde_eps: 1.0e-8
+  constraint_pde_relative_norm: !!bool True
+  constraint_pde_method: 'penalty'  # options: penalty, augmented_lagrangian
+  constraint_pde_al_rho: 1.0
+  constraint_pde_al_lambda0: 0.0
+  constraint_pde_al_dual_clip: 1.0e6
+  constraint_diffusion_tensor_order: 'k11_k22_k12'
+
+advdiff: &advdiff
+  <<: *DEFAULT
+  batch_size: 128
+  valid_batch_size: 128
+  nx: 128
+  ny: 128
+  log_to_wandb: !!bool True
+  save_checkpoint: !!bool True
+  max_epochs: 50
+  scheduler: 'cosine'
+  plot_figs: !!bool True
+  loss_style: 'sum'
+
+  model: 'fno'
+  layers: [64, 64, 64, 64, 64]
+  modes1: [65, 65, 65, 65]
+  modes2: [65, 65, 65, 65]
+  fc_dim: 128
+
+  in_dim: 6
+  out_dim: 1
+  mode_cut: 16
+  embed_cut: 64
+  fc_cut: 2
+
+  optimizer: 'adam'
+
+  lr: 1E-3
+  pack_data: !!bool False
+
+ad-scale-adr0p2_1: &ad_scale_0p2_1
+  <<: *advdiff
+  train_path:    'data/advection-diffusion/_train_adr0.2_1_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr0.2_1_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr0.2_1_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr0.2_1_32k_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+
+# ========================================
+# Transfer Learning: AdvDiff adr∈[0.2,0.4]
+# ========================================
+
+# Base config for adr0.2_0.4 domain (downstream task)
+ad-adr0p2_0p4-base: &ad_adr0p2_0p4_base
+  <<: *advdiff
+  train_path:    'data/advection-diffusion/_train_adr0.2_0.4_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr0.2_0.4_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr0.2_0.4_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr0.2_0.4_32k_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+  plot_figs: !!bool False
+  system: 'advection-diffusion'
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
+
+# Base config for adr0.2_0.4 with mixed format (6-component tensors)
+ad-adr0p2_0p4-mixed-base: &ad_adr0p2_0p4_mixed_base
+  <<: *advdiff
+  train_path:    'data/advection-diffusion/_train_adr0.2_0.4_32k_mixed.h5'
+  val_path:      'data/advection-diffusion/_val_adr0.2_0.4_4k_mixed.h5'
+  test_path:     'data/advection-diffusion/_test_adr0.2_0.4_4k_mixed.h5'
+  scales_path:   'data/advection-diffusion/_train_adr0.2_0.4_32k_mixed_scales.npy'
+  batch_size: 128
+  valid_batch_size: 128
+  log_to_wandb: !!bool True
+  mode_cut: 32
+  embed_cut: 64
+  fc_cut: 2
+  max_epochs: 500
+  plot_figs: !!bool False
+  system: 'advection-diffusion'
+  in_dim: 7  # AdvDiff with mixed format: 1 (source) + 6 (tensor) = 7 input channels
+  constraint_diffusion_tensor_order: 'k11_k12_k22'
+  checkpoint_interval_epochs: 50
+  checkpoint_best_at_end: !!bool True
+
+# Pretrained transfer configs use source-domain scales (single-domain pretrain).
+ad-adr0p2_0p4-pretrained-base: &ad_adr0p2_0p4_pretrained_base
+  <<: *ad_adr0p2_0p4_base
+  scales_path:   'data/advection-diffusion/_train_adr0.2_1_32k_scales.npy'
+
+# Pretrained transfer configs use mixed pretraining scales (mixed-domain pretrain).
+ad-adr0p2_0p4-mixed-pretrained-base: &ad_adr0p2_0p4_mixed_pretrained_base
+  <<: *ad_adr0p2_0p4_mixed_base
+  scales_path:   'data/mixed/_train_mixed_32k_scales.npy'
+
+# Zero-shot evaluation configs (no downstream training)
+ad-adr0p2_0p4-zeroshot:
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-zeroshot-mixed:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+
+# Zero-shot mixed eval variant for zero-hard checkpoints.
+# Keeps the hard zero-mode projection active at inference so evaluation matches
+# the forward map used during zero-hard pretraining.
+ad-adr0p2_0p4-zeroshot-mixed-zero-hard:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  batch_size: 128
+  valid_batch_size: 128
+  constraint_zero_mode_enable: !!bool True
+  constraint_zero_mode_enforcement: 'hard'
+  constraint_zero_mode_mode: 'gauge_aware'
+  constraint_zero_mode_omega_tol: 1.0e-8
+
+# Zero-shot scratch baseline (random initialization, no downstream training)
+ad-adr0p2_0p4-scratch-zeroshot:
+  <<: *ad_adr0p2_0p4_base
+  batch_size: 128
+  valid_batch_size: 128
+
+# Fine-tuning configs from AD pretraining (adr0.2_1)
+ad-adr0p2_0p4-finetune-16: &ad_adr0p2_0p4_ft_16
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-64: &ad_adr0p2_0p4_ft_64
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-256: &ad_adr0p2_0p4_ft_256
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-1k: &ad_adr0p2_0p4_ft_1k
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-4k: &ad_adr0p2_0p4_ft_4k
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-8k: &ad_adr0p2_0p4_ft_8k
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-16k: &ad_adr0p2_0p4_ft_16k
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-32k: &ad_adr0p2_0p4_ft_32k
+  <<: *ad_adr0p2_0p4_pretrained_base
+  weights: 'experiments/expts/ad-scale-adr0p2_1/pretrain-advdiff-adr0p2_1-12147812-1/checkpoints/ckpt_best.tar'
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
+# Fine-tuning configs from Mixed pretraining
+ad-adr0p2_0p4-finetune-mixed-16:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-mixed-64:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-mixed-256:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-mixed-1k:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+
+ad-adr0p2_0p4-finetune-mixed-4k:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-mixed-8k:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-mixed-16k:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-finetune-mixed-32k:
+  <<: *ad_adr0p2_0p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
+# From-scratch training configs (no pre-trained weights)
+ad-adr0p2_0p4-scratch-16: &ad_adr0p2_0p4_scratch_16
+  <<: *ad_adr0p2_0p4_base
+  subsample: 2048  # 32768 / 2048 = 16 samples
+  batch_size: 16
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-64: &ad_adr0p2_0p4_scratch_64
+  <<: *ad_adr0p2_0p4_base
+  subsample: 512   # 32768 / 512 = 64 samples
+  batch_size: 32
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-256: &ad_adr0p2_0p4_scratch_256
+  <<: *ad_adr0p2_0p4_base
+  subsample: 128   # 32768 / 128 = 256 samples
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-1k: &ad_adr0p2_0p4_scratch_1k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 32    # 32768 / 32 = 1024 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-4k: &ad_adr0p2_0p4_scratch_4k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 8     # 32768 / 8 = 4096 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-8k: &ad_adr0p2_0p4_scratch_8k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 4     # 32768 / 4 = 8192 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-16k: &ad_adr0p2_0p4_scratch_16k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 2     # 32768 / 2 = 16384 samples
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr0p2_0p4-scratch-32k: &ad_adr0p2_0p4_scratch_32k
+  <<: *ad_adr0p2_0p4_base
+  subsample: 1     # 32768 / 1 = 32768 samples (full dataset)
+  batch_size: 128
+  valid_batch_size: 128
+
+# ========================================
+# OOD Transfer Learning: AdvDiff adr>1.0
+# Mixed finetuning on the default OOD bins generated by scripts/workflows/run_gen_data_ood.sh:
+#   [1.0, 1.2], [1.2, 1.4], [1.4, 1.6], [1.6, 1.8]
+# ========================================
+
+ad-adr1_1p2-mixed-base: &ad_adr1_1p2_mixed_base
+  <<: *ad_adr0p2_0p4_mixed_base
+  train_path:    'data/advection-diffusion/_train_adr1.0_1.2_32k_mixed.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.0_1.2_4k_mixed.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.0_1.2_4k_mixed.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.0_1.2_32k_mixed_scales.npy'
+
+ad-adr1_1p2-mixed-pretrained-base: &ad_adr1_1p2_mixed_pretrained_base
+  <<: *ad_adr1_1p2_mixed_base
+  scales_path:   'data/mixed/_train_mixed_32k_scales.npy'
+
+ad-adr1_1p2-finetune-mixed-256:
+  <<: *ad_adr1_1p2_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1_1p2-finetune-mixed-4k:
+  <<: *ad_adr1_1p2_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p2_1p4-mixed-base: &ad_adr1p2_1p4_mixed_base
+  <<: *ad_adr0p2_0p4_mixed_base
+  train_path:    'data/advection-diffusion/_train_adr1.2_1.4_32k_mixed.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.2_1.4_4k_mixed.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.2_1.4_4k_mixed.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.2_1.4_32k_mixed_scales.npy'
+
+ad-adr1p2_1p4-mixed-pretrained-base: &ad_adr1p2_1p4_mixed_pretrained_base
+  <<: *ad_adr1p2_1p4_mixed_base
+  scales_path:   'data/mixed/_train_mixed_32k_scales.npy'
+
+ad-adr1p2_1p4-finetune-mixed-256:
+  <<: *ad_adr1p2_1p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p2_1p4-finetune-mixed-4k:
+  <<: *ad_adr1p2_1p4_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p4_1p6-mixed-base: &ad_adr1p4_1p6_mixed_base
+  <<: *ad_adr0p2_0p4_mixed_base
+  train_path:    'data/advection-diffusion/_train_adr1.4_1.6_32k_mixed.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.4_1.6_4k_mixed.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.4_1.6_4k_mixed.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.4_1.6_32k_mixed_scales.npy'
+
+ad-adr1p4_1p6-mixed-pretrained-base: &ad_adr1p4_1p6_mixed_pretrained_base
+  <<: *ad_adr1p4_1p6_mixed_base
+  scales_path:   'data/mixed/_train_mixed_32k_scales.npy'
+
+ad-adr1p4_1p6-finetune-mixed-256:
+  <<: *ad_adr1p4_1p6_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p4_1p6-finetune-mixed-4k:
+  <<: *ad_adr1p4_1p6_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p6_1p8-mixed-base: &ad_adr1p6_1p8_mixed_base
+  <<: *ad_adr0p2_0p4_mixed_base
+  train_path:    'data/advection-diffusion/_train_adr1.6_1.8_32k_mixed.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.6_1.8_4k_mixed.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.6_1.8_4k_mixed.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.6_1.8_32k_mixed_scales.npy'
+
+ad-adr1p6_1p8-mixed-pretrained-base: &ad_adr1p6_1p8_mixed_pretrained_base
+  <<: *ad_adr1p6_1p8_mixed_base
+  scales_path:   'data/mixed/_train_mixed_32k_scales.npy'
+
+ad-adr1p6_1p8-finetune-mixed-256:
+  <<: *ad_adr1p6_1p8_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p6_1p8-finetune-mixed-4k:
+  <<: *ad_adr1p6_1p8_mixed_pretrained_base
+  weights: 'experiments/expts/mixed-scale-all/pretrain-mixed-12173564-0/checkpoints/ckpt_best.tar'
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+# Scratch baselines on the same OOD AdvDiff bins (regular, non-mixed datasets).
+ad-adr1_1p2-base: &ad_adr1_1p2_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.0_1.2_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.0_1.2_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.0_1.2_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.0_1.2_32k_scales.npy'
+
+ad-adr1_1p2-scratch-256:
+  <<: *ad_adr1_1p2_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1_1p2-scratch-4k:
+  <<: *ad_adr1_1p2_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p2_1p4-base: &ad_adr1p2_1p4_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.2_1.4_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.2_1.4_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.2_1.4_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.2_1.4_32k_scales.npy'
+
+ad-adr1p2_1p4-scratch-256:
+  <<: *ad_adr1p2_1p4_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p2_1p4-scratch-4k:
+  <<: *ad_adr1p2_1p4_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p4_1p6-base: &ad_adr1p4_1p6_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.4_1.6_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.4_1.6_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.4_1.6_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.4_1.6_32k_scales.npy'
+
+ad-adr1p4_1p6-scratch-256:
+  <<: *ad_adr1p4_1p6_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p4_1p6-scratch-4k:
+  <<: *ad_adr1p4_1p6_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
+
+ad-adr1p6_1p8-base: &ad_adr1p6_1p8_base
+  <<: *ad_adr0p2_0p4_base
+  train_path:    'data/advection-diffusion/_train_adr1.6_1.8_32k.h5'
+  val_path:      'data/advection-diffusion/_val_adr1.6_1.8_4k.h5'
+  test_path:     'data/advection-diffusion/_test_adr1.6_1.8_4k.h5'
+  scales_path:   'data/advection-diffusion/_train_adr1.6_1.8_32k_scales.npy'
+
+ad-adr1p6_1p8-scratch-256:
+  <<: *ad_adr1p6_1p8_base
+  subsample: 128
+  batch_size: 64
+  valid_batch_size: 128
+
+ad-adr1p6_1p8-scratch-4k:
+  <<: *ad_adr1p6_1p8_base
+  subsample: 8
+  batch_size: 128
+  valid_batch_size: 128
