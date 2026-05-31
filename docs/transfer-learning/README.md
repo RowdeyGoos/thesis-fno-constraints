@@ -22,7 +22,6 @@ experiments, and evaluation.
 - [CONSTRAINTS_TRANSFER_EXPERIMENT_CHECKLIST.md](CONSTRAINTS_TRANSFER_EXPERIMENT_CHECKLIST.md)
   - experiment tracking checklist for constrained pretraining and downstream
   transfer bundles.
-- [MODEL_PARAMETERS.md](MODEL_PARAMETERS.md) - FNO parameter-count reference.
 
 ## Archived Originals
 
